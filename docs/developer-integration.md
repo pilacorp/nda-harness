@@ -4,7 +4,7 @@ Status: onboarding design for the [architecture proposal](architecture.md). The 
 
 ## What runs where
 
-Developers keep using their existing local coding agent and project tooling. The agent reads code from the local checkout. Internal RAG supplies feature and architecture documents; self-hosted Supermemory supplies the current developer's personal preferences and working notes. It is not a shared organization fact store. Neither service becomes a copy of the code repository.
+Developers keep using their existing local coding agent and project tooling. The agent reads code from the local checkout. Internal RAG supplies feature and architecture documents; self-hosted Hindsight supplies the current developer's personal preferences and working notes. It is not a shared organization fact store. Neither service becomes a copy of the code repository.
 
 The harness is a versioned set of instructions, workflow documents, and repository settings. Agent-native file and terminal tools do the coding. MCP supplies service access where available; it is not a mandatory runtime wrapper.
 
@@ -27,7 +27,7 @@ The proposed layout is:
   hooks/
     pre-commit       # proposed executable unit-test hook
   scripts/
-    setup-knowledge  # proposed local RAG/Supermemory connection setup
+    setup-knowledge  # proposed local RAG/Hindsight connection setup
 ```
 
 This is a package design, not an existing downloadable release. Keep specs and task records in the project's existing locations when possible; record those locations in the profile. Do not duplicate them into memory.
@@ -86,7 +86,7 @@ Start a fresh agent session at the repository root so the project entrypoint is 
 
 ### 2. Configure knowledge access
 
-Obtain the internal RAG interface and Supermemory endpoint from the service owners. Use approved VPN/network access and per-developer authentication. Do not connect the public Supermemory hosted endpoint as a substitute. Keep keys/tokens in supported local secret storage or environment configuration, outside Git; never paste them into prompts, specs, or evidence logs.
+Obtain the internal RAG interface and Hindsight endpoint from the service owners. Use approved VPN/network access and per-developer authentication. Do not connect the public Hindsight hosted endpoint as a substitute. Keep keys/tokens in supported local secret storage or environment configuration, outside Git; never paste them into prompts, specs, or evidence logs.
 
 | Agent | MCP setup route | Local verification |
 | --- | --- | --- |
@@ -98,21 +98,25 @@ No common config file format is assumed across clients. Use each client's suppor
 
 #### Pack-provided setup script
 
-The release must include `.nda-harness/scripts/setup-knowledge` to perform this connection setup and verification for the selected agent. This is a proposed executable in the next tooling phase, not a script shipped by the current documentation. The script configures local **agent connections** to the existing internal services. It does not deploy RAG or Supermemory backends on developer devices.
+The release must include `.nda-harness/scripts/setup-knowledge` to perform this connection setup and verification for the selected agent. This is a proposed executable in the next tooling phase, not a script shipped by the current documentation. The script configures local **agent connections** to the existing internal services. It does not deploy RAG or Hindsight backends on developer devices.
 
 The script has the following contract:
 
 1. Read the pinned release and repository profile, then take the agent choice, owner-supplied internal endpoints, RAG project scope, and developer-local credential references. Do not guess endpoints, transports, tool names, or personal identity. Use the client's supported authentication flow; do not take raw tokens in command-line arguments or print them in logs.
 2. Check the installed agent's supported integration and inspect its existing configuration. Preview the exact non-secret configuration changes, preserve unrelated servers/settings, and add or update only harness-owned connections. Keep machine-specific values and credentials outside the committed package. A missing supported integration is an actionable prerequisite, not permission to install a new agent or retrieval engine.
 3. Apply the selected client's configuration using its supported mechanism. Make reruns safe: no duplicate server entries, no destructive replacement of existing settings, and no silently changed endpoint or identity. Retain a local backup for file changes and document how to undo only the harness changes.
-4. Verify authenticated RAG search/fetch for the explicit project scope against an owner-provided architecture document, including citation and actual revision. Verify Supermemory's authenticated personal identity, available capabilities, and owner-provided isolation check. Do not write a memory just to test onboarding; an empty account is valid. If identity/isolation cannot be established, leave memory disconnected.
+4. Verify authenticated RAG search/fetch for the explicit project scope against an owner-provided architecture document, including citation and actual revision. Verify Hindsight's authenticated personal identity, available capabilities, and owner-provided isolation check. Do not write a memory just to test onboarding; an empty account is valid. If identity/isolation cannot be established, leave memory disconnected.
 5. Report readiness separately for RAG and memory with actionable connection, permission, capability, or configuration errors. Do not report authentication failures as empty results. Required RAG setup failure prevents claiming onboarding complete; optional memory failure permits work using authoritative repository/RAG context. Emit only a sanitized summary suitable for the adoption review.
 
 The script does not upload repository code, seed shared memory, modify agent policy, activate Git hooks, or run on every commit. Connection verification does not replace the fresh-session policy-loading and local-code checks below. Endpoint changes and upgraded agent integrations require another setup/verification run.
 
 If the existing RAG provides HTTP rather than MCP, use an already-approved tool integration. Do not fabricate MCP tool names or build a second RAG to finish onboarding; record missing shared access as an integration prerequisite. A future thin MCP mapping should preserve the existing service's permissions and citations.
 
-Supermemory's [upstream MCP interface](https://github.com/supermemoryai/supermemory/blob/main/apps/mcp/README.md) is a reference, not a guarantee about the internal deployment. Authenticate as yourself and verify search/save capabilities and server-enforced isolation from other developers. Keep your personal-memory identity and credentials local. You control personal saves and any supported automatic capture; no maintainer publication or tech-lead approval is required. Do not configure a shared team-memory account as your personal account.
+Hindsight's [self-hosted MCP server](https://hindsight.vectorize.io/developer/mcp-server) is the connection target. Authenticate with your individual Hindsight credentials and verify your tenant, bank, available memory tools, and denied cross-developer access. The service owner configures a tenant extension with separate database schemas; a bank name or shared API key alone does not provide personal isolation. Keep personal-memory identifiers and credentials local. You control personal saves and any supported automatic capture; no maintainer publication or tech-lead approval is required.
+
+OpenRouter is configured on the internal Hindsight server by the service owner, not on each developer's device. The local setup script needs only the internal endpoint and developer's Hindsight credentials; it must not distribute the server's OpenRouter key. Storage is internal, while memory-processing prompts go through OpenRouter to the selected model provider. The owner supplies the approved model/routing and data-handling configuration. See the architecture's [Hindsight deployment contract](architecture.md#self-hosted-hindsight).
+
+Use the internal dashboard to inspect your own memories and correct or invalidate stale notes. Verify that dashboard access respects the same tenant boundary as MCP/API access; a dashboard configured with a shared administrative credential must not be exposed as a personal-memory portal.
 
 ### 3. Verify readiness
 
@@ -128,7 +132,7 @@ Use an existing approved feature/architecture document from the RAG owner and, i
 | Memory recall | Authenticated identity and own relevant note, if one exists | Correct personal account/scope; empty personal memory is acceptable |
 | Isolation | Owner-provided authorized/denied access check | Server enforces RAG permissions and separation of developer memories; a project tag alone is not authorization |
 
-An empty personal memory is a valid starting state; verify authenticated access without requiring a seeded lesson. Do not interpret an auth error as an empty result. If isolation cannot be verified, leave Supermemory disconnected and continue the harness using required repository/RAG context. Record agent version/surface, harness revision, and readiness findings in the adoption review without credentials or personal-memory content.
+An empty personal memory is a valid starting state; verify authenticated access without requiring a seeded lesson. Do not interpret an auth error as an empty result. If isolation cannot be verified, leave Hindsight disconnected and continue the harness using required repository/RAG context. Record agent version/surface, harness revision, and readiness findings in the adoption review without credentials or personal-memory content.
 
 ## Daily work
 
@@ -138,11 +142,14 @@ The tech lead first creates an issue in this GitHub repository with the problem,
 2. For issue #123, use `feat/123-<feature>` to draft the behavior spec, focused unit-test mapping, and QA scenarios. Record the issue URL in the spec/task record. Open a spec-only GitHub PR from that branch with `Refs #123` in its body; the designated developer or tech lead reviews and approves it remotely. Merge the approved spec before implementation, retaining the branch and leaving the issue open.
 3. Fetch main and merge it into the same `feat/123-<feature>` branch, then verify the approved spec. Before implementation, retain the complete unit-test-only red change as a patch against the recorded base, including new tests, and record the expected failing result. Implement green increments and refactor with unit tests passing, then commit the retained patch as evidence alongside green code/tests. Pre-commit checks run on normal commits; do not bypass them to commit failing red tests. Add meaningful tests for changed logic/regressions, without a fixed count or new integration/end-to-end suite.
 4. The developer reviews the diff and evidence, then opens a second PR from the same feature branch with `Closes #123` in its body. The implementation PR links the merged spec PR, approval review, spec revision, task record, and results; future required gates replay and validate them. Confirm acceptance criteria before merging, then verify issue closure. Delete the branch only after this PR merges. If GitHub deleted it after the spec PR, re-push the retained local branch under the same name.
-5. Optionally save a useful preference or personal working note under your own memory settings. No lesson-proposal artifact, shared publication, or memory write is required to complete the task.
+
+Daily development ends at merge. Personal-memory updates are handled through the developer's Hindsight integration outside the development cycle. Any additional learning workflow is deferred to a future phase.
 
 Include a brief QA handoff in the implementation PR: approved spec reference, integration/user-journey scenarios, and known limits. QA handles these using the existing team process. Harness checks validate unit tests and relevant lint/type/build results; they do not require an agent-created integration/end-to-end flow or a new QA sign-off gate. Green unit results do not imply those QA scenarios passed. Existing repository checks are not removed by this policy.
 
 Stage the source/test/config changes you tested before committing. The pre-commit hook runs against the working tree, while CI verifies the committed PR snapshot. Do not disable hooks or use `--no-verify` to evade failing checks; any authorized bypass must be recorded and does not waive CI.
+
+Keep test evidence brief in the repository task record: tested commit SHA, command/suite, pass status, and the successful GitHub check/run link for that revision. Local checks use the same summary without a CI link; CI supplies the verified merge proof. Do not commit test logs or require separate log artifacts. Keep the red test patch, base revision, and expected failure for replay, without a red log. GitHub's ordinary run output can be consulted for troubleshooting when needed.
 
 For docs or mechanical work, the tech-lead issue and issue-numbered branch are still required; reuse the repository's branch prefix. Record the classification, run relevant existing checks, and obtain review in a single completion PR with `Closes #<issue>`. For untestable behavior, seek the recorded exception with alternate verification; it does not waive issue linkage. When approved behavior changes, stop dependent implementation and renew the spec approval and affected evidence in a spec-change PR referencing the same issue.
 
