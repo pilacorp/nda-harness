@@ -1,0 +1,24 @@
+# NDA Harness
+
+NDA Harness defines a shared development workflow for the internal team using Codex, Claude Code, Cursor, or another local coding agent. It combines spec-driven development (SDD), test-driven development (TDD), human review, and proposed CI merge gates.
+
+Work starts with a GitHub issue created by a tech lead. A feature uses one issue-numbered branch for two sequential PRs: the spec PR references the issue; the implementation PR closes it after review and acceptance.
+
+Harness TDD uses focused unit tests in the code repository. QA owns integration and end-to-end verification; the harness does not require agents to build those test suites.
+
+The proposed local hook set includes a Git `pre-commit` hook that runs configured unit tests and blocks failing commits, alongside CI merge checks.
+
+The proposed pack also includes a local knowledge-setup script to connect supported agents to internal RAG and each developer's personal Supermemory account, then verify access. Credentials stay on the developer's device.
+
+## Read first
+
+- [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
+- [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
+
+Code stays in the developer's local repository for agent inspection. The existing Markdown/pgvector RAG supplies feature and architecture knowledge. Self-hosted Supermemory provides each developer's personal memory, such as preferences and individual working notes; it is not an organization-wide source of facts.
+
+## Current phase
+
+This repository contains the architecture proposal and onboarding design. It does **not** yet contain a released `.nda-harness/` policy package, an installer, executable GitHub Actions gates, or deployed service integrations. The integration guide distinguishes proposed adoption steps from working capabilities.
+
+Next, prepare the shared policy package and gate implementation for one pilot repository, then validate it with the team's supported agent versions. No new coding agent or compulsory runtime wrapper is proposed.
