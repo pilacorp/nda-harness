@@ -19,6 +19,7 @@ SDD means **spec-driven development**. Harness TDD means a meaningful red unit t
 | Component | Responsibility | Source of truth |
 | --- | --- | --- |
 | Shared policy, agent adapters, and local hooks | Load the workflow and run unit tests before commits | Pinned, reviewed repository-local policy and hook package |
+| Role-specific skills and tools | Guide tech-lead scoping/documentation and developer SDD; scaffold/validate artifacts, verify prerequisites, and retain test evidence | Pinned, reviewed skill/tool contracts; authoritative documents and authenticated records |
 | Local coding agent | Read code, inspect callers, edit files, execute existing project tools | Developer's repository and recorded revisions |
 | Internal RAG | Retrieve feature definitions and architecture from existing Markdown/pgvector knowledge | Cited source documents and revisions |
 | Self-hosted Hindsight | Recall and retain each developer's preferences and personal working notes | Developer-controlled personal context; not authoritative organization facts |
@@ -90,7 +91,15 @@ Local chat, a pasted approval message, or an agent-written approval flag does no
 
 The future release package is copied into each adopted repository under `.nda-harness/` and pinned to an immutable release revision. Keep the policy concise; the detailed workflow is read as needed. Thin agent entrypoints load the policy and repository profile rather than maintaining separate process definitions.
 
-The policy must cover stage transitions, required human decisions, test-first work, evidence, knowledge trust boundaries, unavailable services, exception handling, and completion reporting. These are repository instructions, not a replacement for provider-controlled system prompts or tool permissions. The baseline includes a Git pre-commit unit-test hook. Agent-specific hooks and optional skills may add convenience but do not replace that shared Git hook or CI checks.
+The policy must cover stage transitions, required human decisions, test-first work, evidence, knowledge trust boundaries, unavailable services, exception handling, and completion reporting. These are repository instructions, not a replacement for provider-controlled system prompts or tool permissions. The baseline includes a Git pre-commit unit-test hook and required role-specific skill/tool procedures. Optional agent-native hooks provide convenience; skills and local checks do not replace the shared Git hook, authenticated approvals, or CI checks.
+
+### Tech-lead and developer workflows
+
+The harness execution layer includes tools and skills for both roles. Tech leads use `scope-initiative`, `document-requirements`, and `review-spec` to define boundaries, author feature/architecture intent, prepare issue briefs, and assess developer specifications. Developers use `execute-sdd`, `scope-task`, `write-spec`, and `document-change` to turn a verified issue into an approved behavior spec, meaningful unit-test evidence, implementation and review artifacts. Shared artifact tools scaffold and validate documents; developer tools verify authenticated task prerequisites and capture test-only red checkpoints. See the [role workflows and delivery contracts](../plan.md#role-workflows-and-handoff).
+
+Tech-lead preparatory scoping/documentation precedes issue creation and is not blocked by the developer task's issue prerequisite. Versioned document changes still follow existing repository review rules. The authorized tech lead creates the primary issue; the developer agent cannot create a substitute. Draft lead documents remain drafts until accepted through the existing source-owner process. They inform the developer spec without replacing its human approval/merge gate.
+
+Skills guide reasoning and authoring, tools perform deterministic operations, and context hooks prepare inputs and route by role/stage. Role selection is not authentication or permission. The human retains scope decisions and approval authority; skill execution cannot self-approve, grant access or advance a stage on its own. These are proposed pack capabilities for existing local agents, not a separate coding-agent runtime.
 
 The repository profile records setup, targeted unit-test and relevant unit-suite commands, applicable lint/type/build checks, runtime prerequisites, spec/task locations, RAG project scope, supported agent versions, authorized tech-lead GitHub identities, approvers, default branch, and harness revision. Personal-memory identity and credentials stay in each developer's local configuration. Use Markdown for the initial profile and task records; a machine-readable gate format is a later implementation concern.
 
@@ -106,6 +115,8 @@ Each task record links the following:
 Task records retain concise test-pass proof, not test logs: tested commit SHA, command/suite, pass status, and a link to the successful GitHub check/run for that revision. Local runs can record the same summary without a CI link, but an agent-authored PASS statement alone is not merge proof; CI verifies the final revision. Do not commit console output or require uploaded/downloaded log artifacts. GitHub's normal run output may remain available for troubleshooting without becoming a harness retention requirement. Preserve the test-only patch, base revision, and expected failure for red replay even if merge uses squash; no red log is required. Chat history and Hindsight cannot substitute for these records.
 
 ## Proposed local hooks
+
+For session/task context loading, refresh, and handoff, see the [context preparation hooks proposal](context-preparation-hooks.md). It recommends a shared preparation contract with optional agent-native adapters; it is not an installed hook set or a replacement for the Git/CI checks below.
 
 Start with one required hook: **Git `pre-commit` runs the repository's configured unit-test command**. Use the existing project hook setup if present; otherwise ship an executable `.nda-harness/hooks/pre-commit` and activate it per checkout with repository-local `core.hooksPath`. No new hook framework is required. Git supports a configured hook directory and aborts a commit on a nonzero pre-commit exit; the hook can be bypassed with `--no-verify`. See [Git hooks](https://git-scm.com/docs/githooks).
 
