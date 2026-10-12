@@ -12,8 +12,11 @@ The proposed pack also includes a local knowledge-setup script to connect suppor
 
 ## Read first
 
+Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 supplies relevant public library/framework documentation; the Skills hub adds selectively loaded specialist instructions.
+
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
+- [Skills hub](skills/catalog.md): select UI/UX Pro Max, official Vietnamese document wording, or Diagram Design for a scoped sub-agent; load selected instructions only.
 
 Code stays in the developer's local repository for agent inspection. The existing Markdown/pgvector RAG supplies feature and architecture knowledge. Self-hosted Hindsight, using OpenRouter for LLM processing, provides each developer's personal memory, such as preferences and individual working notes; it is not an organization-wide source of facts.
 
@@ -21,6 +24,6 @@ Memory storage stays internal; processing sends relevant memory content through 
 
 ## Current phase
 
-This repository contains the architecture proposal and onboarding design. It does **not** yet contain a released `.nda-harness/` policy package, an installer, executable GitHub Actions gates, or deployed service integrations. The integration guide distinguishes proposed adoption steps from working capabilities.
+This repository contains the architecture proposal, onboarding design, and a Skills hub with three specialist skills. It does **not** yet contain a released `.nda-harness/` policy package, an installer, executable GitHub Actions gates, or deployed service integrations. The integration guide distinguishes proposed adoption steps from working capabilities.
 
 Next, prepare the shared policy package and gate implementation for one pilot repository, then validate it with the team's supported agent versions. No new coding agent or compulsory runtime wrapper is proposed.
