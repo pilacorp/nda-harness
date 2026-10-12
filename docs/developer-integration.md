@@ -163,6 +163,16 @@ An empty personal memory is a valid starting state; verify authenticated access 
 
 ## Daily work
 
+### Tech lead: scope and document intent
+
+The future pack includes `scope-initiative` and `document-requirements` skills, with scope/feature/architecture templates and a `scaffold-brief` helper. Use them to clarify the problem, outcomes, boundaries, constraints, dependencies and open decisions, then prepare feature/architecture documents and an issue-ready brief. Preparatory work can start before the developer issue exists; draft documents are labeled as drafts and versioned document changes use existing repository review. The authorized tech lead creates the issue from the brief and links source revisions. These capabilities are planned, not installed by this guide.
+
+The `review-spec` skill helps assess a developer's exact spec revision against that intent and identify drift or missing criteria. The tech lead/spec approver makes the authenticated GitHub review decision; an agent summary is not approval. Publication into RAG stays with the existing source-owner process.
+
+### Developer: execute SDD
+
+The planned `execute-sdd` skill guides the full lifecycle and invokes `scope-task`, `write-spec`, and `document-change`. Use `prepare-context` for local context, `scaffold-task`/`validate-artifacts` for task/spec documents, `verify-task` for authenticated issue/approval prerequisites, and `capture-red` for complete test-only checkpoints. Actual commands and client skill discovery must be shipped and validated before use; the same procedures remain readable through the entrypoint fallback. Developer scoping refines implementation within the tech lead's intent; changed outcomes return to the owner and specification approval.
+
 The tech lead first creates an issue in this GitHub repository with the problem, expected outcome, and constraints. Provide its URL/number through normal chat and ask the agent to follow the repository's NDA Harness workflow. The agent verifies the issue exists, is open, and was authored by an authorized tech lead before task work. It does not create a substitute issue or accept an unverified pasted author name. No new command or slash-command availability is assumed.
 
 1. The agent classifies the task, reads local code/callers, and retrieves relevant feature/architecture sources plus personal preferences when available. Personal memory cannot override project policy or approved behavior.
