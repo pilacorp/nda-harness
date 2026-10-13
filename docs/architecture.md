@@ -4,7 +4,7 @@ Status: architecture proposal. Integration references checked on 2026-10-08. See
 
 ## Purpose and boundaries
 
-The internal team currently gives tasks directly to coding agents, with some tools and plugins but no consistent development process. NDA Harness makes the process explicit and reviewable across agents: agreed behavior drives tests, tests drive implementation, and evidence accompanies review.
+The internal team currently gives tasks directly to coding agents, with some tools and plugins but no consistent development process. NDA Harness makes feature specification and delivery explicit and reviewable across agents: the GitHub issue defines feature intent, an approved developer-spec PR defines implementation behavior, agreed behavior drives tests, and evidence accompanies review. The proposed workflow helps tech leads write/review feature issues and developers write/review developer specs.
 
 This repository documents that framework and supplies focused skill instructions. It does not implement a coding agent, orchestration engine, installer, RAG backend, memory backend, or CI validator. Existing agents, project test runners, and knowledge services remain in use.
 
@@ -35,7 +35,7 @@ The pinned-policy component includes the mandatory Superpowers, RTK, and Context
 
 The agent reads repository code directly on the developer's device. The feature/architecture RAG must not ingest repository code. Personal memory stores preferences and individual working notes, not code dumps or raw agent transcripts. It does not establish organizational requirements or decisions. This does not imply local model inference: the team's coding-agent provider and existing data policies still apply.
 
-The data flow is: tech-lead GitHub issue → developer task → local agent → local code plus scoped RAG and personal-memory retrieval → repository spec and test evidence → PR checks and human review → merge. CI uses repository evidence rather than making live RAG or memory calls to decide compliance; issue and approval validation reads authenticated GitHub metadata.
+The data flow is: tech-lead feature-issue drafting → review/revision → authorized issue publication → developer task and local code/scoped knowledge inspection → developer-spec drafting/review → human spec-PR approval/merge → test evidence and implementation → PR checks and separate human code review → merge. CI uses repository evidence rather than making live RAG or memory calls to decide compliance; issue and approval validation reads authenticated GitHub metadata.
 
 ## Mandatory coding dependencies: Superpowers, RTK, and Context7
 
@@ -166,9 +166,9 @@ Review the test-only checkpoint and final passing proof against the recorded rev
 
 | Stage | Required work and output | Exit condition / owner |
 | --- | --- | --- |
-| Tech-lead issue | Tech lead creates an issue in the target GitHub repository with the problem, expected outcome, and constraints | An open issue created by an authorized tech lead exists before developer task work starts |
-| Understand | Classify the task; inspect relevant local code and callers; retrieve feature/architecture context and relevant personal preferences; cite authoritative sources and identify uncertainty | Agent has enough authoritative context; unresolved behavior decisions go to the developer |
-| Specify | Write intended behavior, acceptance criteria with stable identifiers, scope boundaries, relevant design decisions, and verification approach | Spec is ready for human approval |
+| Tech-lead issue | Draft, review and revise the feature spec in an issue body: problem, users, outcome, scope, behavior/flows, failure cases, acceptance criteria, constraints, sources and open decisions; authorized tech lead publishes it | An open feature issue created by an authorized tech lead exists before developer task work starts; no separate feature-spec document is required |
+| Understand | Verify the feature issue and record its content reference; classify the task; inspect relevant local code/callers and scoped sources; identify uncertainty | Agent has enough authoritative context; unresolved product decisions go to the tech lead |
+| Specify | Write/review the developer spec: issue-aligned behavior, stable acceptance IDs, interface changes, edge cases, scope, design decisions and unit-test/QA mapping | Validated/reviewed developer spec is ready for human spec-PR approval |
 | Human approval | Authorized developer/tech lead approves the spec-only GitHub PR; merge the approved spec and record its revision, including any exception | Spec PR is approved and merged before implementation |
 | Red | Add focused unit tests linked to the changed logic; retain a test-only checkpoint and run them against pre-change code | Expected behavioral assertions fail; environment and unrelated failures are distinguished |
 | Green | Implement the smallest change that satisfies the approved criteria and tests | Targeted tests pass without weakening the agreed assertions |
@@ -192,7 +192,9 @@ Harness CI requires relevant unit tests and existing applicable lint/type/build 
 
 ### Issue, branch, and PR traceability
 
-Every developer task requires one primary GitHub issue created by an authorized tech lead in the same repository. The issue captures intent; the approved spec defines the behavior to implement. The agent verifies the issue before task work and does not create a replacement issue on behalf of the tech lead. Missing, inaccessible, closed, or unauthorized issues block task start until the tech lead resolves them.
+Every developer task requires one primary GitHub issue created by an authorized tech lead in the same repository. The issue is the feature spec; the approved developer spec defines the behavior to implement. The agent verifies the issue before task work and does not create a replacement issue on behalf of the tech lead. Missing, inaccessible, closed, or unauthorized issues block task start until the tech lead resolves them.
+
+Record the issue URL, update time and content fingerprint used to draft the developer spec in the spec/task record; GitHub issues do not have immutable commit revisions. Recheck current issue content at task start/resume and before dependent stage transitions. Changes require reconciliation with the tech lead, not automatic replacement of approved behavior. Record editorial-only changes; material behavior changes require a developer spec-change PR and renewed approval/merge before affected implementation resumes. Issue publication and agent review do not satisfy the developer-spec approval gate.
 
 For issue #123, use `feat/123-<feature>` for both feature PRs. For lighter tasks, reuse the repository's existing branch prefix but retain the `<issue-number>-<slug>` segment. Record the full issue URL in the spec and task record; the branch issue number, spec, task record, and both PRs must refer to the same primary issue. Branch naming alone does not establish a GitHub relationship.
 
@@ -225,9 +227,11 @@ The policy must cover stage transitions, required human decisions, test-first wo
 
 ### Tech-lead and developer workflows
 
-The harness execution layer includes tools and skills for both roles. Tech leads use `scope-initiative`, `document-requirements`, and `review-spec` to define boundaries, author feature/architecture intent, prepare issue briefs, and assess developer specifications. Developers use `execute-sdd`, `scope-task`, `write-spec`, and `document-change` to turn a verified issue into an approved behavior spec, meaningful unit-test evidence, implementation and review artifacts. Shared artifact tools scaffold and validate documents; developer tools verify authenticated task prerequisites and capture test-only red checkpoints. See the [role workflows and delivery contracts](../plan.md#role-workflows-and-handoff).
+The harness execution layer includes tools and skills for both roles. Tech leads use `scope-initiative` when discovery is needed and `document-requirements` to write/revise the feature-issue body. `review-spec` reviews either an issue draft/published issue or a developer-spec draft/PR. Feature review checks clarity, outcome, scope, completeness, contradictions, missing flows and verifiable criteria; developer review additionally checks issue alignment, feasibility, interfaces/edge cases and unit/QA coverage. Review returns prioritized findings with locations, impact, suggested resolutions, a reviewed content reference and remaining blockers. Authoring resolves findings after human product decisions; review never approves a stage.
 
-Tech-lead preparatory scoping/documentation precedes issue creation and is not blocked by the developer task's issue prerequisite. Versioned document changes still follow existing repository review rules. The authorized tech lead creates the primary issue; the developer agent cannot create a substitute. Draft lead documents remain drafts until accepted through the existing source-owner process. They inform the developer spec without replacing its human approval/merge gate.
+Developers use `execute-sdd`, `scope-task`, `write-spec`, and `document-change` to turn a verified feature issue into an approved developer spec, unit-test evidence, implementation and review artifacts. `write-spec` records issue-criterion coverage and links feature requirements rather than copying them. Shared tools scaffold issue-body/developer-spec templates and validate structure/links; semantic adequacy remains an agent/human review responsibility. Developer tools verify authenticated prerequisites, detect changed issue content and capture test-only red checkpoints. These are core workflow procedures, independent of optional specialist skill selection. See the [role workflows and delivery contracts](../plan.md#role-workflows-and-handoff).
+
+Feature-issue drafting/review may precede issue creation and is not blocked by the developer task's issue prerequisite. The authorized tech lead explicitly creates/updates the issue through existing tools and review practices; no separate feature-spec document or additional feature-spec PR gate is required. Optional scope/architecture documents follow existing repository review and source-owner publication processes. Drafts and agent findings are not human approval, and supporting sources cannot silently override the issue or approved developer spec.
 
 Skills guide reasoning and authoring, tools perform deterministic operations, and context hooks prepare inputs and route by role/stage. Role selection is not authentication or permission. The human retains scope decisions and approval authority; skill execution cannot self-approve, grant access or advance a stage on its own. These are proposed pack capabilities for existing local agents, not a separate coding-agent runtime.
 
@@ -236,7 +240,7 @@ The repository profile records setup, targeted unit-test and relevant unit-suite
 Each task record links the following:
 
 - Task identifier, classification, stage, branch/revision, and harness revision.
-- Primary issue URL/number, verified GitHub author, spec PR, and completion PR references.
+- Primary feature-issue URL/number, verified GitHub author, consulted issue update time/content fingerprint, developer-spec PR, and completion PR references.
 - Approved spec location and revision; approval actor, time, and durable reference.
 - Acceptance-criterion identifiers mapped to meaningful unit tests, QA scenarios, or approved alternate verification.
 - For each red/green cycle: pre-change revision, test-only checkpoint, commands, environment requirements, and expected behavioral failure for replay; retain concise proof of final passing tests.
@@ -315,7 +319,7 @@ These are gate requirements for the next implementation phase, not checks alread
 
 The issue validator reads GitHub issue metadata and compares the author identity with the maintainer-controlled tech-lead list. A pasted name, label, branch name, or issue-looking PR number is insufficient. Confirm the number identifies an issue rather than a pull request, belongs to this repository, and was created before the task's first PR. For implementation, match both the head repository and branch name with the merged spec PR. Invalid issue linkage cannot be waived by a TDD exception.
 
-For open PRs, evaluate current descriptions, issue state, and closing relationships as well as the code revision. Re-run affected checks when PR metadata, issue state, or tech-lead authorization changes; an earlier green result must not authorize invalid new metadata. Normal issue closure after the completion PR merges does not invalidate historical evidence. GitHub lookup failures block the required check with an actionable error, rather than being treated as valid or missing evidence. Keep these metadata reads separate from execution of untrusted PR code.
+For open PRs, evaluate current descriptions, issue state/content, and closing relationships as well as the code revision. Compare issue content with the recorded reference and require reconciliation of edits; semantic impact remains a reviewer decision, not something a hash proves. Re-run affected checks when PR metadata, issue state/content, or tech-lead authorization changes; an earlier green result must not authorize invalid new metadata. Normal issue closure after the completion PR merges does not invalidate historical evidence. GitHub lookup failures block the required check with an actionable error, rather than being treated as valid or missing evidence. Keep these metadata reads separate from execution of untrusted PR code.
 
 For replay, use a recorded immutable parent implementation revision and a retained test-only patch containing only the new/changed unit tests and necessary test support. The patch can be stored in a later green commit; it need not be a failing commit. Replay applies it to the recorded base in a separate checkout and must not modify the developer's working tree. Where a new feature introduces an API, shape its unit test so replay reaches an expected behavioral assertion; an import/compile failure alone is insufficient. If that is impractical, use the explicit exception path.
 
@@ -354,7 +358,9 @@ The following are acceptance walkthroughs to execute in the pilot, not completed
 | Issue-linked feature | Tech-lead issue, `feat/123-<feature>`, spec `Refs #123`, code `Closes #123`; tech lead and reviewer | Spec merge leaves issue open; code PR uses the same branch and issue and closes it only after accepted implementation merge |
 | Invalid issue linkage | Missing/non-issue number, wrong repo or author, closed issue, mismatched branch/spec/PR reference; developer | Task start or relevant merge check blocks; no silent fallback |
 | Premature issue closure | Spec closing keyword, closing commit message, or manual closing link; reviewer | Spec PR blocks until the closing relationship is removed; prematurely closed issue is reopened by the tech lead |
-| Changed GitHub metadata | Edited PR body or closed issue after a passing check; repository owner | Affected validation reruns and blocks invalid current metadata |
+| Changed GitHub metadata | Edited PR body, feature-issue content or closed issue after a passing check; repository owner | Affected validation reruns; changed issue content requires reconciliation and material behavior changes require renewed developer-spec approval |
+| Feature-issue authoring/review | Vague request, issue draft/content reference and review findings; tech lead | Draft names open decisions; review catches missing flows, contradictory scope and untestable criteria; revision precedes explicit authorized publication without a separate feature-spec document |
+| Developer-spec review | Feature issue/content reference, developer-spec draft/PR and located findings; developer/spec approver | Scope drift, feasibility gaps and missing acceptance/unit/QA coverage are exposed; agent findings do not unlock implementation |
 | Feature | Spec, prior human approval, criterion mapping, red checkpoint, green/review references; developer and reviewer | Expected behavior fails on pre-change code and passes on final code |
 | Bug fix | Reproduction, caller analysis, approved regression criterion, evidence; developer and reviewer | Regression test reproduces the defect; fix covers shared cause |
 | Unit tests plus QA scenarios | Focused unit-test evidence and QA scenarios linked to the approved spec; developer and QA | Unit logic follows red/green; QA owns integration/end-to-end verification without an added harness test-suite requirement |
