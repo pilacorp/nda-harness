@@ -1,6 +1,18 @@
 # Minimal NDA Harness setup CLI
 
-Status: draft for human review; implementation has not started.
+Status: merged specification (PR #5); owner-authorized Codex/Cursor Apple Silicon
+phase implemented; real-client validation pending.
+
+Phase amendment authorized by the owner on 2026-10-14: implement the shared
+framework now for Codex and Cursor on Apple Silicon macOS; defer Claude and Intel
+macOS to later adapters/phases. The owner also confirmed tech-lead review of PR
+#5. This instruction permits implementation despite incomplete original trial
+coverage. Keep actual client/authentication/plugin/native-hook checks explicitly
+pending; do not claim the original all-six-surface/two-architecture release matrix
+is complete. The original requirements below remain the target for later phases.
+For this phase, ship executable logical context operations with explicit
+entrypoint fallbacks, preserving upstream integrations. See
+[phase implementation and evidence](../docs/compatibility/minimal-cli-phase.md).
 
 Feature issue: [pilacorp/nda-harness#4](https://github.com/pilacorp/nda-harness/issues/4) (`Refs #4`).
 
@@ -81,7 +93,7 @@ For example, `--agents codex` on a machine with only a supported Codex CLI can c
 
 ## Implementation structure and installed pack
 
-Use Python 3.11+ with `argparse`, standard file/process libraries, and `unittest`. The **installer CLI (setup/verify) only** uses one pinned `tomlkit` dependency for preserving Codex TOML while editing owned entries; do not implement a TOML parser or serialize unrelated settings from scratch. Document a local virtual-environment bootstrap for the cloned installer and make `bin/nda-harness` use that environment. Installed harness hooks use a separate self-contained standard-library runtime, described below; they never import `tomlkit` or require the installer's virtual environment. Missing Python/dependencies produce an actionable prerequisite error; setup must not install Python or require administrative access.
+Use Python 3.11+ with `argparse`, standard file/process libraries, and `unittest`. The **installer CLI (setup/verify) only** uses one pinned `tomlkit` dependency for preserving Codex TOML while editing owned entries; do not implement a TOML parser or serialize unrelated settings from scratch. Owner amendment on 2026-10-14: users install the CLI and run directly without manually installing Python packages. Bundle the checksum-verified pure-Python dependency with its license/provenance, load it without pip or a virtual environment, and provide `install.sh` for the complete local command bundle. Clone-and-run must also work directly. Installed harness hooks remain self-contained standard-library runtimes and never import `tomlkit` or depend on the CLI distribution. Missing/old Python or a damaged bundle produces an actionable prerequisite error; setup must not install Python or require administrative access.
 
 Keep one setup engine and three small adapter modules. The engine collects validated options, checks prerequisites/conflicts, copies assets, applies backed-up writes, installs shared dependencies, and produces readiness results. Adapters supply instruction/skill/MCP registration, supported dependency integration, and verification/manual steps. A simple adapter registry is sufficient; no dynamic plugin framework or agent runtime is needed.
 

@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-14T08:40:29.744867+00:00",
+  "kind": "prerequisite_trial",
+  "installer_ready": false,
+  "inventory": {
+    "os": "Darwin",
+    "os_version": "26.5.2",
+    "architecture": "arm64",
+    "python": "3.13.2",
+    "cli": {
+      "rtk": {
+        "status": "available",
+        "version": "0.37.2"
+      },
+      "codex": {
+        "status": "failed",
+        "version": null,
+        "exit_code": 1
+      },
+      "cursor": {
+        "status": "failed",
+        "version": null,
+        "reason": "timeout"
+      },
+      "agent": {
+        "status": "available",
+        "version": "2026.03.30-a5d3e17"
+      },
+      "claude": {
+        "status": "not_installed",
+        "version": null
+      }
+    },
+    "applications": {
+      "cursor-ide": {
+        "status": "detected",
+        "version": "3.24.12"
+      },
+      "codex-desktop": {
+        "status": "detected",
+        "version": "26.1007.30912",
+        "limitation": "ChatGPT bundle detection does not establish Codex runtime support"
+      },
+      "claude-desktop-code": {
+        "status": "not_installed",
+        "version": null
+      }
+    }
+  },
+  "rtk_trials": [
+    {
+      "family": "codex",
+      "scope": "project",
+      "source": "automated",
+      "command": "rtk init --codex",
+      "attempts": [
+        {
+          "exit_code": 0,
+          "files": {
+            "home/.claude/CLAUDE.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.cursor/hooks.json": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "repo/AGENTS.md": "e96ff85592ad32daf794f39d93f3619b8a7e95c436095618602d8fa5dbb59a54",
+            "repo/RTK.md": "49c368c302c6f63d089f4c1085b242fc50fe22ce5bc34dada6478083000e7c6f"
+          }
+        },
+        {
+          "exit_code": 0,
+          "files": {
+            "home/.claude/CLAUDE.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.cursor/hooks.json": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "repo/AGENTS.md": "e96ff85592ad32daf794f39d93f3619b8a7e95c436095618602d8fa5dbb59a54",
+            "repo/RTK.md": "49c368c302c6f63d089f4c1085b242fc50fe22ce5bc34dada6478083000e7c6f"
+          }
+        }
+      ],
+      "rerun_files_unchanged": true,
+      "existing_instructions_preserved": true,
+      "existing_cursor_handler_preserved": true,
+      "existing_claude_instructions_preserved": true,
+      "client_runtime_verified": false
+    },
+    {
+      "family": "codex",
+      "scope": "user",
+      "source": "automated",
+      "command": "rtk init --codex --global",
+      "attempts": [
+        {
+          "exit_code": 0,
+          "files": {
+            "home/.claude/CLAUDE.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.codex/AGENTS.md": "66009e415216b09ed719d86a3a269a277636aaa94e261073f695952d094097a1",
+            "home/.codex/RTK.md": "49c368c302c6f63d089f4c1085b242fc50fe22ce5bc34dada6478083000e7c6f",
+            "home/.cursor/hooks.json": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "exit_code": 0,
+          "files": {
+            "home/.claude/CLAUDE.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.codex/AGENTS.md": "66009e415216b09ed719d86a3a269a277636aaa94e261073f695952d094097a1",
+            "home/.codex/RTK.md": "49c368c302c6f63d089f4c1085b242fc50fe22ce5bc34dada6478083000e7c6f",
+            "home/.cursor/hooks.json": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        }
+      ],
+      "rerun_files_unchanged": true,
+      "existing_instructions_preserved": true,
+      "existing_cursor_handler_preserved": true,
+      "existing_claude_instructions_preserved": true,
+      "client_runtime_verified": false
+    },
+    {
+      "family": "cursor",
+      "scope": "project",
+      "source": "automated",
+      "command": "rtk init --agent cursor",
+      "attempts": [
+        {
+          "exit_code": 1,
+          "files": {
+            "home/.claude/CLAUDE.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.cursor/hooks.json": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "repo/AGENTS.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079"
+          }
+        },
+        {
+          "exit_code": 1,
+          "files": {
+            "home/.claude/CLAUDE.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.cursor/hooks.json": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "repo/AGENTS.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079"
+          }
+        }
+      ],
+      "rerun_files_unchanged": true,
+      "existing_instructions_preserved": true,
+      "existing_cursor_handler_preserved": true,
+      "existing_claude_instructions_preserved": true,
+      "client_runtime_verified": false
+    },
+    {
+      "family": "cursor",
+      "scope": "user",
+      "source": "automated",
+      "command": "rtk init --agent cursor --global",
+      "attempts": [
+        {
+          "exit_code": 0,
+          "files": {
+            "home/.claude/CLAUDE.md": "e96ff85592ad32daf794f39d93f3619b8a7e95c436095618602d8fa5dbb59a54",
+            "home/.claude/RTK.md": "9fe007d9d7ca790f35b48bd12099e1b3a1dae05caf296dba3ddbe2621ddb02dc",
+            "home/.codex/AGENTS.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.cursor/hooks.json": "dbe1771adee0b8f18778e9f5282523034faa51afd8880d3db23c489aa978f012",
+            "home/.cursor/hooks.json.bak": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "home/Library/Application Support/rtk/filters.toml": "dbe3740de9d6b84cfed5b9274d884b5968a4fc81e81faa216fee400db99ea0a8"
+          }
+        },
+        {
+          "exit_code": 0,
+          "files": {
+            "home/.claude/CLAUDE.md": "e96ff85592ad32daf794f39d93f3619b8a7e95c436095618602d8fa5dbb59a54",
+            "home/.claude/RTK.md": "9fe007d9d7ca790f35b48bd12099e1b3a1dae05caf296dba3ddbe2621ddb02dc",
+            "home/.codex/AGENTS.md": "ad1625439693cfd291e49cfc8b91fc04f7d30331d6374fc85f49cc1d9b9df079",
+            "home/.cursor/hooks.json": "dbe1771adee0b8f18778e9f5282523034faa51afd8880d3db23c489aa978f012",
+            "home/.cursor/hooks.json.bak": "6c5e3234ebd52eac986d0ceed6fbb09bd85bea9d8141bbb365c8458c28f74e6d",
+            "home/Library/Application Support/rtk/.hook_warn_last": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "home/Library/Application Support/rtk/filters.toml": "dbe3740de9d6b84cfed5b9274d884b5968a4fc81e81faa216fee400db99ea0a8"
+          }
+        }
+      ],
+      "rerun_files_unchanged": true,
+      "existing_instructions_preserved": true,
+      "existing_cursor_handler_preserved": true,
+      "existing_claude_instructions_preserved": true,
+      "client_runtime_verified": false
+    }
+  ],
+  "release_matrix": [
+    {
+      "architecture": "arm64",
+      "surface": "cursor-ide",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "cursor-ide",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "cursor-cli",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "cursor-cli",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "codex-desktop",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "codex-desktop",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "codex-cli",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "codex-cli",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "claude-desktop-code",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "claude-desktop-code",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "claude-code-cli",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "arm64",
+      "surface": "claude-code-cli",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "cursor-ide",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "cursor-ide",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "cursor-cli",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "cursor-cli",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "codex-desktop",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "codex-desktop",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "codex-cli",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "codex-cli",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "claude-desktop-code",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "claude-desktop-code",
+      "scope": "user",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "claude-code-cli",
+      "scope": "project",
+      "status": "pending"
+    },
+    {
+      "architecture": "x86_64",
+      "surface": "claude-code-cli",
+      "scope": "user",
+      "status": "pending"
+    }
+  ],
+  "rtk_binary_sha256": "33f8ba7f298ded5c88b5cc805267f03036fdf15731d3db9fa1f49ae98a6d6f53"
+}

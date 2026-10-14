@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "status": "phase_implementation_runtime_validation_pending",
+  "installer_ready": false,
+  "rtk": {
+    "upstream": "https://github.com/rtk-ai/rtk",
+    "observed_version": "0.37.2",
+    "observed_installed_binary_sha256": "33f8ba7f298ded5c88b5cc805267f03036fdf15731d3db9fa1f49ae98a6d6f53",
+    "release_pin": "v0.37.2",
+    "official_artifact_hashes": {
+      "rtk-aarch64-apple-darwin.tar.gz": "99e20a59847dedbb64032a3f7985f2fe959fcb9674d8eaf940fc58a189e27eca"
+    },
+    "status": "official_archive_verified",
+    "limitations": [
+      "Installed executable checksum is not an official release archive checksum.",
+      "Codex initialization supplies instructions, not native rewriting hooks, at this version.",
+      "Cursor initialization is global-only and also creates Claude assets."
+    ],
+    "official_binary_sha256": "fb212aaa57018cff146a9053810b310845e477b4a1f789d38b4cf2908bb5c5dd"
+  },
+  "superpowers": {
+    "upstream": "https://github.com/obra/superpowers",
+    "inspected_revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+    "inspected_manifest_version": "7.0.0",
+    "release_pin": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+    "status": "pinned_source_manual_plugin_activation_required"
+  },
+  "context7": {
+    "endpoint": "https://mcp.context7.com/mcp",
+    "adapter_authentication_bindings": {},
+    "status": "connected_docs_query_passed_target_clients_pending",
+    "limitation": "Connected documentation tool success does not verify any target agent MCP registration."
+  },
+  "installer_python": {
+    "minimum_version": "3.11",
+    "tomlkit": "0.13.3",
+    "status": "pinned_and_tested",
+    "distribution": "bundled_pure_python_wheel",
+    "wheel": "tomlkit-0.13.3-py3-none-any.whl",
+    "wheel_sha256": "c89c649d79ee40629a9fda55f8ace8c6a1b42deb912b2a8fd8d942ddadb606b0"
+  },
+  "supported_phase": {
+    "agents": [
+      "codex",
+      "cursor"
+    ],
+    "os": "macOS",
+    "architecture": "arm64",
+    "lifecycle": "explicit_entrypoint_fallback"
+  }
+}
