@@ -2,7 +2,7 @@
 
 ## Trigger and support
 
-New session, clear or opening a checkout. Scope: project and user. Phase: Codex and Cursor on Apple Silicon macOS.
+New session, clear or opening a checkout. Scope: project and user. Phase: Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS.
 Real desktop/CLI loading remains pending in the compatibility report; all context
 operations are executable through the explicit entrypoint fallback. Native event
 registration is not claimed or installed in this phase.

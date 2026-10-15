@@ -1,6 +1,7 @@
-# Codex and Cursor CLI: Apple Silicon phase
+# Codex, Cursor and Claude Code CLI: Apple Silicon phase
 
-The owner authorized implementation on 2026-10-14 with Claude and Intel deferred.
+The owner authorized initial implementation on 2026-10-14 and extended it to
+Claude Code CLI and Desktop's local Code tab on 2026-10-15. Intel remains deferred.
 The shared framework and executable setup/verify/context operations are implemented.
 Original broad client compatibility remains incomplete; manual/runtime checks
 report pending or failed rather than claiming success from configuration writes.
@@ -34,6 +35,10 @@ preserved; partial flags ask only for missing values. Complete examples:
 ./bin/nda-harness verify --agents codex,cursor --scope project \
   --project /path/to/repository
 ./bin/nda-harness verify --agents cursor --scope user
+./bin/nda-harness setup --agents claude --scope project \
+  --project /path/to/repository --test-command 'npm run test:unit'
+./bin/nda-harness verify --agents claude --scope project \
+  --project /path/to/repository
 ```
 
 Project must be the actual Git worktree root. The command is explicitly executable,
@@ -47,7 +52,7 @@ Exit codes: **0** all applicable checks complete; **1** runtime/configuration/te
 failure; **2** invalid input, unsupported prerequisites or preflight conflicts;
 **3** required manual observations pending; **130** interrupted. Failed checks take
 precedence over pending ones. Setup normally exits 3 until real-session checks
-are observed; a broken detected client can produce exit 1 after configuration.
+can be automatically established; a broken detected client can produce exit 1 after configuration.
 The existing Codex CLI on the trial host has a missing executable, so repair that
 agent installation separately before its runtime checks can pass.
 
@@ -64,6 +69,16 @@ references can be committed and moved with the checkout.
 | --- | --- | --- |
 | Codex | Managed block in root AGENTS.md; complete skills in .agents/skills; owned MCP entry in .codex/config.toml | Managed block in CODEX_HOME/AGENTS.md (default ~/.codex); skills in ~/.agents/skills; MCP in CODEX_HOME/config.toml |
 | Cursor | Always-applied .cursor/rules/nda-harness.mdc; complete skills in .cursor/skills; MCP in .cursor/mcp.json | Skills in ~/.cursor/skills; MCP in ~/.cursor/mcp.json; exact User Rules block supplied in installed cursor-user-rules.md for a manual settings step |
+| Claude Code CLI / Desktop local Code tab | Managed block in root CLAUDE.md; complete skills in .claude/skills; HTTP MCP entry in root .mcp.json | Managed block in ~/.claude/CLAUDE.md; complete skills in ~/.claude/skills; HTTP MCP entry in ~/.claude.json |
+
+Claude's local Code tab uses the shared files documented by
+[Claude Desktop](https://code.claude.com/docs/en/desktop#shared-configuration).
+The MCP entry explicitly sets `type: http`, as required by the
+[MCP configuration format](https://code.claude.com/docs/en/mcp). Setup preserves
+other JSON entries and existing CLAUDE.md content. It leaves settings, permissions,
+trust decisions and upstream hooks intact. Chat/Cowork and remote Code sessions
+are outside this adapter. Desktop-only and CLI-only installations are accepted;
+each detected surface receives its own pending fresh-session checks.
 
 Skills are copied completely so this phase does not depend on unverified symlink
 discovery. Source licenses/provenance are preserved. Existing user/project skill
@@ -71,10 +86,23 @@ shadowing, user edits to owned content, malformed configurations, duplicate
 instruction markers and destination symlinks require reconciliation. Unrelated
 instructions and MCP entries remain intact; Codex TOML comments/formatting use the
 pinned tomlkit 0.13.3 parser. Adding a family requires an adapter implementing
-installation detection, paths, registration and manual checks, then one registry
+installation detection, paths, registration and checks, then one registry
 entry. The shared engine, ownership transactions and runtime are reusable.
 
 ### Dependencies and manual completion
+
+Existing Homebrew RTK 0.40.0 is also accepted when its binary checksum matches
+the observed Apple Silicon build recorded in `pack/dependencies.json` and its
+version probe matches. Setup reuses it without downloading or replacing RTK.
+Other builds remain conflicts until their identities are reviewed. This does not
+change the pinned download or claim new native-hook compatibility.
+
+The RTK compatibility fix passed 63 unit tests, including reuse without downloads,
+hash/version mismatch rejection and refusal to execute an unknown binary. A live
+test of the updated installed CLI with the host's RTK 0.40.0 created the expected
+Claude project files in a disposable checkout. Automatic verify passed the RTK
+check and preserved MCP configuration; both commands returned 3 for outstanding
+session checks. The existing installed CLI bundle was backed up before replacement.
 
 RTK 0.37.2 is pinned. Setup reuses recognized compatible executables; otherwise
 it leaves existing versions/identities unchanged and reports a conflict. If
@@ -96,8 +124,7 @@ These are manual bindings awaiting target-client validation. Verify performs
 bounded public initialize/tool-list/library-resolution/documentation requests.
 Auth errors remain pending; rate, network and interface errors are failed. A
 direct server request never proves client loading. A current successful retrieval
-observed in every selected installed client can complete an auth-pending server
-check as manual evidence; old observations cannot satisfy a new run.
+in a fresh client remains a separate check; old observations cannot satisfy a new run.
 
 Superpowers stays upstream-owned. Install through the supported client Plugins/
 marketplace UI (Cursor: `/add-plugin superpowers`), then observe activation and
@@ -109,10 +136,34 @@ plugin caches, disables handlers or fabricates immutable marketplace pins.
 After restart/authentication/trust/manual steps, run verify. It does not reinstall,
 repair, activate hooks or rewrite agent/Git settings. It may run the explicit
 unit command, produce ordinary test artifacts and save sanitized private readiness
-receipts. Interactive verify asks for pass/fail/pending observations separately
-for each installed surface; non-interactive verify cannot fabricate them. Missing
+receipts. With complete flags, verify runs automatically, including on a terminal,
+and never asks for pass/fail observations. It checks installed asset and registration
+hashes, RTK identity, public Context7 retrieval, the configured project unit command,
+and CLI version probes. Claude additionally runs bounded `claude auth status --json`
+with closed stdin and retains no raw output or account fields. Its authentication
+result applies only to the CLI, never Desktop. Missing
 siblings are not required for machine readiness; selecting an unconfigured or
 entirely absent family fails. Real release coverage is a separate matrix.
+
+Setup shows a separate Context7 MCP step. Missing harness connections are added
+automatically using the selected adapter's scope; existing matching entries are
+reused, and unrelated servers are preserved. Newly added connections show the
+client's approval/authentication instructions. Context7 is a hosted MCP service,
+so no separate local server installation is required.
+
+Setup and verify print only verification counts and the path to the private
+`verification.json` report. Individual checks, failure details and pending client
+steps are saved there with evidence sources and a timestamp, rather than printed
+to the terminal. Reports have mode 0600 in the private state directory. Exit codes
+are unchanged, including failures and pending session checks. The configured
+project unit command still executes automatically with captured output.
+
+This minimal automatic check does not start model sessions or approve trust.
+Policy/skill discovery, authenticated client MCP retrieval, pinned Superpowers
+activation, actual RTK usage and GUI Python/PATH behavior still need fresh-session
+validation. Until supported automated diagnostics cover those checks, they stay
+`awaiting_manual` and the overall command returns 3 even when machine checks pass.
+Running setup again does not resolve these pending checks.
 
 ### Git gate, context and recovery
 
@@ -174,6 +225,26 @@ completed live public Context7 resolution/documentation and passed the unit
 command. It returned exit 3 for the remaining per-client observations, as required.
 No personal configuration was installed or changed by that run.
 
+Claude extension evidence on 2026-10-15:
+
+- `python3 -m unittest discover -s tests` passed all 61 tests. New cases cover
+  Claude project/user registration, preservation/reruns, conflicting MCP entries,
+  independent CLI/Desktop detection, automatic verification on a terminal,
+  authentication failure/timeout handling and sanitized receipts. Installer/hook
+  tests mock RTK provisioning/identity so the suite is independent of host RTK.
+- Real disposable-home CLI runs used Claude Code `2.1.263`, detected Desktop
+  `2.19675.1`, and the official checksum-verified RTK `0.37.2`. For both scopes,
+  setup and verify completed automatic checks without stdin and returned 3 for
+  outstanding session checks; the unauthenticated scratch CLI stayed pending.
+  Rerunning setup changed zero files; verify preserved the MCP configuration.
+- Live public Context7 resolution/documentation and CLI version checks passed in
+  both scopes; project unit execution and Git registration checks passed. Desktop
+  detection establishes presence only. No model session, GUI interaction, plugin
+  installation, trust approval or personal configuration change was performed.
+- The initial host RTK `0.40.0` was outside the recorded identities, so the first
+  smoke run used a pinned binary on its temporary PATH. A subsequent setup fix
+  records that Homebrew build's checksum/version and reuses it unchanged.
+
 | Acceptance area | Phase evidence |
 | --- | --- |
 | AC-01–04 | Guided zero-flags user flow, partial/full flags, duplicates, invalid flags and non-interactive errors tested |
@@ -185,7 +256,7 @@ No personal configuration was installed or changed by that run.
 | AC-16 | No upstream plugin handlers are modified; actual joint output delivery remains pending |
 | AC-19–20 | Original trial retained; owner authorized this phase; setup/verify report honest automated/manual readiness; broader release claims remain pending |
 
-Deferred: Claude, Intel macOS, native lifecycle registration, fully observed real
+Deferred: Intel macOS, native lifecycle registration, fully observed real
 client compatibility, registry publishing, uninstall/upgrade commands, RAG/
 Hindsight, automatic authorization validators and CI merge gates. These limitations
 do not disable executable setup or its explicit context fallback.

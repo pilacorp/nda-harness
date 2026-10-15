@@ -18,7 +18,7 @@ class CodexAdapter(Adapter):
     def plan(self, plan, options, home, pack):
         instructions, config = self.entrypoints(options, home)
         plan.block(instructions, policy_block(Path(".nda-harness") if options["scope"] == "project" else pack))
-        plan.mcp(config, "toml")
+        return plan.mcp(config, "toml")
 
     def manual_steps(self, pack):
         return ["Start a fresh Codex session and read the installed policy/catalog/template.",

@@ -21,7 +21,7 @@ class CursorAdapter(Adapter):
             plan.file(instructions, content.encode())
         else:
             plan.file(pack / "cursor-user-rules.md", policy_block(pack).encode())
-        plan.mcp(config, "json")
+        return plan.mcp(config, "json")
 
     def manual_steps(self, pack):
         return [f"For user scope, paste the exact contents of {pack / 'cursor-user-rules.md'} into Cursor Settings > Rules > User Rules. Preserve other rules.",

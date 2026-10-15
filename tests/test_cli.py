@@ -1,4 +1,6 @@
 import io
+import json
+from contextlib import redirect_stdout
 import os
 from pathlib import Path
 import subprocess
@@ -9,7 +11,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from nda_harness.cli import collect_options
+from nda_harness.cli import collect_options, main
 from nda_harness.engine import install, verify
 from nda_harness.engine import check_host
 from nda_harness.adapters import REGISTRY
@@ -24,6 +26,7 @@ class CliTests(unittest.TestCase):
         self.base = Path(self.temporary.name).resolve()
         self.home = self.base / "home"
         self.home.mkdir()
+        self.enterContext(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
         self.project = self.base / "project with spaces"
         self.project.mkdir()
         subprocess.run(["git", "init", "-q", str(self.project)], check=True)
@@ -34,8 +37,8 @@ class CliTests(unittest.TestCase):
         with patch("nda_harness.engine.check_host"), patch("nda_harness.engine.detect", return_value=[("cursor-ide", "3.24.12")]), patch.dict("os.environ", {"CODEX_HOME": str(self.home / ".codex")}):
             return install(options, ROOT, self.home)
 
-    def test_two_adapters_and_future_registry_extension(self):
-        self.assertEqual(set(REGISTRY), {"codex", "cursor"})
+    def test_three_adapters_and_future_registry_extension(self):
+        self.assertEqual(set(REGISTRY), {"codex", "cursor", "claude"})
         self.assertTrue(all(hasattr(adapter, "plan") for adapter in REGISTRY.values()))
         class FutureAdapter(CodexAdapter):
             family = "future"
@@ -43,6 +46,34 @@ class CliTests(unittest.TestCase):
         with patch.dict(REGISTRY, {"future": FutureAdapter()}):
             self.setup(agents=["future"])
             self.assertTrue((self.project / ".future/skills/diagram-design/SKILL.md").exists())
+
+    def test_verification_details_go_to_private_report_not_terminal(self):
+        checks = [{"check": "pack", "status": "failed", "source": "automated", "detail": "Detailed installation failure"},
+                  {"check": "session", "status": "awaiting_manual", "source": "manual required", "detail": "Long session checklist"}]
+        for command, added in (("setup", ["claude"]), ("setup", []), ("verify", [])):
+            with self.subTest(command=command, added=added):
+                output = io.StringIO()
+                applied = dict(pack=str(self.home / ".nda-harness/pack"), receipt="receipt", changed_files=1,
+                               rtk_path="/test/rtk", context7_added=added)
+                with patch("nda_harness.cli.Path.home", return_value=self.home), patch("nda_harness.cli.install", return_value=applied), patch("nda_harness.cli.verify", return_value=checks), redirect_stdout(output):
+                    self.assertEqual(main([command, "--agents", "claude", "--scope", "user"]), 1)
+                text = output.getvalue()
+                self.assertNotIn("Detailed installation failure", text)
+                self.assertNotIn("Long session checklist", text)
+                self.assertIn("1 failed", text)
+                from nda_harness.engine import paths
+                _, state = paths(dict(scope="user", project=None), self.home)
+                report = state / "verification.json"
+                self.assertEqual(json.loads(report.read_text())["checks"], checks)
+                self.assertEqual(report.stat().st_mode & 0o777, 0o600)
+                if command == "setup":
+                    self.assertIn("Context7", text)
+                    if added:
+                        self.assertIn("added for claude", text)
+                        self.assertIn("/mcp", text)
+                    else:
+                        self.assertIn("already configured", text)
+                        self.assertNotIn("/mcp", text)
 
     def test_no_flags_user_flow(self):
         with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=["codex", "user"]) as prompt:

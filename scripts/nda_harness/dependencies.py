@@ -14,6 +14,11 @@ RTK_URL = "https://github.com/rtk-ai/rtk/releases/download/v0.37.2/rtk-aarch64-a
 ARCHIVE_SHA256 = "99e20a59847dedbb64032a3f7985f2fe959fcb9674d8eaf940fc58a189e27eca"
 BINARY_SHA256 = "fb212aaa57018cff146a9053810b310845e477b4a1f789d38b4cf2908bb5c5dd"
 OBSERVED_HOMEBREW_SHA256 = "33f8ba7f298ded5c88b5cc805267f03036fdf15731d3db9fa1f49ae98a6d6f53"
+EXISTING_BINARY_VERSIONS = {
+    BINARY_SHA256: RTK_VERSION,
+    OBSERVED_HOMEBREW_SHA256: RTK_VERSION,
+    "52b2a4a68e9a1f3c7880ddafea6cd590f0582e67324fe89ea41aaec83e7e9b58": "0.40.0",
+}
 
 
 def locate(home):
@@ -26,10 +31,11 @@ def locate(home):
 
 def identity(executable):
     try:
-        if digest(executable.read_bytes()) not in (BINARY_SHA256, OBSERVED_HOMEBREW_SHA256):
+        version = EXISTING_BINARY_VERSIONS.get(digest(executable.read_bytes()))
+        if version is None:
             return False
         run = subprocess.run([str(executable), "--version"], capture_output=True, text=True, timeout=10)
-        return run.returncode == 0 and run.stdout.strip() == "rtk " + RTK_VERSION
+        return run.returncode == 0 and run.stdout.strip() == "rtk " + version
     except (OSError, subprocess.TimeoutExpired):
         return False
 

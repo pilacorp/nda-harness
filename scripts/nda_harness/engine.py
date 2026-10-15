@@ -18,7 +18,7 @@ from .dependencies import prepare as prepare_rtk, locate as locate_rtk, identity
 
 def check_host():
     if platform.system() != "Darwin" or platform.machine() != "arm64":
-        raise ValueError("This phase supports Apple Silicon macOS only. Claude and Intel support are deferred.")
+        raise ValueError("This phase supports Apple Silicon macOS only. Intel support is deferred.")
     if sys.version_info < (3, 11):
         raise ValueError("Python 3.11+ is required.")
     if not shutil.which("git"):
@@ -66,7 +66,7 @@ def assets(source, options):
     hashes = {str(path): digest(content) for path, (content, _) in result.items()}
     revision = subprocess.run(["git", "-C", str(source), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     release = {"schema_version": 1, "harness_revision": revision or "source-checkout", "asset_hashes": hashes,
-               "phase": "codex-cursor-apple-silicon", "native_lifecycle_hooks": "entrypoint_fallback"}
+               "phase": "codex-cursor-claude-apple-silicon", "native_lifecycle_hooks": "entrypoint_fallback"}
     result[Path("release.json")] = (json_bytes(release), 0o644)
     return result
 
@@ -88,6 +88,7 @@ def install(options, source, home):
         plan = Plan(receipt)
         files = assets(source, options)
         registrations = dict(receipt.get("registrations", {}))
+        context7_added = []
         expected = {pack / relative for relative in files}
         if options["scope"] == "user" and "cursor" in options["agents"]:
             expected.add(pack / "cursor-user-rules.md")
@@ -104,7 +105,8 @@ def install(options, source, home):
         for family in options["agents"]:
             before = set(plan.owned)
             adapter = REGISTRY[family]
-            adapter.plan(plan, options, home, pack)
+            if adapter.plan(plan, options, home, pack):
+                context7_added.append(family)
             destination = adapter.skill_root(options, home)
             for relative, (content, mode) in files.items():
                 if relative.parts[0] == "skills" and len(relative.parts) > 2:
@@ -137,14 +139,14 @@ def install(options, source, home):
             atomic(state / "recovery-needed.json", json_bytes({"paths": unresolved, "writes": plan.applied,
                    "retained_shared_dependency": str(home / ".nda-harness/bin/rtk") if (home / ".nda-harness/bin/rtk").exists() else None}))
             raise
-    return {"pack": str(pack), "receipt": str(state / "receipt.json"), "changed_files": len(plan.writes), "rtk_path": str(executable)}
+    return {"pack": str(pack), "receipt": str(state / "receipt.json"), "changed_files": len(plan.writes), "rtk_path": str(executable), "context7_added": context7_added}
 
 
 def result(name, status, detail, source="automated"):
     return {"check": name, "status": status, "source": source, "detail": detail}
 
 
-def verify(options, home, observe=False, live_mcp=True):
+def verify(options, home, live_mcp=True):
     check_host()
     from .mcp import check_context7
     pack, state = paths(options, home)
@@ -202,7 +204,7 @@ def verify(options, home, observe=False, live_mcp=True):
     rtk = locate_rtk(home)
     if rtk:
         passed = rtk_identity(rtk)
-        checks.append(result("rtk-binary", "verified" if passed else "failed", "Expected existing RTK 0.37.2; mismatches require reconciliation."))
+        checks.append(result("rtk-binary", "verified" if passed else "failed", "RTK must match a recorded compatible build checksum and version; unknown builds require reconciliation."))
     else:
         checks.append(result("rtk-binary", "failed", "Pinned RTK is missing; run setup to install it after reconciliation."))
     checks.append(check_context7() if live_mcp else result("context7-server", "awaiting_manual", "Live public MCP diagnostic was not run."))
@@ -230,26 +232,17 @@ def verify(options, home, observe=False, live_mcp=True):
             if surface.endswith("-cli"):
                 executable = shutil.which(adapter.executable)
                 try:
-                    run = subprocess.run([executable, "--version"], capture_output=True, timeout=15)
-                    if run.returncode:
-                        checks.append(result(surface + "-runtime", "failed", "Client version probe failed; repair the executable installation."))
+                    run = subprocess.run([executable, "--version"], cwd=options["project"] or home,
+                                         stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
+                    checks.append(result(surface + "-runtime", "failed" if run.returncode else "verified",
+                                         "Client version probe failed; repair the executable installation." if run.returncode else "Client version probe passed; this does not prove fresh-session compatibility."))
                 except (OSError, subprocess.TimeoutExpired):
                     checks.append(result(surface + "-runtime", "failed", "Client executable unavailable or timed out."))
             for number, step in enumerate(adapter.manual_steps(pack)):
                 if options["scope"] == "project" and "For user scope" in step:
                     continue
-                status = "awaiting_manual"
-                if observe:
-                    answer = input(f"{surface} ({version}) — {step}\nObserved result [pass/fail/pending]: ").strip().lower()
-                    status = {"pass": "verified", "fail": "failed"}.get(answer, "awaiting_manual")
-                checks.append(result(f"{surface}-manual-{number}", status, step, "manual observation" if observe else "manual required"))
-    # A direct unauthenticated diagnostic is not the client's OAuth connection.
-    # Current observed retrieval in every required client can establish that check.
-    client_mcp = [c for c in checks if "-manual-" in c["check"] and "nda-harness-context7" in c["detail"]]
-    if observe and client_mcp and all(c["status"] == "verified" for c in client_mcp):
-        for check in checks:
-            if check["check"] == "context7-server" and check["status"] == "awaiting_manual":
-                check.update(status="verified", source="manual observation", detail="Current public library resolution/documentation observed through each selected installed client's authenticated connection.")
+                checks.append(result(f"{surface}-manual-{number}", "awaiting_manual", step, "manual required"))
+        checks.extend(adapter.checks(options, home))
     summary = {"schema_version": 1, "observed_at": datetime.now(timezone.utc).isoformat(),
                "checks": [{"check": c["check"], "status": c["status"], "source": c["source"]} for c in checks],
                "release_sha256": digest((pack / "release.json").read_bytes())}

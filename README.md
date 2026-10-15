@@ -26,7 +26,7 @@ Memory storage stays internal; processing sends relevant memory content through 
 
 ## Current phase
 
-This repository contains the architecture proposal, onboarding design, three specialist skills, and a minimal setup/verify CLI for Codex and Cursor on Apple Silicon macOS. The CLI installs the shared workflow pack, composes project unit-test hooks, and provides five executable context operations. Real-client authentication/plugin/native-hook compatibility remains pending; it is not a completed production support claim. Claude, Intel macOS, executable GitHub Actions gates and deployed service integrations remain future work.
+This repository contains the architecture proposal, onboarding design, three specialist skills, and a minimal setup/verify CLI for Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS. The CLI installs the shared workflow pack, composes project unit-test hooks, and provides five executable context operations. Real-client authentication/plugin/native-hook compatibility remains pending; it is not a completed production support claim. Intel macOS, executable GitHub Actions gates and deployed service integrations remain future work.
 
 The owner narrowed the merged [minimal CLI specification](specs/minimal-cli.md) to this phase. Read the [CLI onboarding and evidence](docs/compatibility/minimal-cli-phase.md) for installation, commands, adapter extension, manual completion and recovery. The [original trial report](docs/compatibility/minimal-cli.md) preserves the local observations and deferred coverage.
 
@@ -39,4 +39,4 @@ Install once and use directly (Python 3.11+ and Git required; no pip or virtual 
 
 If `~/.local/bin` is on PATH, use `nda-harness setup`. For clone-and-run, `./bin/nda-harness setup` also works without installing dependencies.
 
-Next, complete the Codex/Cursor real-session checks and pilot adoption. The CLI configures installed agents; it does not introduce a new coding agent or compulsory runtime wrapper.
+Next, complete the per-client real-session checks and pilot adoption. The CLI configures installed agents; it does not introduce a new coding agent or compulsory runtime wrapper.

@@ -23,6 +23,9 @@ class InstalledTests(unittest.TestCase):
         self.home = self.base / "home"
         self.project = self.base / "project with spaces"
         self.home.mkdir()
+        self.enterContext(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
+        self.enterContext(patch("nda_harness.engine.locate_rtk", return_value=Path("/test/rtk")))
+        self.enterContext(patch("nda_harness.engine.rtk_identity", return_value=True))
         self.project.mkdir()
         self.env = {"HOME": str(self.home), "PATH": os.environ["PATH"], "GIT_AUTHOR_NAME": "Trial", "GIT_AUTHOR_EMAIL": "trial@example.test", "GIT_COMMITTER_NAME": "Trial", "GIT_COMMITTER_EMAIL": "trial@example.test"}
         self.git("init", "-q")

@@ -247,10 +247,10 @@ A maintainer and developer must execute the architecture's [pilot walkthroughs](
 Start with one repository, verify the guided workflow and pre-commit hook, implement and validate merge gates, then expand based on measured quality and effort. Additional plugins, agent-specific hooks, and orchestration are optional improvements only when the pilot exposes a concrete need.
 # Implemented minimal CLI phase
 
-For Codex and Cursor on Apple Silicon macOS, use the
+For Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS, use the
 [minimal CLI onboarding guide](compatibility/minimal-cli-phase.md). It documents
 the implemented setup/verify commands, both scopes, project unit-test hooks,
-five explicit context operations, manual readiness checks, pinned dependencies
+five explicit context operations, automatic verification with pending session checks, pinned dependencies
 and backup restoration. The broader architecture/adoption procedure below still
-contains proposed future work; Claude, Intel, native lifecycle registration and
+contains proposed future work; Intel, native lifecycle registration and
 remote approval/CI enforcement are not shipped by this phase.

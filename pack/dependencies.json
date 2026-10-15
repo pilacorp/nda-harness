@@ -16,7 +16,17 @@
       "Codex initialization supplies instructions, not native rewriting hooks, at this version.",
       "Cursor initialization is global-only and also creates Claude assets."
     ],
-    "official_binary_sha256": "fb212aaa57018cff146a9053810b310845e477b4a1f789d38b4cf2908bb5c5dd"
+    "official_binary_sha256": "fb212aaa57018cff146a9053810b310845e477b4a1f789d38b4cf2908bb5c5dd",
+    "compatible_existing_builds": [
+      {
+        "version": "0.40.0",
+        "distribution": "Homebrew source build, Apple Silicon macOS",
+        "binary_sha256": "52b2a4a68e9a1f3c7880ddafea6cd590f0582e67324fe89ea41aaec83e7e9b58",
+        "source": "https://github.com/rtk-ai/rtk/archive/refs/tags/v0.40.0.tar.gz",
+        "source_sha256": "7cee0b80fed546a3c3508b485cef1129b56a14233ee02bd512975c2ad3356643",
+        "evidence": "Observed local Homebrew formula, binary checksum, version and command smoke checks on 2026-10-15; not an official release binary checksum."
+      }
+    ]
   },
   "superpowers": {
     "upstream": "https://github.com/obra/superpowers",
@@ -42,7 +52,8 @@
   "supported_phase": {
     "agents": [
       "codex",
-      "cursor"
+      "cursor",
+      "claude"
     ],
     "os": "macOS",
     "architecture": "arm64",

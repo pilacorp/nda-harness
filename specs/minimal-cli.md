@@ -1,7 +1,20 @@
 # Minimal NDA Harness setup CLI
 
-Status: merged specification (PR #5); owner-authorized Codex/Cursor Apple Silicon
+Status: merged specification (PR #5); owner-authorized Codex/Cursor/Claude Apple Silicon
 phase implemented; real-client validation pending.
+
+Owner amendment on 2026-10-15: extend implementation to Claude Code CLI and
+Claude Desktop's local Code tab. Verification must run automatically, with minimal
+machine checks acceptable. With complete flags, `verify` never asks for manual
+observations, even on a terminal; checks without an automated diagnostic remain
+explicitly pending (exit 3). This supersedes the interactive observation flow
+below. Intel and full real-session compatibility coverage remain deferred.
+
+Owner follow-up on 2026-10-15: keep detailed verification output out of the
+terminal. Setup/verify print a compact summary and save the complete sanitized
+results in private `verification.json`. Setup includes an explicit Context7 step,
+adding missing MCP registrations and showing connection instructions while
+preserving existing matching registrations and unrelated servers.
 
 Phase amendment authorized by the owner on 2026-10-14: implement the shared
 framework now for Codex and Cursor on Apple Silicon macOS; defer Claude and Intel

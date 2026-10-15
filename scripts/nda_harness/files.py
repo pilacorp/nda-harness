@@ -104,10 +104,12 @@ class Plan:
         self.own(path, "block", prior_block.encode() if prior_block else None, desired_block.encode())
         self.write(path, result.encode())
 
-    def mcp(self, path, format):
+    def mcp(self, path, format, transport=None):
         # No literal credentials are generated or copied into receipts.
         name = "nda-harness-context7"
         desired = {"url": "https://mcp.context7.com/mcp"}
+        if transport:
+            desired["type"] = transport
         raw = read(path)
         try:
             if format == "toml":
@@ -129,7 +131,7 @@ class Plan:
             raise Conflict(f"Malformed {format.upper()} configuration: {path}") from None
         self.own(path, "mcp", json_bytes(old) if old is not None else None, json_bytes(desired))
         if old == desired:
-            return
+            return False
         if format == "toml":
             if "mcp_servers" not in doc:
                 doc["mcp_servers"] = tomlkit.table()
@@ -139,6 +141,7 @@ class Plan:
             doc.setdefault("mcpServers", {})[name] = desired
             content = json_bytes(doc)
         self.write(path, content, 0o600)
+        return old is None
 
     def apply(self, state):
         backup_dir = state / "backups" / uuid.uuid4().hex

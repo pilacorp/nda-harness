@@ -27,11 +27,12 @@ class Adapter:
     executable = ""
     application_bundles = ()
     desktop_surface = ""
+    cli_surface = ""
 
     def detect(self):
         surfaces = []
         if shutil.which(self.executable):
-            surfaces.append((self.family + "-cli", "runtime check required"))
+            surfaces.append((self.cli_surface or self.family + "-cli", "runtime check required"))
         for bundle in self.application_bundles:
             plist = Path("/Applications") / (bundle + ".app") / "Contents/Info.plist"
             if plist.is_file():
@@ -52,3 +53,6 @@ class Adapter:
 
     def manual_steps(self, pack):
         raise NotImplementedError
+
+    def checks(self, options, home):
+        return []

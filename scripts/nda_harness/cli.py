@@ -1,13 +1,14 @@
 """Public setup/verify command and guided option collection."""
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nda_harness.adapters import REGISTRY
-from nda_harness.engine import install, verify, exit_code
-from nda_harness.files import Conflict
+from nda_harness.engine import install, verify, exit_code, paths
+from nda_harness.files import Conflict, atomic, guard_path, json_bytes
 
 
 def agents_value(raw):
@@ -49,7 +50,7 @@ def collect_options(command, agents, scope, project, test_command):
             missing.append("--test-command")
     if missing and not terminal:
         raise ValueError("Missing required flags: " + ", ".join(missing) + "; project scope also requires --project and --test-command for setup.")
-    selected = agents_value(agents) if agents else ask("Agents [codex,cursor]", agents_value)
+    selected = agents_value(agents) if agents else ask("Agents [" + ",".join(REGISTRY) + "]", agents_value)
     def scope_value(raw):
         if raw not in ("project", "user"):
             raise ValueError("--scope must be project or user.")
@@ -77,11 +78,11 @@ def collect_options(command, agents, scope, project, test_command):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="nda-harness", description="Configure Codex/Cursor on Apple Silicon macOS. Agents must already be installed. Changes are backed up; runtime/manual checks may leave setup pending.", epilog="Examples: ./bin/nda-harness setup; ./bin/nda-harness setup --agents codex,cursor --scope project --project /path/to/repository --test-command 'npm run test:unit'; ./bin/nda-harness setup --agents codex --scope user")
+    parser = argparse.ArgumentParser(prog="nda-harness", description="Configure Codex/Cursor/Claude Code on Apple Silicon macOS. Agents must already be installed. Changes are backed up; automatic verification reports session-only checks as pending without observation prompts.", epilog="Examples: ./bin/nda-harness setup; ./bin/nda-harness setup --agents codex,cursor,claude --scope project --project /path/to/repository --test-command 'npm run test:unit'; ./bin/nda-harness verify --agents claude --scope user")
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("setup", "verify"):
         sub = commands.add_parser(name, help="Guided " + name + "; full flags skip option prompts. Exit 0=verified, 1=failed, 2=invalid/prerequisite/conflict, 3=manual pending, 130=interrupted.")
-        sub.add_argument("--agents", help="Comma-separated codex,cursor; future harnesses register adapters")
+        sub.add_argument("--agents", help="Comma-separated " + ",".join(REGISTRY))
         sub.add_argument("--scope", help="project or user; user scope activates no Git hooks")
         sub.add_argument("--project", help="Existing Git worktree root, required for project scope")
         sub.add_argument("--test-command", help="setup project only: explicit non-watch unit command; executed by setup/verify/pre-commit")
@@ -94,13 +95,26 @@ def main(argv=None):
         source = Path(__file__).resolve().parents[2]
         home = Path.home().resolve()
         if args.command == "setup":
+            print("Setting up harness and Context7 MCP (missing connections are added automatically)...")
             applied = install(options, source, home)
             print(f"Configured pack: {applied['pack']}\nPrivate recovery receipt: {applied['receipt']}\nChanged files: {applied['changed_files']}")
             print(f"RTK executable: {applied['rtk_path']}. If not on the client PATH, use that absolute path or configure PATH locally; setup does not edit shell startup files.")
-        print("Verifying installation; the configured unit-test command executes in project scope.")
-        checks = verify(options, home, observe=args.command == "verify" and sys.stdin.isatty())
-        for check in checks:
-            print(f"[{check['status']}] {check['check']} ({check['source']}): {check['detail']}")
+            added = applied["context7_added"]
+            print("Context7 MCP: " + ("added for " + ", ".join(added) if added else "already configured") + ".")
+            for family in added:
+                for step in REGISTRY[family].manual_steps(Path(applied["pack"])):
+                    if "nda-harness-context7" in step:
+                        print(f"Context7 connection ({family}): {step}")
+        print("Running automatic verification...")
+        checks = verify(options, home)
+        _, state = paths(options, home)
+        report = state / "verification.json"
+        guard_path(report)
+        state.mkdir(parents=True, exist_ok=True, mode=0o700)
+        state.chmod(0o700)
+        atomic(report, json_bytes({"schema_version": 1, "observed_at": datetime.now(timezone.utc).isoformat(), "checks": checks}))
+        counts = {status: sum(check["status"] == status for check in checks) for status in ("verified", "failed", "awaiting_manual")}
+        print(f"Verification: {counts['verified']} verified, {counts['failed']} failed, {counts['awaiting_manual']} pending. Details: {report}")
         if args.command == "setup":
             import shlex
             followup = [str(source / "bin/nda-harness"), "verify", "--agents", ",".join(options["agents"]), "--scope", options["scope"]]
