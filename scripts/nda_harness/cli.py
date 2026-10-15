@@ -95,7 +95,14 @@ def collect_options(command, agents, scope, project, test_command):
             return raw
         if not test_command and not terminal:
             raise ValueError("Missing required flag: --test-command")
-        test_command = test_value(test_command) if test_command is not None else ask("Non-watch unit-test command (will execute from repository root)", test_value)
+        if test_command is None:
+            choice = select_options("Non-watch unit-test command", [
+                ("enter", "Enter a unit-test command"),
+                ("skip", "Skip unit tests (use true)"),
+            ])[0]
+            test_command = "true" if choice == "skip" else ask("Non-watch unit-test command (will execute from repository root)", test_value)
+        else:
+            test_command = test_value(test_command)
     return {"agents": selected, "scope": scope, "project": project, "test_command": test_command}
 
 

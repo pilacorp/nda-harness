@@ -250,12 +250,34 @@ class CliTests(unittest.TestCase):
             self.setup()
 
     def test_partial_flags_preserve_supplied_values(self):
-        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", return_value=["project"]) as menu, patch("builtins.input", return_value="true") as prompt:
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", side_effect=[["project"], ["enter"]]) as menu, patch("builtins.input", return_value="python3 -m unittest") as prompt:
             options = collect_options("setup", "codex", None, str(self.project), None)
         self.assertEqual(options["agents"], ["codex"])
         self.assertEqual(options["project"], self.project)
         self.assertEqual(prompt.call_count, 1)
-        self.assertEqual(menu.call_count, 1)
+        self.assertEqual(menu.call_count, 2)
+        self.assertEqual(options["test_command"], "python3 -m unittest")
+
+    def test_skip_test_command_never_reads_text_and_installs_true(self):
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", return_value=["skip"]) as menu, patch("builtins.input", side_effect=AssertionError("unexpected text prompt")):
+            options = collect_options("setup", "codex", "project", str(self.project), None)
+        self.assertEqual(options["test_command"], "true")
+        menu.assert_called_once_with("Non-watch unit-test command", [("enter", "Enter a unit-test command"), ("skip", "Skip unit tests (use true)")])
+        applied = self.setup(**options)
+        self.assertEqual(json.loads((Path(applied["pack"]) / "profile.json").read_text())["test_command"], "true")
+
+    def test_enter_test_command_retries_empty_and_noninteractive_still_requires_flag(self):
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", return_value=["enter"]), patch("builtins.input", side_effect=["", "python3 -m unittest"]), patch("sys.stderr", new_callable=io.StringIO):
+            options = collect_options("setup", "codex", "project", str(self.project), None)
+        self.assertEqual(options["test_command"], "python3 -m unittest")
+        with patch("sys.stdin.isatty", return_value=False), patch("nda_harness.cli.select_options", side_effect=AssertionError("unexpected menu")), self.assertRaisesRegex(ValueError, "--test-command"):
+            collect_options("setup", "codex", "project", str(self.project), None)
+
+    def test_cancel_test_command_menu_returns_130_before_install(self):
+        for error in (KeyboardInterrupt, EOFError):
+            with self.subTest(error=error), patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", side_effect=error), patch("nda_harness.cli.install") as install, patch("sys.stderr", new_callable=io.StringIO):
+                self.assertEqual(main(["setup", "--agents", "codex", "--scope", "project", "--project", str(self.project)]), 130)
+            install.assert_not_called()
 
     def test_full_flags_do_not_prompt(self):
         with patch("builtins.input", side_effect=AssertionError("unexpected prompt")), patch("nda_harness.cli.select_options", side_effect=AssertionError("unexpected menu")):

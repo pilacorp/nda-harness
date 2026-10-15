@@ -101,10 +101,10 @@ V1 relies on agent compliance and human review for approval requirements; it doe
 | `--agents` | Comma-separated `cursor`, `codex`, and/or `claude`; at least one; deduplicate repeated valid IDs. |
 | `--scope` | `project` or `user`. |
 | `--project` | Required for project scope; existing Git worktree root, including a linked worktree. Resolve to an absolute path and reject a supplied subdirectory rather than silently adopting its parent. |
-| `--test-command` | Required for project scope; nonempty, explicitly supplied non-watch unit command. Do not infer it from manifests or claim to statically prove that an arbitrary command runs unit tests. |
+| `--test-command` | Required for non-interactive project setup; nonempty, explicitly supplied non-watch unit command. Interactive setup offers entering a command or explicitly skipping unit tests, which stores `true`. Do not infer a command from manifests or claim to statically prove that an arbitrary command runs unit tests. |
 | `--help` | Explain both scopes, prompts, prerequisites, side effects, exit codes, and examples without changing anything. |
 
-When stdin is a terminal, prompt for missing required options in this order: agents, scope, then project and test command for project scope. Discover the Git worktree root from the current directory and offer it for explicit confirmation, including when invoked from a subfolder; otherwise ask for a root path. Allow choosing another folder. Do not default agent selection or scope. Reprompt invalid interactive answers; invalid supplied flags are errors. Do not prompt for values already supplied. Reject project-only flags in user scope with a usage error.
+When stdin is a terminal, prompt for missing required options in this order: agents, scope, then project and test command for project scope. Discover the Git worktree root from the current directory and offer it for explicit confirmation, including when invoked from a subfolder; otherwise ask for a root path. Allow choosing another folder. For a missing test command, use the existing keyboard/numbered selector to offer Enter a unit-test command or Skip unit tests (use true). Skip stores `true` without a text prompt; Enter retains nonempty text validation. Explain that skipping runs no unit tests. Do not default agent selection or scope. Reprompt invalid interactive answers; invalid supplied flags are errors. Do not prompt for values already supplied. Reject project-only flags in user scope with a usage error.
 
 Without a terminal, list missing required flags and exit before any changes. Fully specified flags skip option-selection prompts; they do not bypass client trust, authentication, or application approval steps. EOF or cancellation during option collection leaves the machine unchanged. Interruptions after installation starts retain recoverable completed changes and report them on rerun.
 
@@ -331,9 +331,9 @@ These are implementation requirements, not claims that tests already exist or pa
 
 | ID | Layer / criteria | Setup and action | Expected result |
 | --- | --- | --- | --- |
-| TC-01 | Unit / AC-01, AC-03 | Supply terminal answers for one agent, project scope, a temporary Git root, and `true`; compare with equivalent flags. | Same owned assets/configuration; all four prompts appear only in the guided run. |
+| TC-01 | Unit / AC-01, AC-03 | Supply terminal answers for one agent, project scope, a temporary Git root, then select Skip unit tests; compare with equivalent flags using `--test-command true`. | Same profile command and owned assets/configuration; no typed command is requested after Skip. |
 | TC-02 | Unit / AC-01, AC-02 | Supply `--agents codex --scope user`, then repeat with only `--agents codex` and answer `user`. | No project/test-command questions; both runs preserve `codex` and produce equivalent user configuration. |
-| TC-03 | Unit / AC-02 | Supply agent and project flags, then answer the missing scope and test-command prompts. | Supplied values are unchanged and never asked again. |
+| TC-03 | Unit / AC-02 | Supply agent and project flags, then answer the missing scope, select Enter a unit-test command and type a command. | Supplied values are unchanged and never asked again; empty typed commands are retried. |
 | TC-04 | Unit / AC-04, AC-10 | Run with non-terminal stdin and missing required options. | Exit 2 lists missing flags; no pack, backup, download, or registration is created. |
 | TC-05 | Unit / AC-01, AC-10 | Enter an unknown agent, retry with a valid agent, then send EOF before completing options. | Invalid answer is explained; cancellation leaves the temporary home and repository unchanged. |
 | TC-06 | Unit / AC-06 | Start with unrelated instructions, MCP servers, and TOML comments; run identical setup twice. | Unrelated content survives; owned entries appear once; the second run adds no backups or wrapper layers. |
