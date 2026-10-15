@@ -18,7 +18,7 @@ You need:
 - Python **3.11 or newer**, available as `python3`, and Git on PATH.
 - At least one installed surface for every agent family you select. Install and
   sign in to the agent separately; setup does not install coding agents.
-- Your project's approved, non-watch **unit-test command**, for project setup.
+- Your project's approved, non-watch **unit-test command**, or choose to skip unit tests during project setup.
 - Network access to GitHub for a missing RTK download and to
   `https://mcp.context7.com/mcp` for Context7.
 
@@ -106,7 +106,7 @@ nda-harness setup
 | Agents | Use Up/Down to move, Space to check one or more of Codex, Cursor and Claude Code, then Enter to confirm |
 | Scope | Use Up/Down to highlight Project or User, then Enter to confirm; choose Project for this walkthrough |
 | Target Git worktree root | Confirm the detected path, or choose another folder and enter its absolute root, for example `/Users/yourname/Projects/tsa-simulator` |
-| Non-watch unit-test command | The command approved for that project, for example `npm run test:unit` if that script exists |
+| Non-watch unit-test command | Choose Enter a unit-test command and type the approved command, or Skip unit tests to automatically use `true` |
 | Set up Hindsight memory? | Choose Enable for personal memory, or Skip to preserve any existing setup |
 | Hindsight agents (when enabled) | Check one or more of the harness agents selected above |
 | Hindsight multi-bank MCP URL | Root endpoint supplied by your team, such as `https://memory.example/mcp/`; do not append a bank ID |
@@ -122,9 +122,12 @@ An explicit `--project` skips repository detection and confirmation. A supplied
 subfolder path is rejected; automatic discovery from a subfolder finds its root.
 
 The test command runs from the target repository root during setup, verification
-and pre-commit. Use a command that exits when finished. **Do not use `true`: it
-always succeeds without running tests.** Run the chosen command yourself first
-and resolve any project prerequisites it needs.
+and pre-commit. Use a command that exits when finished. Run the chosen command
+yourself first and resolve any project prerequisites it needs. Choosing **Skip
+unit tests (use true)** stores `true` automatically; you do not type it. This
+command always succeeds and runs no unit tests, so the harness test gate does not
+check tests until you rerun setup with a real command. Existing pre-commit hooks
+still run. Non-interactive setup still requires an explicit `--test-command`.
 
 You can also supply all options explicitly. Replace both the path and test
 command with your project's actual values:
