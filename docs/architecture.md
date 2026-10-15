@@ -6,7 +6,7 @@ Status: architecture proposal. Integration references checked on 2026-10-08. See
 
 The internal team currently gives tasks directly to coding agents, with some tools and plugins but no consistent development process. NDA Harness makes feature specification and delivery explicit and reviewable across agents: the GitHub issue defines feature intent, an approved developer-spec PR defines implementation behavior, agreed behavior drives tests, and evidence accompanies review. The proposed workflow helps tech leads write/review feature issues and developers write/review developer specs.
 
-This repository documents that framework and supplies focused skill instructions. It does not implement a coding agent, orchestration engine, installer, RAG backend, memory backend, or CI validator. Existing agents, project test runners, and knowledge services remain in use.
+This repository documents that framework, supplies focused skill instructions, and implements the [minimal setup/verify CLI](compatibility/minimal-cli-phase.md). It does not implement a coding agent, orchestration engine, RAG backend, memory backend, or CI validator. Existing agents, project test runners, and knowledge services remain in use.
 
 SDD means **spec-driven development**. Harness TDD means a meaningful red unit test before the corresponding implementation, followed by green and refactoring. QA owns integration and end-to-end verification. Prompts guide local work; proposed required CI checks enforce unit-test evidence at merge. Neither prompts nor a final green build guarantee that the agent actually followed every step.
 
