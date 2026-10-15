@@ -8,6 +8,15 @@ alone does not confirm it. Unsupported terminals fall back to numbered choices
 reprompt. Cancellation restores the terminal and exits 130 before installation.
 Flags, prompt order, project/test text prompts and non-terminal errors are unchanged.
 
+Owner follow-up: when project scope is selected interactively without `--project`,
+detect the current folder's Git worktree root, including from nested folders, and
+require confirmation through Use detected root / Choose another folder. Choosing
+another folder or running outside a Git worktree asks for an explicit root path.
+Explicit `--project` takes precedence and retains strict root validation;
+non-terminal runs still require the flag. No installation occurs during discovery
+or confirmation. Show the complete detected path, falling back to numbered
+selection if it would be truncated in the keyboard menu.
+
 Status: merged specification (PR #5); owner-authorized Codex/Cursor/Claude Apple Silicon
 phase implemented; real-client validation pending.
 
@@ -88,7 +97,7 @@ V1 relies on agent compliance and human review for approval requirements; it doe
 | `--test-command` | Required for project scope; nonempty, explicitly supplied non-watch unit command. Do not infer it from manifests or claim to statically prove that an arbitrary command runs unit tests. |
 | `--help` | Explain both scopes, prompts, prerequisites, side effects, exit codes, and examples without changing anything. |
 
-When stdin is a terminal, prompt for missing required options in this order: agents, scope, then project and test command for project scope. The current directory may be offered as the project default only when it is a Git worktree root. Do not default agent selection or scope. Reprompt invalid interactive answers; invalid supplied flags are errors. Do not prompt for values already supplied. Reject project-only flags in user scope with a usage error.
+When stdin is a terminal, prompt for missing required options in this order: agents, scope, then project and test command for project scope. Discover the Git worktree root from the current directory and offer it for explicit confirmation, including when invoked from a subfolder; otherwise ask for a root path. Allow choosing another folder. Do not default agent selection or scope. Reprompt invalid interactive answers; invalid supplied flags are errors. Do not prompt for values already supplied. Reject project-only flags in user scope with a usage error.
 
 Without a terminal, list missing required flags and exit before any changes. Fully specified flags skip option-selection prompts; they do not bypass client trust, authentication, or application approval steps. EOF or cancellation during option collection leaves the machine unchanged. Interruptions after installation starts retain recoverable completed changes and report them on rerun.
 

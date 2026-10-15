@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from nda_harness.cli import collect_options, main
+from nda_harness.cli import collect_options, main, detect_project
 from nda_harness.engine import install, verify
 from nda_harness.engine import check_host
 from nda_harness.adapters import REGISTRY
@@ -85,6 +85,56 @@ class CliTests(unittest.TestCase):
         with patch("sys.stdin.isatty", return_value=False):
             with self.assertRaisesRegex(ValueError, "--agents.*--scope"):
                 collect_options("setup", None, None, None, None)
+
+    def test_detected_project_requires_confirmation_from_root_or_subfolder(self):
+        nested = self.project / "src"
+        nested.mkdir()
+        for directory in (self.project, nested):
+            for command in ("setup", "verify"):
+                with self.subTest(directory=directory, command=command), patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.Path.cwd", return_value=directory), patch("nda_harness.cli.select_options", return_value=[str(self.project)]) as menu, patch("builtins.input", side_effect=AssertionError("unexpected text prompt")):
+                    options = collect_options(command, "claude", "project", None, "true" if command == "setup" else None)
+                self.assertEqual(options["project"], self.project)
+                menu.assert_called_once()
+                self.assertIn(str(self.project), menu.call_args.args[1][0][1])
+                self.assertEqual(menu.call_args.args[1][1], ("", "Choose another folder"))
+
+    def test_choose_other_project_retries_invalid_root(self):
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.detect_project", return_value=self.project), patch("nda_harness.cli.select_options", return_value=[""]), patch("builtins.input", side_effect=[str(self.home), str(self.project)]), patch("sys.stderr", new_callable=io.StringIO):
+            options = collect_options("setup", "claude", "project", None, "true")
+        self.assertEqual(options["project"], self.project)
+
+    def test_no_detected_repository_asks_for_path(self):
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.Path.cwd", return_value=self.home), patch("nda_harness.cli.select_options", side_effect=AssertionError("unexpected menu")), patch("builtins.input", return_value=str(self.project)) as prompt:
+            options = collect_options("verify", "claude", "project", None, None)
+        self.assertEqual(options["project"], self.project)
+        prompt.assert_called_once()
+
+    def test_supplied_project_user_scope_and_nonterminal_skip_detection(self):
+        with patch("nda_harness.cli.detect_project", side_effect=AssertionError("unexpected detection")):
+            options = collect_options("verify", "claude", "project", str(self.project), None)
+            self.assertEqual(options["project"], self.project)
+            self.assertIsNone(collect_options("verify", "claude", "user", None, None)["project"])
+            with patch("sys.stdin.isatty", return_value=False), self.assertRaisesRegex(ValueError, "--project"):
+                collect_options("verify", "claude", "project", None, None)
+
+    def test_detect_linked_worktree_root(self):
+        env = {"HOME": str(self.home), "PATH": os.environ["PATH"]}
+        subprocess.run(["git", "-C", str(self.project), "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "--allow-empty", "-qm", "fixture"], check=True, env=env)
+        linked = self.base / "linked worktree"
+        subprocess.run(["git", "-C", str(self.project), "worktree", "add", "--detach", str(linked)], check=True, capture_output=True, env=env)
+        with patch("nda_harness.cli.Path.cwd", return_value=linked):
+            self.assertEqual(detect_project(), linked)
+
+    def test_cancel_repository_confirmation_does_not_install(self):
+        for error in (KeyboardInterrupt, EOFError):
+            with self.subTest(error=error), patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.detect_project", return_value=self.project), patch("nda_harness.cli.select_options", side_effect=error), patch("nda_harness.cli.install") as install, patch("sys.stderr", new_callable=io.StringIO):
+                self.assertEqual(main(["setup", "--agents", "claude", "--scope", "project", "--test-command", "true"]), 130)
+            install.assert_not_called()
+
+    def test_detection_failure_falls_back_to_path_prompt(self):
+        for error in (OSError(), subprocess.TimeoutExpired("git", 15)):
+            with self.subTest(error=type(error)), patch("nda_harness.cli.git", side_effect=error):
+                self.assertIsNone(detect_project())
 
     def test_intel_host_is_deferred(self):
         with patch("platform.system", return_value="Darwin"), patch("platform.machine", return_value="x86_64"):

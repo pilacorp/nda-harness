@@ -59,6 +59,17 @@ class PromptTests(unittest.TestCase):
         with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True), patch.dict(os.environ, {"TERM": "xterm"}), patch("curses.wrapper", side_effect=curses.error("unsupported")), patch("builtins.input", return_value="2"), patch("sys.stderr", new_callable=io.StringIO):
             self.assertEqual(select_options("Scope", SCOPES), ["user"])
 
+    def test_long_repository_path_is_not_truncated(self):
+        path = "/project/" + "long-folder-" * 10
+        screen = Mock()
+        screen.getmaxyx.return_value = (24, 40)
+        def wrapper(callback, *args):
+            return callback(screen, *args)
+        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True), patch.dict(os.environ, {"TERM": "xterm"}), patch("curses.wrapper", side_effect=wrapper), patch("curses.curs_set"), patch("builtins.input", return_value="1"), patch("sys.stderr", new_callable=io.StringIO) as output:
+            self.assertEqual(select_options("Repository", [(path, "Use " + path), ("", "Choose another folder")]), [path])
+        self.assertIn("1. Use " + path, output.getvalue())
+        screen.getch.assert_not_called()
+
     def test_nonterminal_selection_never_reads_input(self):
         with patch("sys.stdin.isatty", return_value=False), patch("builtins.input", side_effect=AssertionError("unexpected input")):
             with self.assertRaisesRegex(ValueError, "--agents and --scope"):

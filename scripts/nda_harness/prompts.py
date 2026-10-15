@@ -10,7 +10,8 @@ def _keyboard(screen, title, choices, multiple):
     focused, selected, error = 0, set(), ""
     while True:
         height, width = screen.getmaxyx()
-        if height < len(choices) + 5 or width < 40:
+        if (height < len(choices) + 5 or width < 40
+                or any(len(label) + (4 if multiple else 0) >= width for _, label in choices)):
             raise curses.error("Terminal too small")
         screen.erase()
         screen.addnstr(0, 0, title, width - 1)

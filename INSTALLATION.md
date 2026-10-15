@@ -78,7 +78,13 @@ from its root without installing the command.
 Project scope is the usual choice for a shared team repository: it installs the
 workflow pack and activates a local Git pre-commit test gate for this checkout.
 
-Find the target repository root from inside that repository:
+Run setup from inside the project or one of its subfolders. It detects the Git
+worktree root and offers **Use /detected/path** or **Choose another folder**.
+Confirm the detected repository, or choose another folder and enter its absolute
+root path. If the current folder is outside a Git repository, setup asks for the
+path directly. The same behavior applies to `verify`.
+
+You can also find the target repository root yourself:
 
 ```sh
 git rev-parse --show-toplevel
@@ -99,7 +105,7 @@ nda-harness setup
 | --- | --- |
 | Agents | Use Up/Down to move, Space to check one or more of Codex, Cursor and Claude Code, then Enter to confirm |
 | Scope | Use Up/Down to highlight Project or User, then Enter to confirm; choose Project for this walkthrough |
-| Target Git worktree root | The absolute path printed above, for example `/Users/yourname/Projects/tsa-simulator` |
+| Target Git worktree root | Confirm the detected path, or choose another folder and enter its absolute root, for example `/Users/yourname/Projects/tsa-simulator` |
 | Non-watch unit-test command | The command approved for that project, for example `npm run test:unit` if that script exists |
 
 Agents start unchecked; you must choose at least one. If the terminal cannot
@@ -108,6 +114,8 @@ such as `1,3` for agents and one number for scope. Ctrl+C cancels before any
 installation changes. Project paths and test commands remain text input.
 The same menus appear for missing agent/scope options during `verify`; supplied
 flags skip their corresponding menus. Redirected input requires complete flags.
+An explicit `--project` skips repository detection and confirmation. A supplied
+subfolder path is rejected; automatic discovery from a subfolder finds its root.
 
 The test command runs from the target repository root during setup, verification
 and pre-commit. Use a command that exits when finished. **Do not use `true`: it

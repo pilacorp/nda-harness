@@ -2,6 +2,7 @@
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
+import subprocess
 import sys
 
 if __package__ in (None, ""):
@@ -10,6 +11,7 @@ from nda_harness.adapters import REGISTRY
 from nda_harness.engine import install, verify, exit_code, paths
 from nda_harness.files import Conflict, atomic, guard_path, json_bytes
 from nda_harness.prompts import select_options
+from nda_harness.hooks import git
 
 
 def agents_value(raw):
@@ -20,7 +22,6 @@ def agents_value(raw):
 
 
 def project_value(raw):
-    import subprocess
     project = Path(raw).expanduser().absolute().resolve()
     if not project.is_dir() or any(c in str(project) for c in "\n\r"):
         raise ValueError("--project must be an existing Git worktree root without newline characters.")
@@ -28,6 +29,14 @@ def project_value(raw):
     if run.returncode or Path(run.stdout.strip()).resolve() != project:
         raise ValueError("--project must be the Git worktree root; subdirectories are not accepted.")
     return project
+
+
+def detect_project():
+    try:
+        run = git(Path.cwd(), "rev-parse", "--show-toplevel")
+        return project_value(run.stdout.strip()) if run.returncode == 0 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
 
 
 def collect_options(command, agents, scope, project, test_command):
@@ -67,6 +76,13 @@ def collect_options(command, agents, scope, project, test_command):
         return {"agents": selected, "scope": scope, "project": None, "test_command": None}
     if not project and not terminal:
         raise ValueError("Missing required flag: --project")
+    if not project:
+        detected = detect_project()
+        if detected:
+            project = select_options("Target Git worktree root", [
+                (str(detected), f"Use {detected}"),
+                ("", "Choose another folder"),
+            ])[0]
     project = project_value(project) if project else ask("Target Git worktree root", project_value)
     if command == "verify":
         if test_command is not None:
@@ -89,7 +105,7 @@ def main(argv=None):
         sub = commands.add_parser(name, help="Guided " + name + "; full flags skip option prompts. Exit 0=verified, 1=failed, 2=invalid/prerequisite/conflict, 3=manual pending, 130=interrupted.")
         sub.add_argument("--agents", help="Comma-separated " + ",".join(REGISTRY))
         sub.add_argument("--scope", help="project or user; user scope activates no Git hooks")
-        sub.add_argument("--project", help="Existing Git worktree root, required for project scope")
+        sub.add_argument("--project", help="Existing Git worktree root; when omitted interactively, detect from the current folder and confirm")
         sub.add_argument("--test-command", help="setup project only: explicit non-watch unit command; executed by setup/verify/pre-commit")
     args = parser.parse_args(argv)
     try:
