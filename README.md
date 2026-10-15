@@ -10,13 +10,16 @@ Harness TDD uses focused unit tests in the code repository. QA owns integration 
 
 The proposed local hook set includes a Git `pre-commit` hook that runs configured unit tests and blocks failing commits, alongside CI merge checks.
 
-The proposed pack also includes a local knowledge-setup script to connect supported agents to internal RAG and each developer's personal Hindsight account, then verify access. Credentials stay on the developer's device.
+The CLI optionally connects selected agents to each developer's personal Hindsight account in multi-bank mode and automatically verifies authenticated MCP tool discovery. Agents list existing banks and decide whether to reuse or create one. Credentials stay in private user configuration; memory instructions follow the selected project/user scope. Internal RAG setup remains proposed.
+
+[Bank templates](pack/hindsight/README.md) supply coding-agent, multi-agent-orchestrator and research defaults for new banks, including mental models and directives.
 
 ## Read first
 
 Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 supplies relevant public library/framework documentation; the Skills hub adds selectively loaded specialist instructions.
 
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
+- [Installation](INSTALLATION.md): developer prerequisites, project setup, Context7 and optional Hindsight connections, verification and recovery.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
 - [Skills hub](skills/catalog.md): select UI/UX Pro Max, official Vietnamese document wording, or Diagram Design for a scoped sub-agent; load selected instructions only.
 
@@ -26,6 +29,17 @@ Memory storage stays internal; processing sends relevant memory content through 
 
 ## Current phase
 
-This repository contains the architecture proposal, onboarding design, and a Skills hub with three specialist skills. It does **not** yet contain a released `.nda-harness/` policy package, an installer, executable GitHub Actions gates, or deployed service integrations. The integration guide distinguishes proposed adoption steps from working capabilities.
+This repository contains the architecture proposal, onboarding design, three specialist skills, and a minimal setup/verify CLI for Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS. The CLI installs the shared workflow pack, composes project unit-test hooks, and provides five executable context operations. Real-client authentication/plugin/native-hook compatibility remains pending; it is not a completed production support claim. Intel macOS, executable GitHub Actions gates and deployed service integrations remain future work.
 
-Next, prepare the shared policy package and gate implementation for one pilot repository, then validate it with the team's supported agent versions. No new coding agent or compulsory runtime wrapper is proposed.
+The owner narrowed the merged [minimal CLI specification](specs/minimal-cli.md) to this phase. Read the [CLI onboarding and evidence](docs/compatibility/minimal-cli-phase.md) for installation, commands, adapter extension, manual completion and recovery. The [original trial report](docs/compatibility/minimal-cli.md) preserves the local observations and deferred coverage.
+
+Install once and use directly (Python 3.11+ and Git required; no pip or virtual environment setup):
+
+```sh
+./install.sh
+~/.local/bin/nda-harness setup
+```
+
+If `~/.local/bin` is on PATH, use `nda-harness setup`. For clone-and-run, `./bin/nda-harness setup` also works without installing dependencies.
+
+Next, complete the per-client real-session checks and pilot adoption. The CLI configures installed agents; it does not introduce a new coding agent or compulsory runtime wrapper.

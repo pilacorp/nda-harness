@@ -1,6 +1,16 @@
 # Developer integration
 
-Status: onboarding design for the [architecture proposal](architecture.md). The steps below describe adoption once a pinned harness package is available. This repository provides documentation and focused skill instructions; policy files, agent adapters, setup executables, and CI validators are not shipped yet.
+Status: onboarding design for the [architecture proposal](architecture.md), with the minimal CLI phase implemented as described below. The broader adoption steps include proposed future work; CI validators are not shipped yet.
+
+## Implemented minimal CLI phase
+
+For Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS, use the
+[minimal CLI onboarding guide](compatibility/minimal-cli-phase.md). It documents
+the implemented setup/verify commands, both scopes, project unit-test hooks,
+five explicit context operations, automatic verification with pending session checks, pinned dependencies
+and backup restoration. The broader architecture/adoption procedure below still
+contains proposed future work; Intel, native lifecycle registration and
+remote approval/CI enforcement are not shipped by this phase.
 
 ## What runs where
 
