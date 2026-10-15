@@ -9,6 +9,7 @@ if __package__ in (None, ""):
 from nda_harness.adapters import REGISTRY
 from nda_harness.engine import install, verify, exit_code, paths
 from nda_harness.files import Conflict, atomic, guard_path, json_bytes
+from nda_harness.prompts import select_options
 
 
 def agents_value(raw):
@@ -50,12 +51,16 @@ def collect_options(command, agents, scope, project, test_command):
             missing.append("--test-command")
     if missing and not terminal:
         raise ValueError("Missing required flags: " + ", ".join(missing) + "; project scope also requires --project and --test-command for setup.")
-    selected = agents_value(agents) if agents else ask("Agents [" + ",".join(REGISTRY) + "]", agents_value)
+    labels = {"codex": "Codex", "cursor": "Cursor", "claude": "Claude Code"}
+    selected = agents_value(agents) if agents else select_options("Agents", [(name, labels.get(name, name)) for name in REGISTRY], multiple=True)
     def scope_value(raw):
         if raw not in ("project", "user"):
             raise ValueError("--scope must be project or user.")
         return raw
-    scope = scope_value(scope) if scope else ask("Scope [project/user]", scope_value)
+    scope = scope_value(scope) if scope else select_options("Scope", [
+        ("project", "Project - this repository, including Git test hook"),
+        ("user", "User - personal registrations, no Git hooks"),
+    ])[0]
     if scope == "user":
         if project is not None or test_command is not None:
             raise ValueError("User scope rejects --project and --test-command.")

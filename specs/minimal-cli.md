@@ -1,5 +1,13 @@
 # Minimal NDA Harness setup CLI
 
+Owner follow-up: guided `setup` and `verify` use Up/Down selection menus for
+missing agent/scope options. Space toggles agents (initially unchecked, at least
+one required); Enter confirms agents or a single scope. Highlighting a scope
+alone does not confirm it. Unsupported terminals fall back to numbered choices
+(comma-separated numbers for agents, one number for scope). Invalid/empty choices
+reprompt. Cancellation restores the terminal and exits 130 before installation.
+Flags, prompt order, project/test text prompts and non-terminal errors are unchanged.
+
 Status: merged specification (PR #5); owner-authorized Codex/Cursor/Claude Apple Silicon
 phase implemented; real-client validation pending.
 

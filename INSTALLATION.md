@@ -95,12 +95,19 @@ Run guided setup from any directory:
 nda-harness setup
 ```
 
-| Prompt | What to enter |
+| Prompt | What to select or enter |
 | --- | --- |
-| Agents | `claude`, `codex`, `cursor`, or a comma-separated selection such as `codex,claude` |
-| Scope | `project` |
+| Agents | Use Up/Down to move, Space to check one or more of Codex, Cursor and Claude Code, then Enter to confirm |
+| Scope | Use Up/Down to highlight Project or User, then Enter to confirm; choose Project for this walkthrough |
 | Target Git worktree root | The absolute path printed above, for example `/Users/yourname/Projects/tsa-simulator` |
 | Non-watch unit-test command | The command approved for that project, for example `npm run test:unit` if that script exists |
+
+Agents start unchecked; you must choose at least one. If the terminal cannot
+display the keyboard menu, select from numbered choices instead: enter numbers
+such as `1,3` for agents and one number for scope. Ctrl+C cancels before any
+installation changes. Project paths and test commands remain text input.
+The same menus appear for missing agent/scope options during `verify`; supplied
+flags skip their corresponding menus. Redirected input requires complete flags.
 
 The test command runs from the target repository root during setup, verification
 and pre-commit. Use a command that exits when finished. **Do not use `true`: it

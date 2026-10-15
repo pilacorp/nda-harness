@@ -76,7 +76,7 @@ class CliTests(unittest.TestCase):
                         self.assertNotIn("/mcp", text)
 
     def test_no_flags_user_flow(self):
-        with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=["codex", "user"]) as prompt:
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", side_effect=[["codex"], ["user"]]) as prompt:
             options = collect_options("setup", None, None, None, None)
         self.assertEqual(options["scope"], "user")
         self.assertEqual(prompt.call_count, 2)
@@ -139,14 +139,15 @@ class CliTests(unittest.TestCase):
             self.setup()
 
     def test_partial_flags_preserve_supplied_values(self):
-        with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=["project", "true"]) as prompt:
+        with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", return_value=["project"]) as menu, patch("builtins.input", return_value="true") as prompt:
             options = collect_options("setup", "codex", None, str(self.project), None)
         self.assertEqual(options["agents"], ["codex"])
         self.assertEqual(options["project"], self.project)
-        self.assertEqual(prompt.call_count, 2)
+        self.assertEqual(prompt.call_count, 1)
+        self.assertEqual(menu.call_count, 1)
 
     def test_full_flags_do_not_prompt(self):
-        with patch("builtins.input", side_effect=AssertionError("unexpected prompt")):
+        with patch("builtins.input", side_effect=AssertionError("unexpected prompt")), patch("nda_harness.cli.select_options", side_effect=AssertionError("unexpected menu")):
             options = collect_options("setup", "codex,cursor,codex", "project", str(self.project), "true")
         self.assertEqual(options["agents"], ["codex", "cursor"])
 
