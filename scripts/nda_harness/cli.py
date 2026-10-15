@@ -12,6 +12,7 @@ from nda_harness.engine import install, verify, exit_code, paths
 from nda_harness.files import Conflict, atomic, guard_path, json_bytes
 from nda_harness.prompts import select_options
 from nda_harness.hooks import git
+from nda_harness.hindsight import collect_memory
 
 
 def agents_value(raw):
@@ -116,12 +117,17 @@ def main(argv=None):
         source = Path(__file__).resolve().parents[2]
         home = Path.home().resolve()
         if args.command == "setup":
+            collect_memory(options, home)
             print("Setting up harness and Context7 MCP (missing connections are added automatically)...")
             applied = install(options, source, home)
             print(f"Configured pack: {applied['pack']}\nPrivate recovery receipt: {applied['receipt']}\nChanged files: {applied['changed_files']}")
             print(f"RTK executable: {applied['rtk_path']}. If not on the client PATH, use that absolute path or configure PATH locally; setup does not edit shell startup files.")
             added = applied["context7_added"]
             print("Context7 MCP: " + ("added for " + ", ".join(added) if added else "already configured") + ".")
+            if applied.get("memory_agents"):
+                print("Hindsight MCP: configured in private user settings for " + ", ".join(applied["memory_agents"]) + ". Restart the selected clients.")
+                if options["scope"] == "user" and "cursor" in applied["memory_agents"]:
+                    print(f"Cursor User Rules: paste {Path(applied['pack']) / 'cursor-user-rules.md'} into Settings > Rules > User Rules.")
             for family in added:
                 for step in REGISTRY[family].manual_steps(Path(applied["pack"])):
                     if "nda-harness-context7" in step:

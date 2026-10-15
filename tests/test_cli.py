@@ -156,6 +156,67 @@ class CliTests(unittest.TestCase):
         self.assertTrue((self.project / ".agents/skills/diagram-design/SKILL.md").is_file())
         self.assertTrue((self.project / ".nda-harness/scripts/prepare-context").stat().st_mode & 0o111)
 
+    def test_setup_appends_missing_gitignore_patterns_and_preserves_user_edits(self):
+        ignore = self.project / ".gitignore"
+        original = b"# Keep existing rules\r\n.env\r\n__pycache__/"
+        ignore.write_bytes(original)
+        ignore.chmod(0o640)
+        applied = self.setup()
+        expected = original + b"\r\n*.py[cod]\r\n"
+        self.assertEqual(ignore.read_bytes(), expected)
+        self.assertEqual(ignore.stat().st_mode & 0o777, 0o640)
+        receipt = Path(applied["receipt"])
+        recovery = json.loads(receipt.read_text())["recovery"]
+        backup = next(item["backup"] for item in recovery if item["path"] == str(ignore))
+        self.assertEqual(Path(backup).read_bytes(), original)
+        self.setup()
+        self.assertEqual(ignore.read_bytes(), expected)
+        self.assertEqual(json.loads(receipt.read_text())["recovery"], recovery)
+        ignore.write_bytes(expected + b"# Later developer rule\r\nnode_modules/\r\n")
+        self.setup()
+        self.assertTrue(ignore.read_bytes().endswith(b"node_modules/\r\n"))
+        self.assertEqual(ignore.read_bytes().count(b"__pycache__/"), 1)
+        self.assertEqual(ignore.read_bytes().count(b"*.py[cod]"), 1)
+        for path, code in ((".nda-harness/scripts/__pycache__/runtime.pyc", 0), ("module.pyo", 0), (".nda-harness/policy.md", 1)):
+            self.assertEqual(subprocess.run(["git", "-C", str(self.project), "check-ignore", "-q", path]).returncode, code)
+
+    def test_setup_preserves_empty_or_lf_gitignore(self):
+        ignore = self.project / ".gitignore"
+        for original in (b"", b"# Existing\n.env\n"):
+            with self.subTest(original=original):
+                ignore.write_bytes(original)
+                self.setup()
+                self.assertEqual(ignore.read_bytes(), original + b"__pycache__/\n*.py[cod]\n")
+
+    def test_setup_does_not_create_gitignore_or_change_it_in_user_scope(self):
+        ignore = self.project / ".gitignore"
+        self.setup()
+        self.assertFalse(ignore.exists())
+        ignore.write_text(".env\n")
+        self.setup(scope="user", project=None, test_command=None)
+        self.assertEqual(ignore.read_text(), ".env\n")
+
+    def test_gitignore_update_is_rolled_back_after_apply_failure(self):
+        ignore = self.project / ".gitignore"
+        ignore.write_bytes(b".env\n")
+        from nda_harness.files import atomic
+        def failing(path, *args, **kwargs):
+            if path == self.project / ".cursor/mcp.json":
+                raise OSError("simulated failure")
+            return atomic(path, *args, **kwargs)
+        with patch("nda_harness.files.atomic", side_effect=failing), self.assertRaises(OSError):
+            self.setup()
+        self.assertEqual(ignore.read_bytes(), b".env\n")
+
+    def test_gitignore_symlink_is_rejected_without_changes(self):
+        external = self.home / "ignore"
+        external.write_text(".env\n")
+        (self.project / ".gitignore").symlink_to(external)
+        with self.assertRaises(Conflict):
+            self.setup()
+        self.assertEqual(external.read_text(), ".env\n")
+        self.assertFalse((self.project / ".nda-harness").exists())
+
     def test_conflict_preflight_has_no_pack_side_effects(self):
         config = self.project / ".cursor/mcp.json"
         config.parent.mkdir()

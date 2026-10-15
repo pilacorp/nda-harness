@@ -11,9 +11,10 @@ import sys
 
 from .adapters import REGISTRY
 from .adapters.common import SKILLS
-from .files import Plan, Conflict, atomic, digest, guard_path, json_bytes
+from .files import Plan, Conflict, atomic, digest, guard_path, json_bytes, read
 from .hooks import hook_plan, activate, restore, value
 from .dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
+from . import hindsight
 
 
 def check_host():
@@ -81,11 +82,30 @@ def install(options, source, home):
     guard_path(state / "setup.lock")
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
     state.chmod(0o700)
-    with (state / "setup.lock").open("a") as lock:
+    memory_state = hindsight.shared_state(home)
+    guard_path(memory_state / "setup.lock")
+    memory_state.mkdir(parents=True, exist_ok=True, mode=0o700)
+    memory_state.chmod(0o700)
+    with (memory_state / "setup.lock").open("a") as memory_lock, (state / "setup.lock").open("a") as lock:
+        os.chmod(memory_state / "setup.lock", 0o600)
+        fcntl.flock(memory_lock, fcntl.LOCK_EX)
         os.chmod(state / "setup.lock", 0o600)
         fcntl.flock(lock, fcntl.LOCK_EX)
         receipt = load_receipt(state)
-        plan = Plan(receipt)
+        shared = hindsight.load_shared(home)
+        plan = Plan({"owned": {**receipt["owned"], **shared["owned"]}})
+        memory_agents = sorted(set(receipt.get("memory_agents", [])) | set(options.get("hindsight", {}).get("agents", [])))
+        options = {**options, "memory_agents": memory_agents}
+        if options["scope"] == "project":
+            ignore = options["project"] / ".gitignore"
+            original = read(ignore)
+            if original is not None:
+                missing = [pattern for pattern in (b"__pycache__/", b"*.py[cod]") if pattern not in original.splitlines()]
+                if missing:
+                    newline = b"\r\n" if b"\r\n" in original else b"\n"
+                    separator = newline if original and not original.endswith(b"\n") else b""
+                    # Keep .gitignore user-owned so later developer edits remain valid.
+                    plan.write(ignore, original + separator + newline.join(missing) + newline)
         files = assets(source, options)
         registrations = dict(receipt.get("registrations", {}))
         context7_added = []
@@ -116,6 +136,10 @@ def install(options, source, home):
             other_root = home / adapter.skill_directory / "skills" if options["scope"] == "project" else None
             if other_root and any((other_root / name).exists() for name in SKILLS):
                 raise Conflict(f"Simultaneous user/project skill registrations require reconciliation: {other_root}")
+        hindsight.plan_connections(plan, options, home)
+        if options.get("hindsight"):
+            shared_owned = {key: value for key, value in plan.owned.items() if key.endswith("::" + hindsight.TAG)}
+            plan.write(memory_state / "receipt.json", json_bytes({"schema_version": 1, "owned": shared_owned}), 0o600, private=True)
         registration = hook_plan(plan, options["project"], state, receipt) if options["scope"] == "project" else None
         executable = prepare_rtk(plan, home)
         activated = False
@@ -124,10 +148,10 @@ def install(options, source, home):
             if registration:
                 activate(options["project"], registration)
                 activated = True
-            receipt.update(schema_version=1, owned=plan.owned,
+            receipt.update(schema_version=1, owned={key: value for key, value in plan.owned.items() if not key.endswith("::" + hindsight.TAG)},
                            registrations=registrations,
                            agents=sorted(set(receipt.get("agents", []) + options["agents"])),
-                           scope=options["scope"], pack=str(pack))
+                           scope=options["scope"], pack=str(pack), memory_agents=memory_agents)
             if registration:
                 receipt["git"] = registration
             receipt.setdefault("recovery", []).extend(plan.applied)
@@ -139,7 +163,7 @@ def install(options, source, home):
             atomic(state / "recovery-needed.json", json_bytes({"paths": unresolved, "writes": plan.applied,
                    "retained_shared_dependency": str(home / ".nda-harness/bin/rtk") if (home / ".nda-harness/bin/rtk").exists() else None}))
             raise
-    return {"pack": str(pack), "receipt": str(state / "receipt.json"), "changed_files": len(plan.writes), "rtk_path": str(executable), "context7_added": context7_added}
+    return {"pack": str(pack), "receipt": str(state / "receipt.json"), "changed_files": len(plan.writes), "rtk_path": str(executable), "context7_added": context7_added, "memory_agents": memory_agents}
 
 
 def result(name, status, detail, source="automated"):
@@ -201,6 +225,8 @@ def verify(options, home, live_mcp=True):
                 raise ValueError()
         except (OSError, ValueError, KeyError, TypeError, AttributeError, Conflict):
             checks.append(result("registration", "failed", f"Owned registration changed or missing: {path}"))
+    if receipt.get("memory_agents"):
+        checks.extend(hindsight.verify_connections(options, home, receipt, live=live_mcp))
     rtk = locate_rtk(home)
     if rtk:
         passed = rtk_identity(rtk)

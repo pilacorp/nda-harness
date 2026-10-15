@@ -1,4 +1,4 @@
-"""Bounded public MCP diagnostic. Never reads or prints client credentials."""
+"""Bounded MCP diagnostics. Never print credentials or raw server responses."""
 import json
 import urllib.error
 import urllib.request
@@ -22,18 +22,26 @@ def decode_response(raw):
     raise ValueError("Invalid MCP response")
 
 
-def check_context7():
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def connection(endpoint, authorization=None):
     session = None
+    opener = urllib.request.build_opener(NoRedirect) if authorization else None
     def call(method, params, identifier):
         nonlocal session
         headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-03-26"}
+        if authorization:
+            headers["Authorization"] = authorization
         if session:
             headers["Mcp-Session-Id"] = session
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if identifier is not None:
             body["id"] = identifier
-        request = urllib.request.Request(ENDPOINT, data=json.dumps(body).encode(), headers=headers)
-        with urllib.request.urlopen(request, timeout=10) as response:
+        request = urllib.request.Request(endpoint, data=json.dumps(body).encode(), headers=headers)
+        with (opener.open(request, timeout=10) if opener else urllib.request.urlopen(request, timeout=10)) as response:
             session = response.headers.get("Mcp-Session-Id", session)
             if identifier is None:
                 response.read(1024)
@@ -45,6 +53,11 @@ def check_context7():
             if "error" in value or value.get("id") != identifier:
                 raise ValueError()
             return value["result"]
+    return call
+
+
+def check_context7():
+    call = connection(ENDPOINT)
     try:
         call("initialize", {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "nda-harness-verification", "version": "0.1.0"}}, 1)
         call("notifications/initialized", {}, None)
@@ -69,3 +82,33 @@ def check_context7():
         return result("context7-server", status, f"Public endpoint returned HTTP {error.code}; authenticate in the client or retry a rate/network failure locally.")
     except (OSError, ValueError, KeyError, TypeError, AttributeError, StopIteration):
         return result("context7-server", "failed", "Public MCP timeout/network/interface failure; no raw response or credential was retained.")
+
+
+def check_hindsight(endpoint, authorization):
+    call = connection(endpoint, authorization)
+    try:
+        call("initialize", {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "nda-harness-verification", "version": "0.1.0"}}, 1)
+        call("notifications/initialized", {}, None)
+        tools, cursor = {}, None
+        for identifier in range(2, 12):
+            listing = call("tools/list", {"cursor": cursor} if cursor else {}, identifier)
+            tools.update((tool["name"], tool) for tool in listing["tools"])
+            cursor = listing.get("nextCursor")
+            if not cursor:
+                break
+        else:
+            raise ValueError()
+        required = {"recall", "retain", "list_banks", "create_bank", "update_bank",
+                    "list_mental_models", "get_mental_model", "create_mental_model",
+                    "list_directives", "create_directive"}
+        if not required <= tools.keys():
+            raise ValueError()
+        if any("bank_id" not in tools[name].get("inputSchema", {}).get("properties", {}) for name in required - {"list_banks"}):
+            raise ValueError()
+        if "config_updates" not in tools["update_bank"]["inputSchema"]["properties"]:
+            raise ValueError()
+        return result("hindsight-server", "verified", "Authenticated multi-bank MCP discovery succeeded, including explicit bank_id and bank-template configuration/model/directive tools. No banks or memories were read or written.")
+    except urllib.error.HTTPError as error:
+        return result("hindsight-server", "failed", f"Hindsight MCP returned HTTP {error.code}; check endpoint, personal API key and access locally. Redirects are disabled.")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return result("hindsight-server", "failed", "Hindsight MCP timeout/network/interface failure. Use the multi-bank /mcp/ endpoint with memory, bank, mental-model and directive tools accepting bank_id; update_bank must support config_updates. No credentials or raw response were retained.")

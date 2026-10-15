@@ -69,13 +69,14 @@ class Plan:
             raise Conflict(f"Conflicting user-owned entry: {path} ({tag})")
         self.owned[key] = digest(desired)
 
-    def write(self, path, desired, mode=0o644):
+    def write(self, path, desired, mode=0o644, private=False):
         old = read(path)
         if path in self.writes:
             raise Conflict(f"Overlapping planned writes: {path}")
         current_mode = stat.S_IMODE(path.stat().st_mode) if old is not None else mode
-        if old != desired or (mode & 0o111 and not current_mode & 0o111):
-            self.writes[path] = (old, desired, current_mode | (mode & 0o111))
+        target_mode = mode if private else current_mode | (mode & 0o111)
+        if old != desired or current_mode != target_mode:
+            self.writes[path] = (old, desired, target_mode)
 
     def file(self, path, desired, mode=0o644):
         old = read(path)
@@ -104,13 +105,12 @@ class Plan:
         self.own(path, "block", prior_block.encode() if prior_block else None, desired_block.encode())
         self.write(path, result.encode())
 
-    def mcp(self, path, format, transport=None):
-        # No literal credentials are generated or copied into receipts.
-        name = "nda-harness-context7"
-        desired = {"url": "https://mcp.context7.com/mcp"}
+    def mcp(self, path, format, transport=None, name="nda-harness-context7", desired=None, private=False):
+        desired = dict(desired) if desired is not None else {"url": "https://mcp.context7.com/mcp"}
         if transport:
             desired["type"] = transport
-        raw = read(path)
+        # Multiple servers can share a config in one transaction.
+        raw = self.writes[path][1] if path in self.writes else read(path)
         try:
             if format == "toml":
                 import tomlkit
@@ -129,8 +129,11 @@ class Plan:
                 old = servers.get(name)
         except (ValueError, TypeError, UnicodeError, AttributeError):
             raise Conflict(f"Malformed {format.upper()} configuration: {path}") from None
-        self.own(path, "mcp", json_bytes(old) if old is not None else None, json_bytes(desired))
+        tag = "mcp" if name == "nda-harness-context7" else "mcp-" + name
+        self.own(path, tag, json_bytes(old) if old is not None else None, json_bytes(desired))
         if old == desired:
+            self.writes.pop(path, None)
+            self.write(path, raw, 0o600, private=private)
             return False
         if format == "toml":
             if "mcp_servers" not in doc:
@@ -140,7 +143,8 @@ class Plan:
         else:
             doc.setdefault("mcpServers", {})[name] = desired
             content = json_bytes(doc)
-        self.write(path, content, 0o600)
+        self.writes.pop(path, None)
+        self.write(path, content, 0o600, private=private)
         return old is None
 
     def apply(self, state):
@@ -152,8 +156,10 @@ class Plan:
             original_mode = stat.S_IMODE(path.stat().st_mode) if old is not None else mode
             if old is not None:
                 backup = backup_dir / (digest(str(path)) + ".backup")
+                guard_path(backup)
                 atomic(backup, old)
                 backup_dir.chmod(0o700)
+                backup_dir.parent.chmod(0o700)
             absent = [p for p in [path.parent, *path.parent.parents] if not p.exists()]
             atomic(path, new, mode)
             self.created_directories.extend(reversed(absent))

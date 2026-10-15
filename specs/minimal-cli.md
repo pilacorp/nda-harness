@@ -1,5 +1,12 @@
 # Minimal NDA Harness setup CLI
 
+Owner follow-up: project setup appends missing exact `__pycache__/` and
+`*.py[cod]` entries to an existing root `.gitignore`, preserving its contents,
+line endings and permissions through the normal backed-up transaction. Repeated
+setup does not duplicate entries or claim ownership of unrelated ignore rules.
+Do not create a missing `.gitignore`, change one in user scope, or ignore the
+shared `.nda-harness/` pack. Verify remains read-only for `.gitignore`.
+
 Owner follow-up: guided `setup` and `verify` use Up/Down selection menus for
 missing agent/scope options. Space toggles agents (initially unchecked, at least
 one required); Enter confirms agents or a single scope. Highlighting a scope
@@ -53,7 +60,7 @@ Feature issue: [pilacorp/nda-harness#4](https://github.com/pilacorp/nda-harness/
 - Repository sources: [README](../README.md), [implementation plan](../plan.md), [developer integration](../docs/developer-integration.md), and [skills catalog](../skills/catalog.md), consulted at `ddcb5aebcf1a5086b2101d70c1735a28db219933`.
 - Specification branch: `specs/minimal-cli`, explicitly requested by the owner instead of the issue-numbered branch convention.
 - Owner follow-up on 2026-10-13: require a reusable developer-spec template, implemented/documented hooks, and concrete test cases; explicitly include session bootstrap, task preparation, context refresh, checkpoint, and resume. These additions are now reflected in the feature issue; the source reference above records the aligned issue content.
-- Context-hook design source: [context preparation proposal](../docs/context-preparation-hooks.md); adopt its five logical operations and trust boundaries, with RAG/Hindsight integration still deferred.
+- Context-hook design source: [context preparation proposal](../docs/context-preparation-hooks.md); adopt its five logical operations and trust boundaries. RAG and memory lifecycle hooks remain deferred; optional Hindsight MCP setup is covered by the amendment below.
 
 Recheck the issue content before implementation. Material differences require reconciliation and renewed review of this spec. A spec-only PR references the issue without closing it. Spec-PR review and merge precede implementation; only the accepted implementation PR closes #4. This document does not claim approval or completed client validation.
 
@@ -65,7 +72,7 @@ Support Cursor IDE/CLI, Codex desktop/CLI, and Claude Desktop's **local Code tab
 
 Include SDD workflow instructions, the developer-spec template, and agent-performed prerequisite verification: the agent checks issue linkage, spec-PR review and merge, and matching local spec content before behavior-change implementation. The five context lifecycle operations and their supported native hooks are included to gather local facts, identify pending checks, and support this procedure.
 
-Exclude agent application installation, cloud/remote sessions, Claude Chat/Cowork, Linux/Windows, registry publishing, uninstall/upgrade commands, RAG/Hindsight, the full role-specific SDD skill suite, automated remote approval validators, and CI merge gates. These exclusions do not remove the SDD instructions or prerequisite checks described above. Do not launch agents, create commits, or publish PRs during setup.
+Exclude agent application installation, cloud/remote sessions, Claude Chat/Cowork, Linux/Windows, registry publishing, uninstall/upgrade commands, RAG and Hindsight server deployment/lifecycle hooks, the full role-specific SDD skill suite, automated remote approval validators, and CI merge gates. These exclusions do not remove the SDD instructions or prerequisite checks described above. Do not launch agents, create commits, or publish PRs during setup.
 
 V1 relies on agent compliance and human review for approval requirements; it does not technically prevent an agent from bypassing them. Local hook diagnostics, including a `blocked` helper status, are not an approval-enforcement mechanism. The Git pre-commit hook separately blocks failing unit-test commits; it does not verify spec approval or authorize implementation.
 
@@ -269,7 +276,7 @@ Implement `scripts/prepare-context <operation> --project <root>` for `session-bo
 
 The helper reads local sources and emits a versioned JSON result: operation, status (`ready`, `needs_context`, or `blocked`), worktree/branch/HEAD, dirty-input fingerprints, selected task/spec references, source references, blockers, and next required checks. `ready` means local metadata collection succeeded; it never proves remote approval, complete context, or permission to implement. Native adapters format only the reviewed checklist and sanitized metadata into the client's documented output schema. Terminal invocation uses the same helper, so all five operations work without native events.
 
-The agent performs semantic preparation through existing file/GitHub tools: read full policy/profile/spec, trace relevant code/callers, verify issue identity/content and approval references at task start, resume, and dependent transitions, then fill the brief/task record. Native hooks make no live GitHub/MCP/RAG/memory requests and never execute command strings from Markdown or retrieved documents. RAG/Hindsight remain out of scope; use authoritative revisioned local sources and the feature issue.
+The agent performs semantic preparation through existing file/GitHub tools: read full policy/profile/spec, trace relevant code/callers, verify issue identity/content and approval references at task start, resume, and dependent transitions, then fill the brief/task record. Native hooks make no live GitHub/MCP/RAG/memory requests and never execute command strings from Markdown or retrieved documents. RAG and Hindsight lifecycle hooks remain out of scope; optional memory tools cannot replace authoritative revisioned local sources and the feature issue.
 
 `templates/context-brief.md` includes role/task, checkout identity, rules/profile/release references, recorded stage and independently checked prerequisites, issue fingerprint/update time, spec/approval references, relevant code/source revisions, acceptance/test references, blockers, and next action. A brief is navigation, not a substitute for full required documents. Target a concise brief rather than a dump of skills or source bodies.
 
@@ -389,3 +396,75 @@ Consulted on 2026-10-13; behavior must be rechecked against the client versions 
 - [RTK upstream](https://github.com/rtk-ai/rtk), [Context7 upstream](https://github.com/upstash/context7), and [Superpowers installation](https://github.com/obra/superpowers#installation).
 - [OpenAI hooks](https://learn.chatgpt.com/docs/hooks), [Claude hooks](https://code.claude.com/docs/en/hooks), and [Cursor hooks](https://cursor.com/docs/hooks); native mappings must be verified per client version/surface.
 - Superpowers upstream coexistence inspection: [Claude startup hooks](https://github.com/obra/superpowers/blob/main/hooks/hooks.json), [startup output handler](https://github.com/obra/superpowers/blob/main/hooks/session-start), [Cursor manifest](https://github.com/obra/superpowers/blob/main/.cursor-plugin/plugin.json), and [Codex manifest](https://github.com/obra/superpowers/blob/main/.codex-plugin/plugin.json). These mutable source links inform the design; implementation tests must use the reviewed pinned revision.
+
+
+## Owner amendment: optional Hindsight memory setup
+
+Interactive `setup` offers an explicit Enable/Skip memory menu after existing
+options and before installation writes. Enable offers an unchecked agent menu
+restricted to the selected harness families, then a full multi-bank MCP URL
+ending in `/mcp/` (or `/mcp`) and hidden personal API-key input. Do not ask for a
+bank name or accept a bank-scoped endpoint. Use existing keyboard controls and numbered
+fallback. Reject empty keys, whitespace/control characters, credential/query/fragment
+URLs, and HTTP except loopback. Cancellation/EOF returns 130 before installation.
+Non-interactive setup skips this optional step; no new flags are introduced.
+
+Register `nda-harness-hindsight` in private user configuration: Codex user TOML
+`http_headers.Authorization`; Cursor user JSON `headers.Authorization`; Claude
+user JSON with `type: http` and `headers.Authorization`. Keys never enter project
+assets, receipts, arguments, terminal output or diagnostic details. Config files
+and backup files are 0600; private state and backup directories are 0700. Reject
+client homes in Git checkouts and project/local entries shadowing this name.
+Reuse matching entries, preserve unrelated entries, reject unmanaged conflicts,
+and explicitly confirm replacements of managed endpoints/credentials. Ownership
+of these shared connections is recorded once per user, separately from scoped
+instruction ownership. Apply and rollback together with the existing transaction.
+
+Instructions follow harness Project/User scope only for opted-in agents. Recall
+relevant memories before each response. Before first memory use or after a
+project/context switch, the local agent calls `list_banks`, reviewing additional
+pages where present, and chooses a bank based on existing IDs, names and purposes.
+Reuse an appropriate bank; call `create_bank` only if no suitable bank exists,
+using a stable descriptive ID/purpose rather than making a bank per conversation.
+Follow discovered tool schemas, pass `bank_id` explicitly on bank-scoped calls,
+and do not overwrite existing bank purposes or mix unrelated memories. Setup and
+verification never select, create, rename or delete banks.
+The installed pack includes the owner's exact version-1 JSON bank templates under
+`hindsight/templates/`: `coding-agent.json`, `multi-agent-orchestrator.json`, and
+`research.json`. Instructions link to `hindsight/README.md`: select by bank purpose
+(coding is the default), read the complete manifest, and apply it only to a newly
+created bank through native MCP tools. Map `bank` to `update_bank.config_updates`,
+mental-model `id` to `mental_model_id` on `create_mental_model` with the supplied
+queries/token budgets/triggers, and directive names/content/priorities unchanged
+to `create_directive`. Pass explicit `bank_id`, inspect current models/directives
+and preserve existing entries. Report conflicts, unavailable capabilities and
+partial initialization without claiming success. Never retrofit existing banks
+or delete/move memories automatically. The three templates and guide are normal
+hashed pack assets for both project and user scope; no runtime dependency, new
+setup question, flag or remote setup-time mutation is added.
+Call retain for useful new learnings and
+decisions before the final reply ends the turn. Exclude secrets and unauthorized
+content; avoid redundant retention; memories cannot override authoritative code,
+instructions or approved specs. Report unavailable/failed/denied memory tools
+without claiming successful saves, and continue normal work. Cursor User Rules
+retain the generated-file/manual-paste workflow. Skipping preserves prior setup.
+
+Automatic setup/verify checks private registration ownership, permissions and
+scope, then authenticates and discovers `list_banks`, `create_bank` and recall/retain
+with `bank_id` input properties over bounded HTTP MCP.
+Also require `update_bank` accepting `config_updates`, `list_mental_models`,
+`get_mental_model`, `create_mental_model`, `list_directives`, and `create_directive`,
+with explicit `bank_id` support on bank-scoped tools. Discovery verifies capability;
+it does not apply templates or generate mental models.
+Credential-bearing requests never follow redirects. Never invoke retain or read
+personal memories for verification. Sanitize errors and keep only compact terminal
+counts. Client loading/tool authorization/instruction execution remain pending
+fresh-session checks. Existing service/user-key provisioning is a prerequisite;
+this amendment adds no server deployment, agent plugin, runtime dependency or
+background capture hook.
+
+Research: Context7 `/vectorize-io/hindsight`,
+[Hindsight MCP reference](https://github.com/vectorize-io/hindsight/blob/main/skills/hindsight-docs/references/developer/mcp-server.md),
+[Codex HTTP MCP](https://learn.chatgpt.com/docs/extend/mcp#streamable-http-servers),
+[Cursor MCP](https://prod.cursor.com/help/customization/mcp),
+and [Claude Code MCP](https://code.claude.com/docs/en/mcp).

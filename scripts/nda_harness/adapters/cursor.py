@@ -17,10 +17,10 @@ class CursorAdapter(Adapter):
     def plan(self, plan, options, home, pack):
         instructions, config = self.entrypoints(options, home)
         if instructions:
-            content = '---\ndescription: NDA Harness workflow\nalwaysApply: true\n---\n\n' + policy_block(Path(".nda-harness"))
+            content = '---\ndescription: NDA Harness workflow\nalwaysApply: true\n---\n\n' + policy_block(Path(".nda-harness"), memory=self.family in options.get("memory_agents", []))
             plan.file(instructions, content.encode())
         else:
-            plan.file(pack / "cursor-user-rules.md", policy_block(pack).encode())
+            plan.file(pack / "cursor-user-rules.md", policy_block(pack, memory=self.family in options.get("memory_agents", [])).encode())
         return plan.mcp(config, "json")
 
     def manual_steps(self, pack):

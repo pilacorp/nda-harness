@@ -10,14 +10,16 @@ Harness TDD uses focused unit tests in the code repository. QA owns integration 
 
 The proposed local hook set includes a Git `pre-commit` hook that runs configured unit tests and blocks failing commits, alongside CI merge checks.
 
-The proposed pack also includes a local knowledge-setup script to connect supported agents to internal RAG and each developer's personal Hindsight account, then verify access. Credentials stay on the developer's device.
+The CLI optionally connects selected agents to each developer's personal Hindsight account in multi-bank mode and automatically verifies authenticated MCP tool discovery. Agents list existing banks and decide whether to reuse or create one. Credentials stay in private user configuration; memory instructions follow the selected project/user scope. Internal RAG setup remains proposed.
+
+[Bank templates](pack/hindsight/README.md) supply coding-agent, multi-agent-orchestrator and research defaults for new banks, including mental models and directives.
 
 ## Read first
 
 Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 supplies relevant public library/framework documentation; the Skills hub adds selectively loaded specialist instructions.
 
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
-- [Installation](INSTALLATION.md): developer prerequisites, project setup, Context7 connections, verification and recovery.
+- [Installation](INSTALLATION.md): developer prerequisites, project setup, Context7 and optional Hindsight connections, verification and recovery.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
 - [Skills hub](skills/catalog.md): select UI/UX Pro Max, official Vietnamese document wording, or Diagram Design for a scoped sub-agent; load selected instructions only.
 

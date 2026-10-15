@@ -257,6 +257,25 @@ Claude extension evidence on 2026-10-15:
 | AC-19–20 | Original trial retained; owner authorized this phase; setup/verify report honest automated/manual readiness; broader release claims remain pending |
 
 Deferred: Intel macOS, native lifecycle registration, fully observed real
-client compatibility, registry publishing, uninstall/upgrade commands, RAG/
-Hindsight, automatic authorization validators and CI merge gates. These limitations
+client compatibility, registry publishing, uninstall/upgrade commands, RAG,
+Hindsight server deployment/lifecycle hooks, automatic authorization validators and CI merge gates. These limitations
 do not disable executable setup or its explicit context fallback.
+
+Optional Hindsight setup now offers an explicit Enable/Skip menu, selected harness
+agents, a multi-bank MCP URL and hidden personal-key input. Connections are
+user-private even in project scope; instruction blocks follow the chosen scope.
+Setup takes the root `/mcp/` endpoint without a bank question. The agent lists
+existing banks and reuses a suitable bank or creates one when needed, passing
+`bank_id` explicitly to memory tools.
+The pack also ships coding-agent, multi-agent-orchestrator and research JSON
+templates with a native-MCP application guide. Instructions select the appropriate
+template for new banks; existing banks are preserved. Template files participate
+in release hashes, and verification discovers the needed bank/model/directive tools
+without applying templates remotely.
+Shared ownership supports reuse and confirmed rotation across repositories. Keys
+remain in owner-only client configuration and private backups, outside Git.
+Automatic verification checks authenticated initialization, bank-management tool
+discovery and `bank_id` on recall/retain, without listing/creating banks or reading
+or writing memories. Fresh-session client loading and
+instruction execution remain pending, including Cursor's User Rules paste step.
+See [installation](../../INSTALLATION.md#optional-hindsight-memory) for the flow.

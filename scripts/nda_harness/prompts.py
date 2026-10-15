@@ -5,6 +5,8 @@ import sys
 
 def _keyboard(screen, title, choices, multiple):
     import curses
+    if curses.has_colors():
+        curses.use_default_colors()
     curses.curs_set(0)
     screen.keypad(True)
     focused, selected, error = 0, set(), ""

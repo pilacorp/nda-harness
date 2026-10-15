@@ -17,7 +17,7 @@ class CodexAdapter(Adapter):
 
     def plan(self, plan, options, home, pack):
         instructions, config = self.entrypoints(options, home)
-        plan.block(instructions, policy_block(Path(".nda-harness") if options["scope"] == "project" else pack))
+        plan.block(instructions, policy_block(Path(".nda-harness") if options["scope"] == "project" else pack, memory=self.family in options.get("memory_agents", [])))
         return plan.mcp(config, "toml")
 
     def manual_steps(self, pack):

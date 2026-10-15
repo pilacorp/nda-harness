@@ -107,6 +107,10 @@ nda-harness setup
 | Scope | Use Up/Down to highlight Project or User, then Enter to confirm; choose Project for this walkthrough |
 | Target Git worktree root | Confirm the detected path, or choose another folder and enter its absolute root, for example `/Users/yourname/Projects/tsa-simulator` |
 | Non-watch unit-test command | The command approved for that project, for example `npm run test:unit` if that script exists |
+| Set up Hindsight memory? | Choose Enable for personal memory, or Skip to preserve any existing setup |
+| Hindsight agents (when enabled) | Check one or more of the harness agents selected above |
+| Hindsight multi-bank MCP URL | Root endpoint supplied by your team, such as `https://memory.example/mcp/`; do not append a bank ID |
+| Personal Hindsight API key | Enter your personal user key; input is hidden |
 
 Agents start unchecked; you must choose at least one. If the terminal cannot
 display the keyboard menu, select from numbered choices instead: enter numbers
@@ -130,7 +134,9 @@ nda-harness setup --agents claude --scope project \
   --project /absolute/path/to/project --test-command 'npm run test:unit'
 ```
 
-With complete flags, no option-selection prompts are shown. Setup backs up changed
+With complete flags, the harness option menus are skipped; an interactive terminal
+still offers optional Hindsight setup. Non-interactive setup skips Hindsight and
+requires complete harness flags. Setup backs up changed
 configuration, preserves unrelated entries and stops on ownership conflicts.
 It does not grant client trust or create commits.
 
@@ -148,6 +154,13 @@ Codex uses `AGENTS.md`, `.agents/skills/` and `.codex/config.toml`. Cursor uses
 `.cursor/rules/nda-harness.mdc`, `.cursor/skills/` and `.cursor/mcp.json`.
 Dot-prefixed folders are hidden in Finder; press **Command+Shift+.** to show them.
 Private backups, receipts and hook wrappers live under `~/.nda-harness/state/`.
+
+Project setup appends `__pycache__/` and `*.py[cod]` to the repository's existing
+`.gitignore` when those exact entries are missing. Existing rules and line endings
+are preserved, changed files are backed up, and reruns do not duplicate entries.
+Setup does not create a missing `.gitignore`, change it in user scope, or add an
+ignore rule for the shared `.nda-harness/` pack. Commit the pack and the reviewed
+`.gitignore` update as part of project adoption.
 
 The Git gate runs the existing pre-commit hook first and the harness test command
 second. A failure blocks the commit and preserves staging. If you use multiple
@@ -175,6 +188,79 @@ the same specialist skills in both user and project scope; setup rejects detecte
 user/project shadowing and asks for reconciliation.
 
 ## 4. Finish the client connections
+
+### Optional Hindsight memory
+
+Enable Hindsight only when your team has provided a working authenticated service,
+your full multi-bank MCP URL, and a **personal user API key**. The organization's
+admin key is not a memory-access key. Setup does not deploy Hindsight or provision
+accounts. HTTPS is required except for a loopback development server.
+Use the multi-bank root endpoint ending in `/mcp/` (also accepts `/mcp`), not
+`/mcp/<bank>/`. Setup does not ask for or create a bank.
+
+Setup registers **`nda-harness-hindsight`** in private user settings, even when
+the harness scope is Project:
+
+| Agent | Credential-bearing configuration |
+| --- | --- |
+| Codex CLI/desktop | `$CODEX_HOME/config.toml`, default `~/.codex/config.toml` |
+| Cursor CLI/IDE | `~/.cursor/mcp.json` |
+| Claude Code CLI/Desktop local Code tab | `~/.claude.json` |
+
+These files contain your key in plaintext with owner-only permissions (`0600`).
+They and private recovery backups must remain outside Git. Setup rejects a client
+home inside a Git checkout and conflicting project/local server definitions.
+The connection is available across your projects; replacing a managed URL/key
+requires confirmation and affects all projects using that connection. Unmanaged
+conflicts require reconciliation. Never paste your key into an issue or commit it.
+
+Memory instructions follow the selected Project/User scope. They request relevant
+recall before each response and useful retention **before the final reply**, since
+the final reply ends the agent's turn. Before using memory or switching project/context,
+the local agent lists existing banks, reviews their IDs/names/purposes and chooses
+the appropriate one. It reuses a matching bank or creates a stable, descriptive bank
+only when no appropriate bank exists, then passes `bank_id` explicitly on memory
+calls. Bank selection is the agent's responsibility, not a setup question.
+When creating a bank, the agent reads the installed `hindsight/README.md` and
+chooses one of three bundled version-1 templates:
+
+| Template | Purpose |
+| --- | --- |
+| `hindsight/templates/coding-agent.json` | Technical decisions, architecture, conventions, developer preferences and review patterns; default for coding |
+| `hindsight/templates/multi-agent-orchestrator.json` | Decisions and rationale, ownership, agent coordination, hand-offs and escalation playbooks |
+| `hindsight/templates/research.json` | Interests, durable knowledge, source reliability and traceable findings |
+
+These files preserve the supplied bank settings, three mental models per template
+and the orchestrator/research directives. The agent applies them through native
+MCP tools to a newly created bank. Existing banks are reused without overwriting
+their settings or models. Missing tools, conflicts or partially applied templates
+are reported honestly; setup does not create banks or apply templates remotely.
+
+MCP registration alone does not capture
+conversations in the background. Memory does not replace approved specifications
+or repository task records, and memory outages do not block normal work.
+
+Restart the client and approve its memory tools through its usual MCP controls.
+For **Cursor User scope**, paste the generated `cursor-user-rules.md` from the
+installed pack into **Settings > Rules > User Rules**, preserving other rules.
+This manual step is required for Cursor to load the instructions.
+
+Automatic verification authenticates and discovers `list_banks`, `create_bank`
+and `recall`/`retain` accepting `bank_id`, plus bank configuration, mental-model
+and directive tools needed to apply templates (`update_bank` must accept
+`config_updates`). Template files are covered by the installed asset hashes.
+Verification does not list/create banks or read
+or writing memories. Later `verify` uses the saved configuration without
+asking for the key. Client loading and instruction execution remain pending until
+confirmed in a fresh session. Skipping Hindsight on a later setup preserves it;
+there are no Hindsight command-line flags.
+
+For an earlier bank-specific installation, rerun interactive setup, enable Hindsight,
+enter the root `/mcp/` URL and confirm replacing the managed connection. Existing
+banks and their memories stay on the service; the agent can discover and reuse them.
+
+Configuration follows [Hindsight's MCP documentation](https://github.com/vectorize-io/hindsight/blob/main/skills/hindsight-docs/references/developer/mcp-server.md),
+researched using Context7, and each client's native HTTP MCP format.
 
 ### Context7
 

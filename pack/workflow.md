@@ -16,5 +16,22 @@
 
 Project-only pre-commit runs the existing pre-commit check before the configured
 non-watch unit-test command. It blocks commits on failure and does not check
-remote approvals. User setup does not activate Git hooks. Proposed RAG/Hindsight,
-automated approval/CI gates, Claude and Intel support remain outside this phase.
+remote approvals. User setup does not activate Git hooks. RAG, automated approval/CI
+gates and Intel support remain outside this phase.
+
+When optional Hindsight setup is enabled, the selected agent's scoped instructions
+request relevant recall before each response and useful retention before the final
+reply. The local agent uses multi-bank MCP: list existing banks before first use or
+after a project/context switch, reuse an appropriate bank based on its purpose,
+and create a stable descriptive bank only if no suitable bank exists. Pass the
+selected `bank_id` explicitly to memory tools; setup never asks for a bank.
+Before creating a bank, read `hindsight/README.md` relative to this workflow and
+choose its coding-agent (default for coding), multi-agent-orchestrator, or research
+template. Apply the full template to the new bank through MCP; reuse existing banks
+without replacing their settings. Report missing capabilities and incomplete
+initialization rather than claiming a template was fully applied.
+Never retain secrets or content unauthorized for the memory service. Treat
+memories as context, not authority over current instructions, approved specs or code.
+Keep shared task records and handoffs in the repository. Report memory tool failures
+honestly and continue normal work; memory availability is not a development/merge gate.
+MCP configuration exposes tools; it does not add background conversation capture.

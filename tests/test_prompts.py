@@ -27,7 +27,7 @@ class PromptTests(unittest.TestCase):
         screen = Mock()
         screen.getmaxyx.return_value = (24, 100)
         screen.getch.side_effect = keys
-        with patch("curses.curs_set"):
+        with patch("curses.curs_set"), patch("curses.has_colors", return_value=False):
             result = _keyboard(screen, "Agents" if multiple else "Scope", AGENTS if multiple else SCOPES, multiple)
         return result, screen
 
@@ -39,6 +39,18 @@ class PromptTests(unittest.TestCase):
         values, screen = self.keyboard([10, 32, 10])
         self.assertEqual(values, ["codex"])
         self.assertTrue(any("Select at least one" in str(call) for call in screen.addnstr.call_args_list))
+
+    def test_keyboard_uses_terminal_default_colors_before_drawing(self):
+        screen = Mock()
+        screen.getmaxyx.return_value = (24, 100)
+        screen.getch.return_value = 10
+        events = Mock()
+        events.attach_mock(screen.erase, "erase")
+        with patch("curses.curs_set"), patch("curses.has_colors", return_value=True), patch("curses.use_default_colors") as defaults:
+            events.attach_mock(defaults, "defaults")
+            self.assertEqual(_keyboard(screen, "Scope", SCOPES, False), ["project"])
+        defaults.assert_called_once_with()
+        self.assertLess(events.mock_calls.index(unittest.mock.call.defaults()), events.mock_calls.index(unittest.mock.call.erase()))
 
     def test_both_scopes_and_resize(self):
         for keys, expected in (([10], "project"), ([curses.KEY_RESIZE, curses.KEY_DOWN, 13], "user")):
@@ -65,7 +77,7 @@ class PromptTests(unittest.TestCase):
         screen.getmaxyx.return_value = (24, 40)
         def wrapper(callback, *args):
             return callback(screen, *args)
-        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True), patch.dict(os.environ, {"TERM": "xterm"}), patch("curses.wrapper", side_effect=wrapper), patch("curses.curs_set"), patch("builtins.input", return_value="1"), patch("sys.stderr", new_callable=io.StringIO) as output:
+        with patch("sys.stdin.isatty", return_value=True), patch("sys.stdout.isatty", return_value=True), patch.dict(os.environ, {"TERM": "xterm"}), patch("curses.wrapper", side_effect=wrapper), patch("curses.curs_set"), patch("curses.has_colors", return_value=False), patch("builtins.input", return_value="1"), patch("sys.stderr", new_callable=io.StringIO) as output:
             self.assertEqual(select_options("Repository", [(path, "Use " + path), ("", "Choose another folder")]), [path])
         self.assertIn("1. Use " + path, output.getvalue())
         screen.getch.assert_not_called()
@@ -152,4 +164,6 @@ finally:
                     self.assertIn(b"RESTORED=True", output)
                     self.assertIn(b"CANCELLED", output)
                 self.assertEqual(process.wait(timeout=5), 0)
+                self.assertNotIn(b"\x1b[40m", output, "Menu must not force a black background")
+                self.assertNotIn(b"\x1b[37m", output, "Menu must not force a white foreground")
                 self.assertFalse((Path(temporary) / ".nda-harness").exists())
