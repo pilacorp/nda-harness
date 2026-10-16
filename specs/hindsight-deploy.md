@@ -47,6 +47,14 @@ Built on the fork `pilacorp/hindsight`, branch `nda/10-supabase-tenant`; `hindsi
 ### Local agents — MCP OAuth (HTTP extension)
 
 11. **nda-oauth HTTP extension** (`hindsight-extensions/nda-oauth/`, in the API image): Hindsight itself speaks **OAuth 2.1 + Dynamic Client Registration (RFC 7591) + PKCE S256**, so an agent connects once in a browser and the session **refreshes itself** — no 1h static token pasted into a config. It serves `/.well-known/oauth-*` (root) and `/ext/oauth/{register,authorize,token}`; `/authorize` logs the user into Supabase (password grant, aiohttp) and `/token` hands the agent the **Supabase JWT directly** (pass-through, with the Supabase refresh token). The agent then calls the API's MCP endpoint **directly** and the unchanged `supabase-tenant` extension verifies it — no proxy, no gateway, no server-side session store. PKCE via `hashlib`; no hand-rolled crypto.
+
+    **OAuth security requirements** (basic safeguards made explicit):
+    - **PKCE S256 required** — reject any request without it or with a non-S256 method. *(done)*
+    - **Exact registered redirect-URI match** — the `redirect_uri` at `/authorize` and `/token` must be byte-equal to one registered via DCR; no prefix/substring match. *(done)*
+    - **One-time, short-lived authorization codes** — a code is single-use (consumed on exchange) and expires in ~2 minutes. *(done)*
+    - **Refresh-token rotation** — each refresh returns a new refresh token and invalidates the old (Supabase/GoTrue rotates; the extension passes the rotated token through). *(done)*
+    - **HTTPS outside localhost** — all OAuth endpoints and redirect URIs must be HTTPS except on loopback; enforced by the TLS reverse proxy in front, not by the app. *(deploy-enforced)*
+    - **No credentials or tokens in logs** — email/password, Supabase keys, access/refresh tokens, and authorization codes are never logged. *(done — nothing logs them)*
 12. **Cutover from #3.** The custom `nda-multiuser` extension, the `nda_auth` key store, the API-key dashboard login, and the admin UI are removed. Old `u_<handle>` schemas and `nda_auth` keys are **not** reused as Supabase tenants and are never attached to a Supabase user; a fresh local run clears them. Rollback restores the previous image, `HINDSIGHT_API_TENANT_EXTENSION`, and database URL.
 
 ## Acceptance criteria
