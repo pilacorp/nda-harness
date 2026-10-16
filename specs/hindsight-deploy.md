@@ -77,7 +77,7 @@ IDs are stable for review. "AC n" is the n-th acceptance criterion in issue #10.
 
 ## Interfaces
 
-**Memory API / MCP (Hindsight, unchanged core):** clients authenticate with a Supabase JWT. `GET/POST /v1/default/banks/...` and MCP `/mcp/<bank>/` with `Authorization: Bearer <supabase_jwt>`. The tenant extension maps the token to `user_<uuid>`.
+**Memory API / MCP (Hindsight, unchanged core):** clients authenticate with a Supabase JWT. `GET/POST /v1/default/banks/...` and the **multi-bank** MCP endpoint `/mcp/` (bank chosen per call via the tools' `bank_id` argument — not a single-bank `/mcp/<bank>/` URL) with `Authorization: Bearer <supabase_jwt>`. The tenant extension maps the token to `user_<uuid>`, so `list_banks` and every bank-scoped tool see only that user's banks.
 
 **Supabase Auth** (`<supabase>/auth/v1/*`, via the stack's gateway): `POST /token?grant_type=password` (sign-in), `POST /token?grant_type=refresh_token`, `GET /user`, `POST /admin/users` (service key) for provisioning dev users. JWKS at `/auth/v1/.well-known/jwks.json` when the project uses asymmetric keys.
 
@@ -90,7 +90,7 @@ IDs are stable for review. "AC n" is the n-th acceptance criterion in issue #10.
 | `POST /register` | Dynamic Client Registration (RFC 7591) |
 | `GET /authorize` | Auth-code + PKCE S256; login form → Supabase password grant |
 | `POST /token` | code→tokens (PKCE verified) and `refresh_token` → Supabase refresh |
-| MCP `/mcp/<bank>/` (API core) | The agent calls this directly with the Supabase JWT from `/token`; supabase-tenant verifies |
+| MCP `/mcp/` (API core, multi-bank) | The agent calls this directly with the Supabase JWT from `/token`; supabase-tenant verifies, then `bank_id` on each tool selects the bank within the user's schema |
 
 **Deployment env (`.env`, read inside containers):** `HINDSIGHT_API_LLM_API_KEY`, `HINDSIGHT_API_DATABASE_URL` (→ Supabase Postgres), `HINDSIGHT_API_TENANT_SUPABASE_URL`, `HINDSIGHT_API_TENANT_SUPABASE_SERVICE_KEY` (HS256 only), `HINDSIGHT_API_TENANT_SCHEMA_PREFIX` (optional), `HINDSIGHT_API_HTTP_EXTENSION` (=`nda_oauth.extension:NdaOAuthExtension`), `HINDSIGHT_API_HTTP_SUPABASE_URL`, `HINDSIGHT_API_HTTP_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, plus the model settings below. Removed vs #3: `HINDSIGHT_API_TENANT_KEY_PEPPER` and all `nda_auth`/dataplane-key settings.
 
