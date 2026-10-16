@@ -3,6 +3,7 @@ import json
 from contextlib import redirect_stdout
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -248,6 +249,61 @@ class CliTests(unittest.TestCase):
         instructions.write_text(instructions.read_text().replace("Read the full", "EDIT Read the full"))
         with self.assertRaises(Conflict):
             self.setup()
+
+    def _remove_project_installation(self, applied):
+        receipt = json.loads(Path(applied["receipt"]).read_text())
+        for key in receipt["owned"]:
+            path = Path(key.rsplit("::", 1)[0])
+            try:
+                path.relative_to(self.project)
+            except ValueError:
+                continue
+            if path.is_file() and not path.is_symlink():
+                path.unlink()
+        shutil.rmtree(self.project / ".nda-harness")
+
+    def test_missing_project_installation_discards_receipt_and_reinstalls(self):
+        applied = self.setup()
+        receipt_path = Path(applied["receipt"])
+        state = receipt_path.parent
+        self._remove_project_installation(applied)
+        unset = subprocess.run(["git", "-C", str(self.project), "config", "--local", "--unset", "core.hooksPath"], capture_output=True)
+        self.assertEqual(unset.returncode, 0)
+        self.setup()
+        self.assertTrue((self.project / ".nda-harness/release.json").is_file())
+        self.assertTrue((self.project / "AGENTS.md").is_file())
+        hooks = subprocess.run(["git", "-C", str(self.project), "config", "--get", "core.hooksPath"], capture_output=True, text=True)
+        self.assertEqual(hooks.stdout.strip(), str(state / "hooks"))
+        self.assertEqual(json.loads(receipt_path.read_text())["schema_version"], 1)
+
+    def test_missing_project_installation_keeps_active_hook_wrapper_then_reinstalls(self):
+        applied = self.setup()
+        self._remove_project_installation(applied)
+        self.setup()
+        self.assertTrue((self.project / ".nda-harness/release.json").is_file())
+        hooks = subprocess.run(["git", "-C", str(self.project), "config", "--get", "core.hooksPath"], capture_output=True, text=True)
+        self.assertEqual(hooks.stdout.strip(), str(Path(applied["receipt"]).parent / "hooks"))
+
+    def test_partial_project_files_keep_stale_receipt(self):
+        self.setup()
+        instructions = (self.project / "AGENTS.md").read_text()
+        shutil.rmtree(self.project / ".nda-harness")
+        subprocess.run(["git", "-C", str(self.project), "config", "--local", "--unset", "core.hooksPath"], check=True)
+        with self.assertRaisesRegex(Conflict, "Git hook manager"):
+            self.setup()
+        self.assertFalse((self.project / ".nda-harness").exists())
+        self.assertEqual((self.project / "AGENTS.md").read_text(), instructions)
+
+    def test_foreign_hook_manager_is_not_replaced_when_project_files_are_gone(self):
+        applied = self.setup()
+        self._remove_project_installation(applied)
+        foreign = self.base / "other-hooks"
+        foreign.mkdir()
+        subprocess.run(["git", "-C", str(self.project), "config", "--local", "core.hooksPath", str(foreign)], check=True)
+        with self.assertRaisesRegex(Conflict, "Git hook manager"):
+            self.setup()
+        self.assertEqual(subprocess.run(["git", "-C", str(self.project), "config", "--get", "core.hooksPath"], capture_output=True, text=True).stdout.strip(), str(foreign))
+        self.assertTrue(Path(applied["receipt"]).is_file())
 
     def test_partial_flags_preserve_supplied_values(self):
         with patch("sys.stdin.isatty", return_value=True), patch("nda_harness.cli.select_options", side_effect=[["project"], ["enter"]]) as menu, patch("builtins.input", return_value="python3 -m unittest") as prompt:

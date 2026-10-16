@@ -356,7 +356,7 @@ green result. Failure takes precedence over pending status.
 
 | Symptom | Next step |
 | --- | --- |
-| No project folders were created | Read the setup error first. Prerequisite and conflict checks run before project writes. Also confirm you selected project scope and the correct root. |
+| No project folders were created | Read the setup error first. Prerequisite and conflict checks run before project writes. Also confirm you selected project scope and the correct root. If the project installation is already gone, setup removes the stale private receipt and installs again. A different Git hook manager, or any remaining owned project file, still has to be reconciled. |
 | `Existing RTK executable is incompatible or unrecognized` | Ask the harness maintainer to review the binary identity. The version number alone is insufficient; do not overwrite or downgrade the shared binary to bypass setup. |
 | `nda-harness: command not found` | Use `~/.local/bin/nda-harness`, or add its bin directory to PATH. |
 | Python is missing/too old | Install the organization-approved Python 3.11+ and ensure `python3` resolves correctly in the terminal, GUI client and Git environment. |
