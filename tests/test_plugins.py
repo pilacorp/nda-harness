@@ -74,6 +74,28 @@ class PluginTests(unittest.TestCase):
         self.assertNotIn('nda-harness-cursor:', intro)
         self.assertNotIn('nda-harness-codex:', intro)
         self.assertTrue((cursor / 'vendor/superpowers/hooks/session-start').is_file())
+        memory = self.base / 'codex-memory'
+        build(ROOT, memory, 'codex', 'https://memory.example.test/mcp/')
+        payload = {'cwd': str(self.project)}
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')), patch.dict(os.environ, self.env), patch('pathlib.Path.home', return_value=self.home):
+            started, start_code = hook(memory, 'codex', 'SessionStart', self.home, payload)
+            prompted, prompt_code = hook(memory, 'codex', 'UserPromptSubmit', self.home, payload)
+            cursor_started, cursor_code = hook(cursor, 'cursor', 'sessionStart', self.home, payload)
+        self.assertEqual((start_code, prompt_code, cursor_code), (0, 0, 0))
+        texts = (
+            started['hookSpecificOutput']['additionalContext'],
+            prompted['hookSpecificOutput']['additionalContext'],
+            cursor_started['additional_context'],
+        )
+        for text in texts:
+            self.assertIn('create_bank', text)
+            self.assertIn('rtk --version', text)
+            self.assertIn('resolve-library-id', text)
+            self.assertIn('query-docs', text)
+        packaged = (memory / 'scripts/nda_harness/plugin_runtime.py').read_text()
+        self.assertIn('create_bank', packaged)
+        self.assertIn('resolve-library-id', packaged)
+        self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
 
     def test_endpoint_rejects_secrets_and_nonproduction_http(self):
         for url in ('http://example.test/mcp/', 'https://user:secret@example.test/mcp/',
@@ -219,6 +241,9 @@ class PluginTests(unittest.TestCase):
         self.assertNotIn('SECRET', text)
         self.assertIn('hookSpecificOutput', result)
         self.assertIn('additionalContext', result['hookSpecificOutput'])
+        self.assertIn('rtk --version', text)
+        self.assertIn('resolve-library-id', text)
+        self.assertIn('query-docs', text)
         self.assertFalse((self.project / 'SECRET-project-value').exists())
 
     def test_native_cursor_output_and_precompact_reminder(self):

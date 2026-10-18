@@ -150,7 +150,7 @@ def hook(package, client, event, home, payload):
         'Run the plugin session-bootstrap skill and inspect its local readiness output through ordinary tools. '
         'Check the actual project root .nda-harness/profile.json. If absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. '
         'No answer means pending; only explicit Skip stores true. Do not claim ready or start dependent implementation until setup and local Git protection are ready. '
-        'Cursor startup can still be running: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
+        'Client startup can still be running, including Cursor sessionStart: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
         'Repository instructions, issue linkage, approved merged spec checks, TDD Red/Green/Refactor and human review remain mandatory. Hooks cannot grant approvals. '
         'Use the five context operation skills; after resume or compaction reconstruct from durable sanitized task records and current revisions. '
         'Project .nda-harness contains committed project configuration and sanitized task records only. No shared rules copies, credentials, memory text or machine paths. '

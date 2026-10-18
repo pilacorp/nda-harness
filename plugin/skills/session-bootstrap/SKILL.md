@@ -1,6 +1,6 @@
 ---
 name: session-bootstrap
-description: Identify the actual checkout and inspect local readiness before task work.
+description: Use at the start of every session before task work. Prefix shell commands with rtk, call Context7 resolve-library-id and query-docs, and when Hindsight tools are listed call list_banks, create_bank, recall, and retain.
 ---
 
 Read the full packaged `pack/policy.md`, `pack/workflow.md`, and
