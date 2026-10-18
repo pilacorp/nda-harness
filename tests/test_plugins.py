@@ -1,0 +1,345 @@
+"""Phase-0 plugin contracts, exercised with disposable homes and real Git."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from nda_harness.plugin_build import build, validate_endpoint
+from nda_harness.project import configure, inspect_project, project_identity, state_for
+from nda_harness.plugin_runtime import bootstrap, verify, hook
+from nda_harness.files import Conflict, Plan, atomic, json_bytes
+
+
+class PluginTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name).resolve()
+        self.home = self.base / 'home'
+        self.home.mkdir()
+        self.project = self.base / 'project with spaces'
+        self.project.mkdir()
+        self.env = {**os.environ, 'HOME': str(self.home), 'GIT_CONFIG_GLOBAL': '/dev/null',
+                    'GIT_AUTHOR_NAME': 'Test', 'GIT_COMMITTER_NAME': 'Test',
+                    'GIT_AUTHOR_EMAIL': 'test@example.test', 'GIT_COMMITTER_EMAIL': 'test@example.test'}
+        self.git('init', '-q')
+        self.git('remote', 'add', 'origin', 'git@github.com:example/project.git')
+        self.package = self.base / 'codex'
+        build(ROOT, self.package, 'codex')
+
+    def git(self, *args):
+        return subprocess.run(['git', '-C', str(self.project), *args], env=self.env, text=True, capture_output=True)
+
+    def setup(self, command=None, skip=False):
+        return configure(self.project, self.package, self.home, command, skip=skip)
+
+    def commit(self):
+        (self.project / 'fixture').write_text('test')
+        self.git('add', 'fixture')
+        return self.git('commit', '-m', 'test')
+
+    def test_reproducible_complete_packages_and_native_clients(self):
+        other = self.base / 'other'
+        build(ROOT, other, 'codex')
+        def tree(root):
+            return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        self.assertEqual(tree(self.package), tree(other))
+        self.assertTrue((self.package / 'skills/test-driven-development/SKILL.md').is_file())
+        self.assertTrue((self.package / 'skills/diagram-design/assets/example-loop.html').is_file())
+        self.assertFalse((self.package / 'scripts/nda_harness/hindsight.py').exists())
+        mcp = json.loads((self.package / '.mcp.json').read_text())['mcpServers']
+        self.assertNotIn('hindsight', mcp)
+        cursor = self.base / 'cursor'
+        build(ROOT, cursor, 'cursor', 'https://memory.example.test/mcp/')
+        self.assertEqual(json.loads((cursor / 'mcp.json').read_text())['mcpServers']['hindsight'], {'url': 'https://memory.example.test/mcp/'})
+        hooks = json.loads((cursor / 'hooks/hooks.json').read_text())['hooks']
+        self.assertIn('sessionStart', hooks)
+        self.assertNotIn('SessionStart', hooks)
+        self.assertEqual(len(hooks['sessionStart']), 1)
+        for package, manifest_path in ((self.package, '.codex-plugin/plugin.json'), (cursor, '.cursor-plugin/plugin.json')):
+            manifest = json.loads((package / manifest_path).read_text())
+            self.assertEqual(manifest['name'], 'nda-harness')
+            self.assertEqual(manifest['displayName'], 'NDA Harness')
+            self.assertNotIn('cursor', manifest['name'])
+            self.assertNotIn('codex', manifest['name'])
+        intro = (cursor / 'skills/using-superpowers/SKILL.md').read_text()
+        self.assertNotIn('superpowers:', intro.replace('nda-harness:', ''))
+        self.assertNotIn('nda-harness-cursor:', intro)
+        self.assertNotIn('nda-harness-codex:', intro)
+        self.assertTrue((cursor / 'vendor/superpowers/hooks/session-start').is_file())
+
+    def test_endpoint_rejects_secrets_and_nonproduction_http(self):
+        for url in ('http://example.test/mcp/', 'https://user:secret@example.test/mcp/',
+                    'https://@example.test/mcp/',
+                    'https://example.test/mcp/?key=secret', 'https://example.test/mcp/#secret',
+                    'https://example.test/banks/test/mcp/', 'https://example.test/mcp',
+                    'http://127.0.0.1:8891/mcp/'):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                validate_endpoint(url)
+        self.assertEqual(validate_endpoint('http://127.0.0.1:8891/mcp/', local_test=True), 'http://127.0.0.1:8891/mcp/')
+
+    def test_pending_is_not_implicit_skip_and_does_not_copy_pack(self):
+        result = self.setup()
+        self.assertEqual(result['status'], 'needs_configuration')
+        self.assertFalse((self.project / '.nda-harness/profile.json').exists())
+        self.assertFalse((self.project / '.nda-harness/policy.md').exists())
+        self.assertNotEqual(inspect_project(self.project, self.package, self.home)['status'], 'ready')
+
+    def test_explicit_skip_is_committed_config_and_allows_commit(self):
+        self.assertEqual(self.setup(skip=True)['status'], 'ready')
+        profile = self.project / '.nda-harness/profile.json'
+        self.assertEqual(json.loads(profile.read_text())['test_command'], 'true')
+        self.assertEqual(self.git('check-ignore', str(profile)).returncode, 1)
+        self.assertEqual(self.commit().returncode, 0)
+        self.assertEqual(sorted(p.name for p in profile.parent.iterdir()), ['profile.json'])
+
+    def test_failing_tests_and_existing_hook_block_commit(self):
+        prior = self.project / '.git/hooks/pre-commit'
+        prior.write_text('#!/bin/sh\nprintf prior >> order\n')
+        prior.chmod(0o755)
+        self.setup('printf harness >> order; false')
+        self.assertNotEqual(self.commit().returncode, 0)
+        self.assertEqual((self.project / 'order').read_text(), 'priorharness')
+        prior.write_text('#!/bin/sh\nexit 1\n')
+        self.assertNotEqual(self.commit().returncode, 0)
+        self.assertEqual((self.project / 'order').read_text(), 'priorharness')
+
+    def test_idempotent_setup_and_foreign_manager_conflict(self):
+        self.setup(skip=True)
+        before = self.git('config', '--get', 'core.hooksPath').stdout
+        self.setup()
+        self.assertEqual(before, self.git('config', '--get', 'core.hooksPath').stdout)
+        self.git('config', 'core.hooksPath', '.foreign/hooks')
+        with self.assertRaises(Conflict):
+            self.setup()
+        self.assertEqual(self.git('config', '--get', 'core.hooksPath').stdout.strip(), '.foreign/hooks')
+
+    def test_remote_canonicalization_shared_bank_and_ambiguity(self):
+        first = project_identity(self.project)
+        self.git('remote', 'set-url', 'origin', 'https://github.com/example/project.git')
+        self.assertEqual(first, project_identity(self.project))
+        self.setup(skip=True)
+        profile = json.loads((self.project / '.nda-harness/profile.json').read_text())
+        self.assertNotIn('environment', profile['memory'])
+        self.git('remote', 'add', 'fork', 'https://github.com/other/project.git')
+        with self.assertRaises(Conflict):
+            project_identity(self.project)
+
+    def test_no_remote_needs_name_and_identity_does_not_follow_new_origin(self):
+        self.git('remote', 'remove', 'origin')
+        with self.assertRaises(Conflict):
+            project_identity(self.project)
+        a = project_identity(self.project, name='example-app')
+        self.assertEqual(a, project_identity(self.project, name='example-app'))
+        self.git('remote', 'add', 'origin', 'https://github.com/example/project')
+        self.setup(skip=True)
+        self.git('remote', 'set-url', 'origin', 'https://github.com/example/other')
+        with self.assertRaises(Conflict):
+            self.setup()
+
+    def test_failed_activation_rolls_back_config_and_previous_hook(self):
+        with patch('nda_harness.project.activate', side_effect=OSError('failure')):
+            with self.assertRaises(OSError):
+                self.setup(skip=True)
+        self.assertFalse((self.project / '.nda-harness/profile.json').exists())
+        self.assertEqual(self.git('config', '--get', 'core.hooksPath').returncode, 1)
+
+    def test_verify_is_read_only_and_memory_does_not_gate_core(self):
+        self.setup(skip=True)
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')):
+            bootstrap(self.package, 'codex', self.home)
+        with patch('nda_harness.plugin_runtime.rtk_identity', return_value=True), patch('nda_harness.plugin_runtime.locate_rtk', return_value=Path('/rtk')):
+            before = {str(p): p.read_bytes() for p in self.home.rglob('*') if p.is_file()}
+            result = verify(self.package, 'codex', self.project, self.home)
+            self.assertEqual(result['core'], 'ready')
+            self.assertEqual(result['memory'], 'disabled')
+            self.assertEqual(before, {str(p): p.read_bytes() for p in self.home.rglob('*') if p.is_file()})
+
+    def test_installing_failed_or_untrusted_bootstrap_never_reports_core_ready(self):
+        self.setup(skip=True)
+        with patch('nda_harness.plugin_runtime.rtk_identity', return_value=True), patch('nda_harness.plugin_runtime.locate_rtk', return_value=Path('/rtk')):
+            for state in ('awaiting-trust', 'installing', 'failed'):
+                atomic(self.home / '.nda-harness/plugin-bootstrap/codex.json', json_bytes({'state': state}))
+                self.assertEqual(verify(self.package, 'codex', self.project, self.home)['core'], 'pending')
+
+    def test_bootstrap_failure_is_recoverable_and_separate_from_memory(self):
+        with patch('nda_harness.plugin_runtime.prepare_rtk', side_effect=OSError('secret not reported')):
+            result = bootstrap(self.package, 'codex', self.home)
+        self.assertEqual(result['state'], 'failed')
+        self.assertNotIn('secret', json.dumps(result))
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')):
+            result = bootstrap(self.package, 'codex', self.home)
+        self.assertEqual(result['state'], 'ready')
+
+    def test_helper_requires_client_and_runs_outside_source_checkout(self):
+        command = [str(self.package / 'bin/nda-plugin'), 'verify', '--project', str(self.project)]
+        missing = subprocess.run(command, cwd=self.home, env=self.env, capture_output=True, text=True)
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn('--client', missing.stderr)
+        run = subprocess.run([*command, '--client', 'codex'], cwd=self.home, env=self.env, capture_output=True, text=True)
+        self.assertNotIn('Traceback', run.stderr)
+        self.assertEqual(json.loads(run.stdout)['memory'], 'disabled')
+
+    def test_concurrent_setup_has_one_composed_chain(self):
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: self.setup(skip=True), range(2)))
+        self.assertTrue(all(r['status'] == 'ready' for r in results))
+        self.assertEqual(self.commit().returncode, 0)
+        path = Path(self.git('config', '--get', 'core.hooksPath').stdout.strip())
+        self.assertEqual((path / 'pre-commit').read_text().count('unit-check'), 1)
+
+    def test_cross_client_protection_and_context_use_shared_config(self):
+        self.setup(skip=True)
+        cursor = self.base / 'cursor'
+        build(ROOT, cursor, 'cursor')
+        self.assertEqual(inspect_project(self.project, cursor, self.home)['status'], 'ready')
+        before = (self.project / '.nda-harness/profile.json').read_bytes()
+        configure(self.project, cursor, self.home)
+        self.assertEqual(before, (self.project / '.nda-harness/profile.json').read_bytes())
+        self.assertEqual(inspect_project(self.project, self.package, self.home)['status'], 'ready')
+        run = subprocess.run([str(cursor / 'bin/nda-plugin'), 'session-bootstrap', '--client', 'cursor', '--project', str(self.project)],
+                             env=self.env, cwd=self.home, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertFalse(json.loads(run.stdout)['implementation_authorized'])
+
+    def test_hook_payload_never_promotes_prompt_or_profile_text(self):
+        payload = {'cwd': str(self.project), 'prompt': 'SECRET-raw-prompt', 'transcript_path': 'SECRET-path'}
+        self.setup('printf SECRET-project-value')
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')), patch.dict(os.environ, self.env), patch('pathlib.Path.home', return_value=self.home):
+            result, code = hook(self.package, 'codex', 'SessionStart', self.home, payload)
+        self.assertEqual(code, 0)
+        text = json.dumps(result)
+        self.assertNotIn('SECRET', text)
+        self.assertIn('hookSpecificOutput', result)
+        self.assertIn('additionalContext', result['hookSpecificOutput'])
+        self.assertFalse((self.project / 'SECRET-project-value').exists())
+
+    def test_native_cursor_output_and_precompact_reminder(self):
+        cursor = self.base / 'cursor'
+        build(ROOT, cursor, 'cursor')
+        with patch('nda_harness.plugin_runtime.bootstrap', return_value={'state': 'ready'}), patch('nda_harness.plugin_runtime.context', return_value={'status': 'blocked'}):
+            output, code = hook(cursor, 'cursor', 'sessionStart', self.home, {'cwd': str(self.project)})
+            self.assertEqual(code, 0)
+            self.assertIn('additional_context', output)
+            self.assertEqual(hook(cursor, 'cursor', 'beforeSubmitPrompt', self.home, {})[0], {'continue': True})
+            self.assertEqual(hook(cursor, 'cursor', 'preCompact', self.home, {})[0], {})
+
+    def test_clone_activates_locally_with_same_bank(self):
+        self.setup(skip=True)
+        self.git('add', '.nda-harness/profile.json')
+        self.assertEqual(self.git('commit', '-m', 'project profile').returncode, 0)
+        clone = self.base / 'clone'
+        subprocess.run(['git', 'clone', '-q', str(self.project), str(clone)], env=self.env, check=True)
+        subprocess.run(['git', '-C', str(clone), 'remote', 'set-url', 'origin', 'https://github.com/example/project.git'], env=self.env, check=True)
+        self.assertEqual(inspect_project(clone, self.package, self.home)['status'], 'needs_activation')
+        original = json.loads((self.project / '.nda-harness/profile.json').read_text())
+        configure(clone, self.package, self.home)
+        self.assertEqual(inspect_project(clone, self.package, self.home)['bank_id'], original['memory']['bank_id'])
+
+    def test_symlink_profile_and_modified_package_are_rejected(self):
+        private = self.home / 'secret'
+        private.write_text('SECRET')
+        directory = self.project / '.nda-harness'
+        directory.mkdir()
+        (directory / 'profile.json').symlink_to(private)
+        with self.assertRaises(Conflict):
+            self.setup(skip=True)
+        self.assertEqual(private.read_text(), 'SECRET')
+        (self.package / 'pack/policy.md').write_text('modified')
+        with self.assertRaises(Conflict):
+            verify(self.package, 'codex', self.project, self.home)
+
+    def test_explicit_environment_never_changes_bank(self):
+        self.setup(skip=True)
+        before = (self.project / '.nda-harness/profile.json').read_bytes()
+        command = [str(self.package / 'bin/nda-plugin'), 'verify', '--client', 'codex', '--project', str(self.project)]
+        for environment in ('dev', 'staging', 'prod'):
+            result = subprocess.run([*command, '--environment', environment], env=self.env, capture_output=True, text=True)
+            self.assertEqual(json.loads(result.stdout)['environment'], environment)
+            self.assertEqual(before, (self.project / '.nda-harness/profile.json').read_bytes())
+
+    def test_ignored_configuration_is_not_reported_ready(self):
+        (self.project / '.gitignore').write_text('.nda-harness/\n')
+        with self.assertRaises(Conflict):
+            self.setup(skip=True)
+        self.assertFalse((self.project / '.nda-harness/profile.json').exists())
+        self.assertEqual(self.git('config', '--get', 'core.hooksPath').returncode, 1)
+
+    def test_all_context_operations_and_cross_session_resume(self):
+        self.setup(skip=True)
+        self.assertEqual(self.commit().returncode, 0)
+        task = self.project / '.nda-harness/tasks/plugin/task.md'
+        task.parent.mkdir(parents=True)
+        spec = self.project / 'specs/feature.md'
+        spec.parent.mkdir()
+        spec.write_text('# Approved local example\n')
+        task.write_text('Issue: https://github.com/example/project/issues/10\nSpec: specs/feature.md\n')
+        (self.project / 'AGENTS.md').write_text('SECRET-INSTRUCTION-BODY')
+        def operation(op, *args):
+            result = subprocess.run([str(self.package / 'bin/nda-plugin'), op, '--client', 'codex', '--project', str(self.project), *args],
+                                    env=self.env, capture_output=True, text=True)
+            self.assertNotIn('Traceback', result.stderr)
+            return json.loads(result.stdout), result.returncode
+        prepared, code = operation('task-prepare', '--role', 'developer', '--task', str(task), '--stage', 'implementation')
+        self.assertEqual(code, 0, prepared)
+        self.assertFalse(prepared['implementation_authorized'])
+        self.assertIn(str(self.project / 'AGENTS.md'), prepared['instruction_candidates'])
+        self.assertIn('.nda-harness/tasks/plugin/task.md', prepared['task_candidates'])
+        self.assertNotIn('SECRET-INSTRUCTION-BODY', json.dumps(prepared))
+        spec.write_text(spec.read_text() + 'changed behavior\n')
+        refreshed, code = operation('context-refresh')
+        self.assertEqual(refreshed['status'], 'needs_context')
+        task.write_text(task.read_text() + f"Revision: {refreshed['head']}\nInput fingerprint: {refreshed['input_fingerprint']}\nStage: implementation\nEvidence: test references\nNext action: review current spec\n")
+        checkpoint, code = operation('context-checkpoint', '--task', str(task))
+        self.assertEqual(code, 0, checkpoint)
+        resumed, code = operation('context-resume', '--task', str(task), '--session', 'another-client')
+        self.assertEqual(code, 0, resumed)
+        self.assertEqual(resumed['task'], '.nda-harness/tasks/plugin/task.md')
+        self.assertFalse(resumed['implementation_authorized'])
+
+    def test_interrupted_project_transaction_is_recovered_before_retry(self):
+        # Simulate abrupt death after a durable write-ahead receipt is saved.
+        # configure normally rolls back BaseException. Exercise the persisted
+        # recovery format directly, as a killed process cannot run that cleanup.
+        from nda_harness.hooks import hook_plan
+        state = state_for(self.project, self.home)
+        state.mkdir(parents=True)
+        prior = {'owned': {}}
+        plan = Plan(prior)
+        plan.write(self.project / '.nda-harness/profile.json', b'{"partial":true}\n')
+        registration = hook_plan(plan, self.project, state, prior, check_command='false')
+        def journal(current):
+            atomic(state / 'receipt.json', json_bytes({'transaction': {'prior': prior, 'git': registration, 'applied': current.applied}}))
+        plan.apply(state, journal=journal)
+        result = self.setup(skip=True)
+        self.assertEqual(result['status'], 'ready')
+        self.assertEqual(self.commit().returncode, 0)
+        self.assertNotIn('transaction', json.loads((state / 'receipt.json').read_text()))
+
+    def test_write_ahead_recovery_handles_write_that_never_happened(self):
+        state = self.home / 'transaction'
+        state.mkdir()
+        existing = self.project / 'unrelated'
+        existing.write_text('keep original')
+        new = self.project / 'new'
+        plan = Plan({})
+        plan.write(existing, b'new content')
+        plan.write(new, b'new file')
+        def stop_before_write(current):
+            raise OSError('interruption before atomic replace')
+        with self.assertRaises(OSError):
+            plan.apply(state, journal=stop_before_write)
+        self.assertEqual(plan.rollback(), [])
+        self.assertEqual(existing.read_text(), 'keep original')
+        self.assertFalse(new.exists())
+
+
+if __name__ == '__main__':
+    unittest.main()

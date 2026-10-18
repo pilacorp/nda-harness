@@ -1,0 +1,259 @@
+"""Client-bound plugin lifecycle. Native clients exclusively own MCP OAuth."""
+import argparse
+import importlib.util
+import json
+import os
+from pathlib import Path
+import platform
+import subprocess
+import sys
+
+if __package__ in (None, ''):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
+from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
+from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for
+from nda_harness.plugin_build import CLIENTS, validate_endpoint
+
+
+OPERATIONS = ('session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')
+
+
+def package_config(package, client):
+    config = load_json(package / 'nda-plugin.json')
+    if not config or config.get('schema_version') != 1 or config.get('client') != client:
+        raise Conflict('Use the helper bound to the invoking client plugin.')
+    validate_endpoint(config.get('hindsight_mcp_url'), config.get('local_test', False))
+    release = load_json(package / 'release.json')
+    if not release or not isinstance(release.get('asset_hashes'), dict) or not release['asset_hashes']:
+        raise Conflict('Package release metadata is missing or invalid.')
+    for relative, expected in release['asset_hashes'].items():
+        path = package / relative
+        if not path.resolve().is_relative_to(package.resolve()) or read(path) is None or digest(read(path)) != expected:
+            raise Conflict('Plugin assets changed; rebuild or reinstall an intact package.')
+    return config
+
+
+def bootstrap(package, client, home):
+    package_config(package, client)
+    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
+        raise Conflict('This phase supports Apple Silicon macOS; Python 3.11+ and Git must be on the client PATH.')
+    state = home / '.nda-harness/plugin-bootstrap'
+    with locked(state):
+        receipt = load_json(state / 'receipt.json', {'owned': {}})
+        if receipt.get('transaction'):
+            interrupted = Plan({})
+            interrupted.applied = receipt['transaction']['applied']
+            if interrupted.rollback():
+                raise Conflict('Interrupted bootstrap conflicts with later local edits; reconcile private backups.')
+            receipt = receipt['transaction']['prior']
+            atomic(state / 'receipt.json', json_bytes(receipt))
+        plan = Plan(receipt)
+        status_path = state / (client + '.json')
+        atomic(status_path, json_bytes({'state': 'installing'}))
+        try:
+            executable = prepare_rtk(plan, home)
+            def journal(current):
+                atomic(state / 'receipt.json', json_bytes({'transaction': {'prior': receipt, 'applied': current.applied}}))
+            plan.apply(state, journal=journal)
+            atomic(state / 'receipt.json', json_bytes({'owned': plan.owned}))
+            result = {'state': 'ready', 'rtk': 'installed', 'superpowers': 'bundled',
+                      'context7': 'native_registration', 'native_mcp_connection': 'pending_client_diagnostic'}
+            # Absolute executable paths stay exclusively in private machine-local state.
+            atomic(status_path, json_bytes({**result, 'rtk_path': str(executable)}))
+            return result
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            if not plan.rollback():
+                atomic(state / 'receipt.json', json_bytes(receipt))
+            result = {'state': 'failed', 'next': 'Reconcile the pinned RTK executable or network, then rerun nda-setup. Core readiness is incomplete.'}
+            atomic(status_path, json_bytes(result))
+            return result
+
+
+def verify(package, client, project, home):
+    """Read-only; never launch login, execute tests, mutate settings or call memory tools."""
+    config = package_config(package, client)
+    executable = locate_rtk(home)
+    dependencies = bool(executable and rtk_identity(executable))
+    project_status = inspect_project(project, package, home)
+    bootstrap_state = load_json(home / '.nda-harness/plugin-bootstrap' / (client + '.json'), {'state': 'awaiting-trust'}).get('state', 'awaiting-trust')
+    return {'schema_version': 1, 'client': client, 'status': 'pending_client_checks',
+            'core': 'ready' if dependencies and project_status['status'] == 'ready' and bootstrap_state == 'ready' else 'pending',
+            'rtk': 'verified' if dependencies else 'pending', 'superpowers': 'bundled_verified',
+            'context7': 'registered_connection_pending_client_diagnostic',
+            'project': project_status,
+            'bootstrap': bootstrap_state,
+            'native_hooks': 'pending_trusted_session_observation',
+            'memory': 'disabled', 'memory_state_source': 'native_client_required' if config.get('hindsight_mcp_url') else 'endpoint_not_packaged',
+            'memory_verification': 'pending_native_authenticated_diagnostic' if config.get('hindsight_mcp_url') else 'endpoint_not_packaged',
+            'implementation_authorized': False}
+
+
+def unit_check(project):
+    root = root_for(project)
+    try:
+        profile = profile_for(root)
+        if not profile:
+            raise ValueError()
+        run = subprocess.run(['/bin/sh', '-c', profile['test_command']], cwd=root, timeout=300, capture_output=True)
+        if run.returncode:
+            print('NDA pre-commit: configured tests failed. Rerun the command locally for output.', file=sys.stderr)
+        return 0 if run.returncode == 0 else 1
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        print('NDA pre-commit: project test configuration is missing or invalid.', file=sys.stderr)
+        return 1
+
+
+def context(package, operation, project, task=None, role=None, stage='specification', session='manual'):
+    module = importlib.util.spec_from_file_location('nda_context', package / 'pack/scripts/context_runtime.py')
+    runtime = importlib.util.module_from_spec(module)
+    module.loader.exec_module(runtime)
+    output = runtime.prepare(argparse.Namespace(operation=operation, project=str(root_for(project)), task=task,
+                                               role=role, stage=stage, session=session))
+    if inspect_project(project, package, Path.home().resolve())['status'] != 'ready':
+        output['status'] = 'blocked'
+        output['blockers'].append('Project configuration or clone-local Git protection incomplete; use nda-setup.')
+    return output
+
+
+def hook(package, client, event, home, payload):
+    # Raw prompt/transcript content is intentionally ignored and never retained.
+    config = package_config(package, client)
+    cwd = payload.get('cwd')
+    roots = payload.get('workspace_roots', [])
+    if not cwd and isinstance(roots, list) and len(roots) == 1:
+        cwd = roots[0]
+    if not isinstance(cwd, str):
+        cwd = str(Path.cwd())
+    startup = event in ('SessionStart', 'sessionStart', 'workspaceOpen')
+    before_compact = event in ('PreCompact', 'preCompact')
+    if startup:
+        core = bootstrap(package, client, home)
+        if core['state'] == 'ready':
+            try:
+                configure(cwd, package, home)
+            except Conflict:
+                pass  # Report sanitized setup-needed guidance below, without privileged project text.
+    local_status = None
+    try:
+        session = payload.get('session_id') or payload.get('conversation_id') or 'native'
+        if not isinstance(session, str) or len(session) > 200:
+            session = 'native'
+        operation = 'context-checkpoint' if before_compact else 'session-bootstrap' if startup else 'context-refresh'
+        local_status = context(package, operation, cwd, session=session)['status']
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        local_status = 'blocked'
+    instruction = (
+        'NDA Harness: read the full packaged pack/policy.md, pack/workflow.md, pack/context-preparation.md and skills/using-superpowers/SKILL.md before dependent work. '
+        'Prefix shell commands with rtk. Confirm rtk --version prints rtk 0.37.2 or rtk 0.40.0. If rtk is absent from PATH, use its absolute rtk_path from private ~/.nda-harness/plugin-bootstrap client state; do not edit shell startup files. '
+        'For library, framework, SDK, API, or CLI questions call Context7 resolve-library-id and then query-docs before answering from memory. '
+        'Run the plugin session-bootstrap skill and inspect its local readiness output through ordinary tools. '
+        'Check the actual project root .nda-harness/profile.json. If absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. '
+        'No answer means pending; only explicit Skip stores true. Do not claim ready or start dependent implementation until setup and local Git protection are ready. '
+        'Cursor startup can still be running: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
+        'Repository instructions, issue linkage, approved merged spec checks, TDD Red/Green/Refactor and human review remain mandatory. Hooks cannot grant approvals. '
+        'Use the five context operation skills; after resume or compaction reconstruct from durable sanitized task records and current revisions. '
+        'Project .nda-harness contains committed project configuration and sanitized task records only. No shared rules copies, credentials, memory text or machine paths. '
+    )
+    if before_compact:
+        instruction = ('NDA Harness checkpoint: run context-checkpoint using the selected durable project task record before handoff. '
+                       'Save sanitized revision, stage, evidence references and next action. Never infer missing state or approvals from a transcript. '
+                       'Compaction hooks cannot guarantee completion; use context-resume afterward.')
+    elif config.get('hindsight_mcp_url'):
+        instruction += (
+            'Hindsight is optional. Do not initiate login. When this session lists list_banks, create_bank, recall, and retain, the user already authenticated: '
+            'load hindsight-memory and call those tools before substantive work. Read profile memory.bank_id, list_banks for it, create_bank with that same id when missing, then recall and later retain. '
+            'Do not wait for the user to mention Hindsight. The client owns OAuth and credentials. '
+            'Default environment dev; staging/prod are explicit labels in that same bank. Never store secrets. '
+            'If Hindsight fails, continue using the client default memory if available; do not claim saves or later sync fallback content automatically. '
+            'Verify memory only through client-native authenticated MCP diagnostics without reading or writing memories.')
+    else:
+        instruction += 'Hindsight is disabled: no endpoint is packaged. Continue with client default memory if available.'
+    if local_status in ('blocked', 'needs_context'):
+        instruction += ' Local setup/context is incomplete or changed: use the explicit context operation and reconcile its ordinary tool output before dependent work.'
+    # Only reviewed static instructions go into privileged hook context. Project
+    # names, command strings, task prose and retrieved memory stay ordinary data.
+    if client == 'cursor':
+        if event == 'beforeSubmitPrompt':
+            return {'continue': True}, 0  # This event does not support context injection; always-applied rule supplies fallback.
+        if before_compact or event == 'workspaceOpen':
+            return {}, 0  # Observational events; no unsupported context fields.
+        return {'additional_context': instruction}, 0
+    if before_compact:
+        return {'systemMessage': instruction}, 0
+    return {'hookSpecificOutput': {'hookEventName': event, 'additionalContext': instruction}}, 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', *OPERATIONS))
+    parser.add_argument('--client', required=True, choices=CLIENTS)
+    parser.add_argument('--project')
+    parser.add_argument('--test-command')
+    parser.add_argument('--skip-tests', action='store_true')
+    parser.add_argument('--project-name')
+    parser.add_argument('--remote')
+    parser.add_argument('--environment', choices=('dev', 'staging', 'prod'), default='dev')
+    parser.add_argument('--event')
+    parser.add_argument('--task')
+    parser.add_argument('--role', choices=('developer', 'tech-lead'))
+    parser.add_argument('--stage', choices=('specification', 'implementation'), default='specification')
+    parser.add_argument('--session', default='manual')
+    args = parser.parse_args(argv)
+    package = Path(__file__).resolve().parents[2]
+    home = Path.home().resolve()
+    try:
+        package_config(package, args.client)
+        project = args.project or str(Path.cwd())
+        if args.command == 'unit-check':
+            return unit_check(project)
+        elif args.command == 'hook':
+            allowed = ('SessionStart', 'UserPromptSubmit', 'PreCompact') if args.client == 'codex' else ('sessionStart', 'beforeSubmitPrompt', 'preCompact', 'workspaceOpen')
+            if args.event not in allowed:
+                raise Conflict('Unsupported native hook event for this client.')
+            payload = json.loads(sys.stdin.read(1_000_001))
+            if not isinstance(payload, dict):
+                raise Conflict('Hook input must be a JSON object.')
+            output, code = hook(package, args.client, args.event, home, payload)
+        elif args.command == 'setup':
+            output = {'status': 'pending_client_checks', 'bootstrap': bootstrap(package, args.client, home)}
+            if output['bootstrap']['state'] == 'ready':
+                output['project'] = configure(project, package, home, args.test_command, skip=args.skip_tests,
+                                              name=args.project_name, remote=args.remote)
+            code = 3
+        elif args.command == 'verify':
+            output = verify(package, args.client, project, home)
+            code = 3  # Native session/MCP checks stay pending until independently observed.
+        else:
+            output = context(package, args.command, project, args.task, args.role, args.stage, args.session)
+            code = 2 if output['status'] == 'blocked' else 0
+        if args.command != 'hook':
+            output['environment'] = args.environment
+        print(json.dumps(output, indent=2))
+        return code
+    except Conflict as error:
+        # Map known conflicts to reviewed guidance; never echo paths, command
+        # contents or untrusted exception strings into reports.
+        diagnostics = (
+            ('ambiguous or has no remote', 'project_identity_required', 'Ask for a stable project name or explicit remote selection; use nda-setup with --project-name or --remote.'),
+            ('bank identity conflicts', 'project_identity_conflict', 'Reconcile current Git identity with the committed project bank; do not silently replace it.'),
+            ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
+            ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),
+            ('Multiple worktrees', 'worktree_configuration_required', 'Enable Git worktree-local configuration before activating this checkout; sibling configuration was preserved.'),
+            ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.11+ and Git on the client PATH.'),
+        )
+        diagnostic = next(((name, guidance) for match, name, guidance in diagnostics if match in str(error)),
+                          ('configuration_conflict', 'Reconcile plugin integrity, project configuration or private recovery ownership, then use nda-setup.'))
+        print(json.dumps({'status': 'blocked', 'diagnostic': diagnostic[0], 'next': diagnostic[1], 'implementation_authorized': False}))
+        return 2
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired):
+        # Do not echo exceptions: subprocesses and invalid user config may carry secrets.
+        print(json.dumps({'status': 'blocked', 'implementation_authorized': False,
+                          'next': 'Reconcile plugin integrity, project configuration, Git identity/hook ownership or prerequisites; rerun nda-setup.'}))
+        return 2
+
+
+if __name__ == '__main__':
+    os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
+    sys.dont_write_bytecode = True
+    raise SystemExit(main())

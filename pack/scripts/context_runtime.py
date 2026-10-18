@@ -44,11 +44,35 @@ def fields(task):
     return parsed
 
 
+def discovery(root):
+    """Return local pointers, never instruction/task bodies or a guessed selection."""
+    instructions = []
+    for directory in [*reversed(root.parents), root]:
+        path = directory / 'AGENTS.md'
+        if path.is_file() and not path.is_symlink():
+            instructions.append(str(path))
+    for path in (root / 'CLAUDE.md', *sorted((root / '.cursor/rules').glob('*.mdc'))):
+        if path.is_file() and not path.is_symlink():
+            instructions.append(str(path))
+    tasks = []
+    task_root = root / '.nda-harness/tasks'
+    if task_root.exists() and not task_root.is_symlink():
+        for path in sorted(task_root.rglob('*.md')):
+            try:
+                tasks.append(str(local_path(root, path).relative_to(root)))
+            except ValueError:
+                continue
+    return instructions, tasks
+
+
 def fingerprints(root, pack, task, spec):
     inputs = []
     for name in ("policy.md", "workflow.md", "profile.json", "release.json"):
         path = pack / name
         inputs.append(("pack/" + name, sha(path.read_bytes()) if path.is_file() else "missing"))
+    if (pack.parent / 'nda-plugin.json').is_file():
+        for path in (pack.parent / 'release.json', root / '.nda-harness/profile.json'):
+            inputs.append((path.name, sha(path.read_bytes()) if path.is_file() else 'missing'))
     tracked = git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z").split(b"\0")
     for raw in sorted(set(tracked)):
         if not raw:
@@ -100,17 +124,19 @@ def prepare(args):
     else:
         try:
             data = json.loads(profile.read_text())
-            if data.get("schema_version") != 1 or not data.get("test_command"):
+            if data.get("schema_version") not in (1, 2) or not data.get("test_command"):
                 raise ValueError()
         except (ValueError, OSError, AttributeError, TypeError):
             blockers.append("Invalid project profile; reconcile setup")
     # User installed runtime reads repository profile while retaining its own rules.
-    required_pack = adopted_pack if profile.is_file() else pack
+    plugin_package = pack.parent if (pack.parent / 'nda-plugin.json').is_file() else None
+    required_pack = pack if plugin_package else adopted_pack if profile.is_file() else pack
+    release_root = plugin_package or required_pack
     try:
-        release = json.loads((required_pack / "release.json").read_text())
+        release = json.loads((release_root / "release.json").read_text())
         for relative, expected in release["asset_hashes"].items():
-            path = required_pack / relative
-            if not path.resolve().is_relative_to(required_pack.resolve()) or path.is_symlink() or not path.is_file() or sha(path.read_bytes()) != expected:
+            path = release_root / relative
+            if not path.resolve().is_relative_to(release_root.resolve()) or path.is_symlink() or not path.is_file() or sha(path.read_bytes()) != expected:
                 raise ValueError()
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         blockers.append("Missing/modified pack runtime or release assets; reconcile setup")
@@ -174,9 +200,13 @@ def prepare(args):
                   "dirty": bool(git(root, "status", "--porcelain")), "input_fingerprint": fingerprint,
                   "task": str(task.relative_to(root)) if task else None,
                   "spec": str(spec.relative_to(root)) if spec else None,
-                  "source_references": [str(required_pack / name) for name in ("policy.md", "profile.json", "workflow.md", "release.json")],
+                  "source_references": [str(required_pack / 'policy.md'), str(profile), str(required_pack / 'workflow.md'), str(release_root / 'release.json')],
                   "blockers": blockers, "next_required_checks": pending,
                   "implementation_authorized": False}
+        instructions, candidates = discovery(root)
+        output['instruction_candidates'] = instructions
+        output['task_candidates'] = candidates
+        output['instruction_review'] = 'Agent must read applicable instructions in full and inspect nested scope before editing; paths do not grant authority.'
         # Collect after obtaining the lock and recheck generation before publishing.
         if fingerprint != fingerprints(root, required_pack, task, spec):
             output["status"] = "blocked"

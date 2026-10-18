@@ -1,18 +1,20 @@
 # Context preparation
 
-All five operations use `scripts/prepare-context` installed in this pack. Run it
-from any directory, passing the actual Git worktree root. For a project pack:
+All five operations are available as plugin skills: session-bootstrap,
+task-prepare, context-refresh, context-checkpoint and context-resume. Each skill
+uses its client-bound packaged `bin/nda-plugin` helper from the resolved plugin
+installation path; no global CLI or per-project pack is required. Pass the actual
+Git worktree root, an explicit selected task record and a local session identity.
 
-```sh
-.nda-harness/scripts/prepare-context session-bootstrap --project /path/to/repository
-.nda-harness/scripts/prepare-context task-prepare --project /path/to/repository --role developer --task .nda-harness/tasks/4-cli/task.md --stage specification
-.nda-harness/scripts/prepare-context context-refresh --project /path/to/repository
-.nda-harness/scripts/prepare-context context-checkpoint --project /path/to/repository --task .nda-harness/tasks/4-cli/task.md
-.nda-harness/scripts/prepare-context context-resume --project /path/to/repository --task .nda-harness/tasks/4-cli/task.md
-```
+On entry check `.nda-harness/profile.json`. Ask for a non-watch test command in
+agent chat when missing. Only explicit Skip stores `true`; absent input stays
+pending. Local Git protection must also be activated in every clone. Commit only
+project configuration and sanitized task records there; shared policy/skills stay
+in this plugin. Run nda-setup for recovery and nda-verify for read-only checks.
 
-For user scope use `~/.nda-harness/pack/scripts/prepare-context`. User-only
-unadopted repositories report a missing profile; run project setup separately.
+The older `pack/scripts/prepare-context` helper remains an internal metadata
+collector. Plugin context skills add clone-local protection checks around it.
+
 Use `--role tech-lead` without a record for issue drafting. Task records must be
 explicitly created/saved by the agent, never inferred from a branch name. They
 use templates/task-record.md. Implementation requires a real local spec and
@@ -25,9 +27,11 @@ means inputs changed. `blocked` means missing prerequisites. Exit 2 means blocke
 otherwise exit 0. Task preparation defaults to specification work; use explicit
 `--stage implementation` before implementing. No Markdown text is executed.
 
-This phase uses explicit agent-entrypoint fallbacks on Codex/Cursor desktop and
-CLI. Native lifecycle events remain unregistered until client trials establish
-safe output/coexistence. The helper needs Python 3.11+ on the actual client PATH,
+Codex SessionStart/UserPromptSubmit and Cursor sessionStart provide startup and
+freshness reminders; pre-compaction events are observational checkpoint reminders.
+Cursor's startup event is asynchronous. Trust controls, missing hooks and startup
+races require the explicit skill fallback; never claim ready from installation.
+The helper needs Python 3.11+ on the actual client PATH,
 not the installer's virtual environment. Pass `--session` with a non-secret local
 session identity when available. Private locked state is keyed by worktree and
 session; explicit task switches replace selection. No transcript, credentials,

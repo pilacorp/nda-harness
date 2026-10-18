@@ -10,9 +10,11 @@ Harness TDD uses focused unit tests in the code repository. QA owns integration 
 
 The proposed local hook set includes a Git `pre-commit` hook that runs configured unit tests and blocks failing commits, alongside CI merge checks.
 
-The CLI optionally connects selected agents to each developer's personal Hindsight account in multi-bank mode and automatically verifies authenticated MCP tool discovery. Agents list existing banks and decide whether to reuse or create one. Credentials stay in private user configuration; memory instructions follow the selected project/user scope. Internal RAG setup remains proposed.
-
-[Bank templates](pack/hindsight/README.md) supply coding-agent, multi-agent-orchestrator and research defaults for new banks, including mental models and directives.
+Optional Hindsight memory connects directly through each client's native MCP OAuth.
+After the user authenticates in plugin details, agents recall and retain useful
+sanitized context in one bank per project, shared across clients and equivalent
+Git clones. Dev/staging/prod are labels within the bank. Clients own credentials;
+provider and deployment configuration stays in the Hindsight server repository.
 
 ## Read first
 
@@ -29,17 +31,24 @@ Memory storage stays internal; processing sends relevant memory content through 
 
 ## Current phase
 
-This repository contains the architecture proposal, onboarding design, three specialist skills, and a minimal setup/verify CLI for Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS. The CLI installs the shared workflow pack, composes project unit-test hooks, and provides five executable context operations. Real-client authentication/plugin/native-hook compatibility remains pending; it is not a completed production support claim. Intel macOS, executable GitHub Actions gates and deployed service integrations remain future work.
+Phase 0 targets **Codex Desktop and Cursor IDE on Apple Silicon macOS**. Claude
+Code Desktop is deferred. No release or migration exists. The approved
+[plugin specification](specs/harness-plugins.md) was merged in
+[PR #14](https://github.com/pilacorp/nda-harness/pull/14).
 
-This is development phase 0; no release exists. The [client plugin specification](specs/harness-plugins.md) defines the intended Codex, Cursor, and Claude Code packages and optional direct Hindsight OAuth connection. The CLI below is the current development implementation. Read the [CLI onboarding and evidence](docs/compatibility/minimal-cli-phase.md) and [original trial report](docs/compatibility/minimal-cli.md) as historical implementation evidence, not completed plugin validation.
+The shared package builder produces native plugins with full specialist and pinned
+Superpowers skills, Context7 MCP, trusted startup bootstrap, five context operations,
+and project Git test protection. On entry, the agent asks for a project's test command
+or explicit Skip; `.nda-harness/` contains committed project configuration and task
+records, with shared assets remaining in the plugin.
 
-Install once and use directly (Python 3.11+ and Git required; no pip or virtual environment setup):
+See [installation](INSTALLATION.md) to build and load a development plugin, and
+[implementation evidence](docs/compatibility/harness-plugin-implementation.md) for
+executed checks and remaining native-client validation. The production Hindsight
+HTTPS hostname is still required for a deployed memory-enabled build. Core packages
+work without it. Local OAuth testing uses an explicit loopback-only exception.
 
-```sh
-./install.sh
-~/.local/bin/nda-harness setup
-```
-
-If `~/.local/bin` is on PATH, use `nda-harness setup`. For clone-and-run, `./bin/nda-harness setup` also works without installing dependencies.
-
-Next, complete the per-client real-session checks and pilot adoption. The CLI configures installed agents; it does not introduce a new coding agent or compulsory runtime wrapper.
+Earlier `bin/nda-harness`, installer and CLI trial reports remain development
+history; they are excluded from generated plugin runtimes and are not the plugin
+installation path. No public marketplace release or complete desktop support claim
+is made by the automated tests.
