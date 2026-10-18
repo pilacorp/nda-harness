@@ -31,7 +31,7 @@ Memory storage stays internal; processing sends relevant memory content through 
 
 This repository contains the architecture proposal, onboarding design, three specialist skills, and a minimal setup/verify CLI for Codex, Cursor and Claude Code (CLI and Desktop local Code tab) on Apple Silicon macOS. The CLI installs the shared workflow pack, composes project unit-test hooks, and provides five executable context operations. Real-client authentication/plugin/native-hook compatibility remains pending; it is not a completed production support claim. Intel macOS, executable GitHub Actions gates and deployed service integrations remain future work.
 
-The owner narrowed the merged [minimal CLI specification](specs/minimal-cli.md) to this phase. Read the [CLI onboarding and evidence](docs/compatibility/minimal-cli-phase.md) for installation, commands, adapter extension, manual completion and recovery. The [original trial report](docs/compatibility/minimal-cli.md) preserves the local observations and deferred coverage.
+This is development phase 0; no release exists. The [client plugin specification](specs/harness-plugins.md) defines the intended Codex, Cursor, and Claude Code packages and optional direct Hindsight OAuth connection. The CLI below is the current development implementation. Read the [CLI onboarding and evidence](docs/compatibility/minimal-cli-phase.md) and [original trial report](docs/compatibility/minimal-cli.md) as historical implementation evidence, not completed plugin validation.
 
 Install once and use directly (Python 3.11+ and Git required; no pip or virtual environment setup):
 

@@ -18,8 +18,10 @@ claim that AC-01–20 or TC-01–44 have passed.
 - GitHub displays no formal PR review. The owner explicitly confirmed in this
   implementation conversation that a tech lead already reviewed it. This is
   owner-confirmed evidence, not a fabricated GitHub approval event.
-- The accepted plan and [spec](../../specs/minimal-cli.md#compatibility-trial-before-full-installer-implementation)
-  require concrete integration bindings and pins before building the full engine.
+- The earlier CLI spec required concrete integration bindings and pins before
+  building the full engine. That spec has been removed; the current development
+  target is the [phase-0 client plugin spec](../../specs/harness-plugins.md).
+  This report remains historical evidence for the earlier CLI trial.
 
 ## Executed checks
 

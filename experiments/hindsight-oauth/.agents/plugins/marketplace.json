@@ -1,0 +1,12 @@
+{
+  "name": "nda-oauth-local-test",
+  "interface": { "displayName": "NDA OAuth Local Test" },
+  "plugins": [
+    {
+      "name": "nda-hindsight-oauth-test",
+      "source": { "source": "local", "path": "./codex" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}
