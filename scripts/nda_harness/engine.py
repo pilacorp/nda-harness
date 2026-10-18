@@ -48,6 +48,50 @@ def load_receipt(state):
         raise Conflict("Malformed private ownership receipt; reconcile before setup.") from None
 
 
+def _owned_project_paths(receipt, project):
+    paths = []
+    for key in receipt.get("owned", {}):
+        raw, separator, _tag = key.rpartition("::")
+        if not separator:
+            continue
+        path = Path(raw)
+        try:
+            path.relative_to(project)
+        except ValueError:
+            continue
+        paths.append(path)
+    return paths
+
+
+def discard_absent_project_receipt(receipt, options, state):
+    """Drop a private receipt when the project installation is completely gone.
+
+    Setup used to stop on the stale hook registration and write nothing back.
+    A remaining pack directory, any owned project file, or a different hook
+    manager still has to be reconciled instead of being replaced.
+    """
+    if options["scope"] != "project":
+        return receipt
+    receipt_path = state / "receipt.json"
+    if not receipt_path.is_file():
+        return receipt
+    project = options["project"]
+    if (project / ".nda-harness").exists():
+        return receipt
+    if any(path.exists() for path in _owned_project_paths(receipt, project)):
+        return receipt
+    registration = receipt.get("git")
+    if isinstance(registration, dict):
+        effective = value(project, "config", "--get", "core.hooksPath")
+        recorded = registration.get("written_value")
+        if effective and effective != recorded:
+            return receipt
+        restore(project, registration)
+    receipt_path.unlink()
+    print("Removed stale private receipt because the project installation is gone; continuing setup.")
+    return {"schema_version": 1, "owned": {}, "recovery": []}
+
+
 def assets(source, options):
     result = {}
     for directory, prefix in ((source / "pack", Path(".")), (source / "skills", Path("skills"))):
@@ -91,7 +135,7 @@ def install(options, source, home):
         fcntl.flock(memory_lock, fcntl.LOCK_EX)
         os.chmod(state / "setup.lock", 0o600)
         fcntl.flock(lock, fcntl.LOCK_EX)
-        receipt = load_receipt(state)
+        receipt = discard_absent_project_receipt(load_receipt(state), options, state)
         shared = hindsight.load_shared(home)
         plan = Plan({"owned": {**receipt["owned"], **shared["owned"]}})
         memory_agents = sorted(set(receipt.get("memory_agents", [])) | set(options.get("hindsight", {}).get("agents", [])))
