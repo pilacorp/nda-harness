@@ -1,0 +1,11 @@
+{
+  "server": "hindsight",
+  "auth_status": "oAuth",
+  "tool_count": 39,
+  "required_tools_present": [
+    "list_banks",
+    "recall",
+    "retain"
+  ],
+  "passed": true
+}
