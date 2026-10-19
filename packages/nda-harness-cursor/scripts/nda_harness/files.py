@@ -1,4 +1,5 @@
 """Preflighted, atomic writes and hash-aware recovery."""
+import errno
 import hashlib
 import json
 import os
@@ -22,25 +23,55 @@ def json_bytes(value):
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
 
 
-def guard_path(path):
+def guard_path(path, *, write=True):
     for parent in [path, *path.parents]:
         if parent.is_symlink():
             raise Conflict(f"Destination symlink requires reconciliation: {parent}")
     if path.exists() and not path.is_file():
         raise Conflict(f"Expected a file: {path}")
+    if not write:
+        return
     parent = path.parent
     while not parent.exists():
         parent = parent.parent
-    if not os.access(parent, os.W_OK):
-        raise Conflict(f"Unwritable destination: {parent}")
+    if os.access(parent, os.W_OK):
+        return
+    reason = write_denial(parent)
+    if reason is None:
+        return
+    message = f"Unwritable destination ({reason}): {parent}"
+    if ".nda-harness" in parent.parts:
+        message += ". Grant write access to ~/.nda-harness."
+    raise Conflict(message)
+
+
+def write_denial(parent):
+    """Return sandbox, permissions, unwritable, or None when a create actually succeeds."""
+    probe = parent / (".nda-probe-" + uuid.uuid4().hex)
+    try:
+        fd = os.open(probe, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except OSError as error:
+        if error.errno == errno.EPERM:
+            return "sandbox"
+        if error.errno == errno.EACCES:
+            return "permissions"
+        return "unwritable"
+    else:
+        os.close(fd)
+        try:
+            os.unlink(probe)
+        except OSError:
+            pass
+        return None
 
 
 def read(path):
-    guard_path(path)
+    guard_path(path, write=False)
     return path.read_bytes() if path.exists() else None
 
 
 def atomic(path, content, mode=0o600):
+    guard_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp = tempfile.mkstemp(prefix=".nda-", dir=path.parent)
     try:

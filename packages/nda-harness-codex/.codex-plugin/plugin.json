@@ -1,16 +1,28 @@
 {
+  "author": {
+    "name": "NDA Harness"
+  },
   "description": "NDA development workflow, project test gates and one optional memory system.",
   "displayName": "NDA Harness",
   "hooks": "./hooks/hooks.json",
   "interface": {
+    "capabilities": [
+      "Development workflow",
+      "Project test gates"
+    ],
+    "category": "Developer Tools",
     "composerIcon": "./assets/logo.jpg",
+    "defaultPrompt": [
+      "Set up NDA Harness for this project."
+    ],
     "developerName": "NDA Harness",
     "displayName": "NDA Harness",
     "logo": "./assets/logo.jpg",
-    "shortDescription": "Development workflow with optional NDA Hindsight memory"
+    "longDescription": "NDA development workflow, project test gates and one optional memory system.",
+    "shortDescription": "Development workflow"
   },
   "mcpServers": "./.mcp.json",
   "name": "nda-harness",
   "skills": "./skills/",
-  "version": "0.0.0"
+  "version": "0.0.3"
 }

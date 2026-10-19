@@ -12,8 +12,8 @@ separates automated checks from native-client observations still pending.
 ## Install the stored Codex and Cursor packages
 
 The checkout stores built packages at `packages/nda-harness-codex` and
-`packages/nda-harness-cursor`. Install those directories. They contain no
-Hindsight endpoint. The Claude Code package is not stored here; create it when
+`packages/nda-harness-cursor`. Install those directories. They include the
+NDA Hindsight endpoint listed below. The Claude Code package is not stored here; create it when
 cutting a release, into a directory outside the repository:
 
 ```sh
@@ -54,6 +54,56 @@ PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client cursor \
 
 This exception permits HTTP loopback only. No provider settings, tokens or static
 auth headers enter the package.
+
+## Build a ZIP for Codex Upload plugin archive
+
+Run from the repository root, choosing a new semantic version for each release:
+
+```sh
+PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
+  --archive --version 0.0.3 --output dist/nda-harness-codex-0.0.3.zip
+```
+
+Select the ZIP in **Upload plugin archive**. The command preserves existing
+output files; move an earlier ZIP aside before rebuilding to the same path.
+Use `--version` with directory builds too when releasing another client.
+
+This builds fresh sources rather than zipping a potentially edited package.
+It includes hidden manifest directories, all runtime dependencies and licenses,
+and explicit Unix file types and executable permissions. ZIP timestamps and
+entry ordering are fixed. The original Superpowers source stays in its pinned
+tarball alongside its license, provenance, and startup handlers, so its own
+plugin manifests do not become additional plugin roots. Active skills remain
+under `skills/`. `release.json` is generated after packaging and checked against
+every archived file; never edit the manifest or delete dependencies afterward.
+The Codex ZIP excludes `.agents/plugins/marketplace.json`: hosted upload expects
+one plugin, while the directory build keeps the catalog for local installation.
+The manifest explicitly supplies `interface.category`, `capabilities`, and
+`defaultPrompt` for the hosted importer.
+
+The previously rejected ZIP omitted 241 hashed vendor files (including the
+tomlkit wheel), changed the manifest without updating its hash, and omitted Unix
+file type bits. Extracting that ZIP fails the harness integrity check. The builder
+also now emits the required Codex author and long description itself.
+
+The hosted upload dialog hides server rejection details behind “Couldn't add
+plugin. Try again.” On 2026-10-19, browser Network inspection of
+`POST /backend-api/public/plugins/workspace` exposed successive HTTP 400 errors:
+
+- Missing category: `interface.category` must not be empty when provided.
+- Missing capabilities: `interface.capabilities` must be a list of strings.
+- Included marketplace catalog: `Expected a single plugin archive`.
+
+An inert probe with explicit listing metadata uploaded successfully. The full
+0.0.2 archive then uploaded successfully after excluding the marketplace catalog;
+its cloud plugin page showed all 26 skills and both MCP servers. The tested
+archive is `dist/nda-harness-codex.zip`. This verifies hosted import, not installation
+or hook execution. For future generic errors, inspect the failing request's status
+and Response body without sharing request headers, cookies, tokens, or signed URLs.
+This archive retains the full Desktop hooks and remote MCP configuration.
+Public-directory **Skills only** submissions have separate restrictions; see
+[OpenAI's submission rules](https://developers.openai.com/plugins/deploy/submission-errors).
+Use the local marketplace installation below if hosted upload is unavailable.
 
 ## Load the plugin
 
@@ -154,7 +204,15 @@ system automatically.
 
 ## Optional NDA Hindsight
 
-Use **NDA Hindsight → Authenticate/Authorize** in native plugin details to opt in.
+The MCP server identifier is **`nda-harness-hindsight`**; NDA Hindsight is its
+human-readable label. Version 0.0.2 incorrectly used the label as the identifier.
+Codex rejected its spaces before connecting, even after OAuth completed. Version
+0.0.3 fixes the identifier and rejects invalid server names during package builds.
+Update the plugin, then authenticate the new `nda-harness-hindsight` entry in
+native plugin details if requested. The client may require authorization again
+because the MCP identifier changed; never copy or edit stored credentials.
+
+Use the NDA Hindsight entry's native **Authenticate/Authorize** action to opt in.
 Setup never starts login. Each client signs in separately and connects directly to
 `/mcp/`; the client owns discovery, PKCE, callback, credentials, renewal and logout.
 Never provide tokens or provider settings to the harness. No auth proxy exists.

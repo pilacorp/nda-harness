@@ -1,19 +1,22 @@
 """Phase-0 plugin contracts, exercised with disposable homes and real Git."""
+import io
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from nda_harness.plugin_build import build, validate_endpoint
+from nda_harness.plugin_build import RELEASE_VERSION, build, build_archive, validate_archive, validate_endpoint
 from nda_harness.project import configure, inspect_project, project_identity, state_for
-from nda_harness.plugin_runtime import bootstrap, verify, hook
+from nda_harness.plugin_runtime import bootstrap, diagnose, hook, main, verify
 from nda_harness.files import Conflict, Plan, atomic, json_bytes
 
 
@@ -40,6 +43,13 @@ class PluginTests(unittest.TestCase):
     def setup(self, command=None, skip=False):
         return configure(self.project, self.package, self.home, command, skip=skip)
 
+    def test_native_mcp_server_identifiers_are_safe(self):
+        for name in json.loads((self.package / '.mcp.json').read_text())['mcpServers']:
+            self.assertRegex(name, r'^[a-zA-Z0-9_:@/.-]+$')
+        from nda_harness.memory import SYSTEMS
+        with patch.dict(SYSTEMS['hindsight'], {'server': 'NDA Hindsight'}), self.assertRaisesRegex(ValueError, 'MCP server identifiers'):
+            build(ROOT, self.base / 'invalid-server-name', 'codex')
+
     def commit(self):
         (self.project / 'fixture').write_text('test')
         self.git('add', 'fixture')
@@ -55,12 +65,12 @@ class PluginTests(unittest.TestCase):
         self.assertTrue((self.package / 'skills/diagram-design/assets/example-loop.html').is_file())
         self.assertFalse((self.package / 'scripts/nda_harness/hindsight.py').exists())
         mcp = json.loads((self.package / '.mcp.json').read_text())['mcpServers']
-        self.assertEqual(mcp['NDA Hindsight'], {'type': 'http', 'url': 'https://hindsight-api.pila.vn/mcp/'})
+        self.assertEqual(mcp['nda-harness-hindsight'], {'type': 'http', 'url': 'https://hindsight-api.pila.vn/mcp/'})
         services = json.loads((self.package / 'nda-plugin.json').read_text())['memory_systems']['services']['hindsight']
         self.assertEqual(services, {'mcp': 'https://hindsight-api.pila.vn/mcp/', 'oauth': 'https://hindsight-api.pila.vn', 'rest': 'https://hindsight-api.pila.vn'})
         cursor = self.base / 'cursor'
         build(ROOT, cursor, 'cursor', 'https://memory.example.test/mcp/')
-        self.assertEqual(json.loads((cursor / 'mcp.json').read_text())['mcpServers']['NDA Hindsight'], {'url': 'https://memory.example.test/mcp/'})
+        self.assertEqual(json.loads((cursor / 'mcp.json').read_text())['mcpServers']['nda-harness-hindsight'], {'url': 'https://memory.example.test/mcp/'})
         hooks = json.loads((cursor / 'hooks/hooks.json').read_text())['hooks']
         self.assertIn('sessionStart', hooks)
         self.assertNotIn('SessionStart', hooks)
@@ -107,6 +117,85 @@ class PluginTests(unittest.TestCase):
         self.assertIn('session_instruction', runtime)
         self.assertIn('resolve-library-id', runtime)
         self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
+
+    def test_zip_is_reproducible_complete_and_runs_after_extraction(self):
+        first, second = self.base / 'first.zip', self.base / 'second.zip'
+        for output in (first, second):
+            build_archive(ROOT, output, 'codex', version='0.0.1')
+            validate_archive(output, 'codex')
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        extracted = self.base / 'extracted'
+        with zipfile.ZipFile(first) as archive:
+            manifest = json.loads(archive.read('.codex-plugin/plugin.json'))
+            self.assertEqual(manifest['version'], '0.0.1')
+            self.assertEqual(manifest['author']['name'], 'NDA Harness')
+            self.assertEqual(manifest['interface']['category'], 'Developer Tools')
+            self.assertEqual(manifest['interface']['capabilities'], ['Development workflow', 'Project test gates'])
+            self.assertEqual(manifest['interface']['defaultPrompt'], ['Set up NDA Harness for this project.'])
+            self.assertTrue(manifest['interface']['longDescription'])
+            self.assertLessEqual(len(manifest['interface']['shortDescription']), 30)
+            self.assertEqual([n for n in archive.namelist() if n.endswith('-plugin/plugin.json')],
+                             ['.codex-plugin/plugin.json'])
+            self.assertNotIn('.agents/plugins/marketplace.json', archive.namelist())
+            self.assertIn('vendor/tomlkit-0.13.3-py3-none-any.whl', archive.namelist())
+            self.assertIn('vendor/superpowers-bb92a777.tar.gz', archive.namelist())
+            self.assertEqual(archive.getinfo('bin/nda-plugin').external_attr >> 16, stat.S_IFREG | 0o755)
+            archive.extractall(extracted)
+        # Python's ZIP extractor doesn't restore Unix permissions; the importer must.
+        (extracted / 'bin/nda-plugin').chmod(0o755)
+        from nda_harness.plugin_runtime import package_config
+        self.assertEqual(package_config(extracted, 'codex')['client'], 'codex')
+        run = subprocess.run([str(extracted / 'bin/nda-plugin'), 'verify', '--client', 'codex', '--project', str(self.project)],
+                             env=self.env, cwd=self.home, capture_output=True, text=True)
+        self.assertIn(run.returncode, (0, 3), run.stdout + run.stderr)
+        self.assertNotIn('Traceback', run.stderr)
+        with self.assertRaisesRegex(ValueError, 'existing files'):
+            build_archive(ROOT, first, 'codex')
+
+    def test_zip_validation_rejects_missing_dependencies_and_edited_manifest(self):
+        original = self.base / 'original.zip'
+        build_archive(ROOT, original, 'codex')
+        for mutation in ('missing-dependency', 'edited-manifest', 'missing-file-type'):
+            broken = self.base / (mutation + '.zip')
+            with zipfile.ZipFile(original) as source, zipfile.ZipFile(broken, 'w') as target:
+                for entry in source.infolist():
+                    if mutation == 'missing-dependency' and entry.filename.endswith('.whl'):
+                        continue
+                    content = source.read(entry)
+                    if mutation == 'edited-manifest' and entry.filename == '.codex-plugin/plugin.json':
+                        content += b'\n'
+                    if mutation == 'missing-file-type':
+                        entry.external_attr = 0o644 << 16
+                    target.writestr(entry, content)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                validate_archive(broken, 'codex')
+
+    def test_claude_zip_keeps_the_launcher_off_the_hosted_path(self):
+        output = self.base / 'claude.zip'
+        build_archive(ROOT, output, 'claude', version='0.0.2')
+        validate_archive(output, 'claude')
+        extracted = self.base / 'claude-extracted'
+        with zipfile.ZipFile(output) as archive:
+            names = archive.namelist()
+            self.assertFalse(any(name == 'bin' or name.startswith('bin/') for name in names))
+            self.assertIn('scripts/nda-plugin', names)
+            self.assertEqual(archive.getinfo('scripts/nda-plugin').external_attr >> 16, stat.S_IFREG | 0o755)
+            hooks = archive.read('hooks/hooks.json').decode()
+            self.assertNotIn('bin/nda-plugin', hooks)
+            self.assertIn('${CLAUDE_PLUGIN_ROOT}/scripts/nda-plugin', hooks)
+            self.assertEqual([name for name in names if name.endswith('-plugin/plugin.json')],
+                             ['.claude-plugin/plugin.json'])
+            archive.extractall(extracted)
+        (extracted / 'scripts/nda-plugin').chmod(0o755)
+        run = subprocess.run([str(extracted / 'scripts/nda-plugin'), 'verify', '--client', 'claude', '--project', str(self.project)],
+                             env=self.env, cwd=self.home, capture_output=True, text=True)
+        self.assertIn(run.returncode, (0, 3), run.stdout + run.stderr)
+        self.assertNotIn('Traceback', run.stderr)
+
+    def test_release_version_must_be_semver(self):
+        for version in ('next', '01.0.0', '1.0.0-01', '1.0.0\n'):
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                build(ROOT, self.base / 'invalid-version', 'codex', version=version)
 
     def test_project_uses_one_selected_memory_system(self):
         from nda_harness.memory import SYSTEMS, packaged, select_system, session_instruction
@@ -162,9 +251,13 @@ class PluginTests(unittest.TestCase):
         cursor = self.base / 'cursor-committed'
         build(ROOT, cursor, 'cursor')
         self.assertEqual(tree(packages / 'nda-harness-cursor'), tree(cursor))
+        self.assertEqual(RELEASE_VERSION, '0.0.3')
+        for client, manifest_path in (('codex', '.codex-plugin/plugin.json'), ('cursor', '.cursor-plugin/plugin.json')):
+            manifest = json.loads((packages / f'nda-harness-{client}' / manifest_path).read_text())
+            self.assertEqual(manifest['version'], RELEASE_VERSION)
         for client, manifest in (('codex', '.mcp.json'), ('cursor', 'mcp.json')):
             servers = json.loads((packages / f'nda-harness-{client}' / manifest).read_text())['mcpServers']
-            self.assertEqual(servers['NDA Hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
+            self.assertEqual(servers['nda-harness-hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
             self.assertNotIn('Authorization', json.dumps(servers))
 
     def test_claude_package_matches_shared_engine_and_native_hooks(self):
@@ -202,7 +295,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(market['owner'], {'name': 'NDA Harness'})
         self.assertEqual(market['plugins'][0]['source'], '.')
         servers = json.loads(claude_files['.mcp.json'])['mcpServers']
-        self.assertEqual(servers['NDA Hindsight'], {'type': 'http', 'url': endpoint})
+        self.assertEqual(servers['nda-harness-hindsight'], {'type': 'http', 'url': endpoint})
         self.assertEqual(servers['nda-harness-context7']['type'], 'http')
         for server in servers.values():
             self.assertNotIn('headers', server)
@@ -460,6 +553,25 @@ class PluginTests(unittest.TestCase):
         original = json.loads((self.project / '.nda-harness/profile.json').read_text())
         configure(clone, self.package, self.home)
         self.assertEqual(inspect_project(clone, self.package, self.home)['bank_id'], original['memory']['bank_id'])
+
+    def test_unwritable_private_state_tells_the_operator_to_grant_write_access(self):
+        secret = '/Users/secret/.nda-harness'
+        cases = (
+            (f'Unwritable destination (permissions): {secret}', 'private_state_unwritable', 'Grant write access to ~/.nda-harness.'),
+            (f'Unwritable destination (sandbox): {secret}/plugin-bootstrap', 'private_state_sandbox', 'Grant write access to ~/.nda-harness. The sandbox denied the write (EPERM).'),
+        )
+        for message, diagnostic, guidance in cases:
+            with self.subTest(diagnostic=diagnostic):
+                self.assertEqual(diagnose(Conflict(message)), (diagnostic, guidance))
+                stdout = io.StringIO()
+                with patch('nda_harness.plugin_runtime.package_config', side_effect=Conflict(message)), patch('sys.stdout', stdout):
+                    code = main(['verify', '--client', 'codex', '--project', str(self.project)])
+                self.assertEqual(code, 2)
+                payload = json.loads(stdout.getvalue())
+                self.assertEqual(payload['diagnostic'], diagnostic)
+                self.assertEqual(payload['next'], guidance)
+                self.assertNotIn('secret', stdout.getvalue())
+                self.assertNotEqual(payload['diagnostic'], 'configuration_conflict')
 
     def test_symlink_profile_and_modified_package_are_rejected(self):
         private = self.home / 'secret'

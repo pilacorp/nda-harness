@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "NDA Hindsight": {
-      "url": "https://hindsight-api.pila.vn/mcp/"
-    },
     "nda-harness-context7": {
       "url": "https://mcp.context7.com/mcp"
+    },
+    "nda-harness-hindsight": {
+      "url": "https://hindsight-api.pila.vn/mcp/"
     }
   }
 }

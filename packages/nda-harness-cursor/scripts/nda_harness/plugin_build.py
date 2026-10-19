@@ -4,16 +4,20 @@ import ipaddress
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import shutil
+import stat
 import tarfile
 import tempfile
 from urllib.parse import urlsplit
+import zipfile
 
 from .files import digest, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
 from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services
 
 CLIENTS = ('codex', 'cursor', 'claude')
+RELEASE_VERSION = '0.0.3'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
@@ -104,8 +108,10 @@ def memory_endpoints(hindsight_url=None, pairs=(), *, local_test=False):
     return endpoints
 
 
-def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None):
+def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None, version=RELEASE_VERSION):
     source, destination = Path(source).resolve(), Path(destination).absolute()
+    if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', version) or len(version) > 64:
+        raise ValueError('Plugin version must be a semantic version of at most 64 characters.')
     if client not in CLIENTS:
         raise ValueError('Only Codex Desktop, Cursor IDE, and Claude Code Desktop packages are supported.')
     if memory_endpoints is None and not endpoint:
@@ -147,7 +153,7 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
                   'local_test': bool(local_test), 'superpowers_revision': SUPERPOWERS_REVISION}
         write(root, 'nda-plugin.json', json_bytes(config))
         description = 'NDA development workflow, project test gates and one optional memory system.'
-        manifest = {'name': 'nda-harness', 'displayName': 'NDA Harness', 'version': '0.0.0',
+        manifest = {'name': 'nda-harness', 'displayName': 'NDA Harness', 'version': version,
                     'description': description}
         logo = (source / 'plugin/assets/logo.jpg').read_bytes()
         write(root, 'assets/logo.jpg', logo)
@@ -157,9 +163,12 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
             manifest['author'] = {'name': 'NDA Harness'}
             manifest['logo'] = './assets/logo.jpg'
         elif client == 'codex':
-            manifest.update({'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './.mcp.json',
-                             'interface': {'displayName': 'NDA Harness', 'developerName': 'NDA Harness',
-                                           'shortDescription': 'Development workflow with optional NDA Hindsight memory',
+            manifest.update({'author': {'name': 'NDA Harness'},
+                             'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './.mcp.json',
+                             'interface': {'displayName': 'NDA Harness', 'developerName': 'NDA Harness', 'category': 'Developer Tools',
+                                           'capabilities': ['Development workflow', 'Project test gates'],
+                                           'defaultPrompt': ['Set up NDA Harness for this project.'],
+                                           'shortDescription': 'Development workflow', 'longDescription': description,
                                            'logo': './assets/logo.jpg', 'composerIcon': './assets/logo.jpg'}})
         else:
             manifest.update({'author': {'name': 'NDA Harness'}, 'logo': 'assets/logo.jpg', 'rules': './rules/',
@@ -168,6 +177,8 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         servers = {'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'}}
         for system_id, url in endpoints.items():
             servers[SYSTEMS[system_id]['server']] = {'url': url}
+        if any(not isinstance(name, str) or re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None for name in servers):
+            raise ValueError('MCP server identifiers must not contain spaces or unsupported characters; use a separate display label.')
         if client in ('codex', 'claude'):
             for server in servers.values():
                 server['type'] = 'http'
@@ -209,6 +220,102 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
 COMMITTED_CLIENTS = ('codex', 'cursor')
 
 
+def validate_archive(path, client):
+    """Check ZIP structure and our release hashes before distributing a package."""
+    with zipfile.ZipFile(path) as archive:
+        entries = archive.infolist()
+        names = [entry.filename for entry in entries]
+        if len(names) != len(set(names)):
+            raise ValueError('Duplicate ZIP entry.')
+        for entry in entries:
+            name = entry.filename
+            if name.startswith('/') or '\\' in name or any(p in ('', '.', '..') for p in name.rstrip('/').split('/')):
+                raise ValueError('Unsafe ZIP entry: ' + name)
+            mode = entry.external_attr >> 16
+            if not (stat.S_ISDIR(mode) if entry.is_dir() else stat.S_ISREG(mode)):
+                raise ValueError('ZIP entry must declare a regular file or directory: ' + name)
+        if archive.testzip() is not None:
+            raise ValueError('Corrupt ZIP entry.')
+        manifest = json.loads(archive.read(f'.{client}-plugin/plugin.json'))
+        if client == 'codex':
+            if not manifest.get('author', {}).get('name'):
+                raise ValueError('Codex manifest requires author.name.')
+            for field in ('displayName', 'shortDescription', 'longDescription', 'developerName', 'category', 'logo', 'composerIcon'):
+                if not manifest.get('interface', {}).get(field):
+                    raise ValueError('Codex manifest requires interface.' + field)
+            for field in ('capabilities', 'defaultPrompt'):
+                values = manifest['interface'].get(field)
+                if not isinstance(values, list) or any(not isinstance(value, str) or not value.strip() for value in values):
+                    raise ValueError('Codex manifest requires interface.' + field + ' as a list of strings.')
+            if any(name.endswith('/marketplace.json') for name in names):
+                raise ValueError('Hosted upload requires a single plugin without a marketplace catalog.')
+        if client == 'claude' and any(name == 'bin' or name.startswith('bin/') for name in names):
+            raise ValueError('Claude hosted upload rejects a top-level bin/ directory.')
+        hashes = json.loads(archive.read('release.json'))['asset_hashes']
+        files = {entry.filename for entry in entries if not entry.is_dir()} - {'release.json'}
+        if files != set(hashes):
+            raise ValueError('ZIP files do not match release.json.')
+        for name, expected in hashes.items():
+            if digest(archive.read(name)) != expected:
+                raise ValueError('ZIP release checksum mismatch: ' + name)
+        if not any(name.startswith('skills/') and name.endswith('/SKILL.md') for name in files):
+            raise ValueError('Plugin ZIP requires skills.')
+
+
+def relocate_claude_launcher(package):
+    """Move the launcher out of bin/ so a hosted Claude upload can declare it from hooks."""
+    source = package / 'bin/nda-plugin'
+    write(package, 'scripts/nda-plugin', source.read_bytes(), True)
+    source.unlink()
+    source.parent.rmdir()
+    for path in sorted(package.rglob('*')):
+        if not path.is_file() or path == package / 'scripts/nda-plugin':
+            continue
+        content = path.read_bytes()
+        if b'bin/nda-plugin' not in content:
+            continue
+        path.write_bytes(content.replace(b'bin/nda-plugin', b'scripts/nda-plugin'))
+
+
+def build_archive(source, destination, client, **options):
+    """Build from canonical sources, then write and validate a deterministic ZIP."""
+    destination = Path(destination).absolute()
+    if destination.suffix != '.zip' or destination.exists() or destination.is_symlink():
+        raise ValueError('Choose a new .zip output path; existing files are preserved.')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.nda-zip-', dir=destination.parent) as temporary:
+        package = build(source, Path(temporary) / 'package', client, **options)
+        if client == 'codex':
+            # Hosted upload accepts a plugin, not the local marketplace wrapper.
+            shutil.rmtree(package / '.agents')
+        elif client == 'claude':
+            # claude.ai adds a top-level bin/ to PATH without showing it for approval.
+            relocate_claude_launcher(package)
+        # Keep upstream source without exposing its client manifests as extra plugins.
+        upstream = package / 'vendor/superpowers'
+        preserved = {name: (upstream / name).read_bytes() for name in ('SOURCE.json', 'LICENSE', 'hooks/session-start', 'hooks/run-hook.cmd')}
+        shutil.rmtree(upstream)
+        for name, content in preserved.items():
+            write(upstream, name, content, name.startswith('hooks/'))
+        write(package, 'vendor/' + SUPERPOWERS_ARCHIVE, (Path(source) / 'vendor' / SUPERPOWERS_ARCHIVE).read_bytes())
+        hashes = {p.relative_to(package).as_posix(): digest(p.read_bytes())
+                  for p in sorted(package.rglob('*')) if p.is_file() and p != package / 'release.json'}
+        write(package, 'release.json', json_bytes({'schema_version': 1, 'asset_hashes': hashes}))
+        output = Path(temporary) / 'plugin.zip'
+        with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+            for path in sorted(package.rglob('*')):
+                name = path.relative_to(package).as_posix() + ('/' if path.is_dir() else '')
+                entry = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+                entry.create_system = 3
+                mode = (stat.S_IFDIR | 0o755) if path.is_dir() else (stat.S_IFREG | (0o755 if path.stat().st_mode & 0o111 else 0o644))
+                entry.external_attr = (mode << 16) | (0x10 if path.is_dir() else 0)
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(entry, b'' if path.is_dir() else path.read_bytes())
+        validate_archive(output, client)
+        os.replace(output, destination)
+    return destination
+
+
 def publish_committed(source):
     """Replace the stored Codex and Cursor packages. Claude is a release output only."""
     source = Path(source).resolve()
@@ -222,7 +329,7 @@ def publish_committed(source):
         destination = packages / f'nda-harness-{client}'
         if destination.exists() or destination.is_symlink():
             shutil.rmtree(destination)
-        built.append(build(source, destination, client))
+        built.append(build(source, destination, client, version=RELEASE_VERSION))
     return built
 
 
@@ -232,6 +339,8 @@ def main(argv=None):
                         help='Replace packages/nda-harness-codex and packages/nda-harness-cursor. Does not write a Claude package.')
     parser.add_argument('--client', choices=CLIENTS)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--archive', action='store_true', help='Build a validated ZIP from fresh sources; --output must be a new .zip path.')
+    parser.add_argument('--version', default=RELEASE_VERSION, help=f'Semantic plugin version (default: {RELEASE_VERSION}). Use a new version for each release.')
     parser.add_argument('--hindsight-mcp-url', default=None)
     parser.add_argument('--memory-endpoint', action='append', default=[])
     parser.add_argument('--local-test', action='store_true')
@@ -239,7 +348,7 @@ def main(argv=None):
     try:
         source = Path(__file__).resolve().parents[2]
         if args.publish_committed:
-            if args.hindsight_mcp_url or args.memory_endpoint or args.local_test or args.client or args.output:
+            if args.hindsight_mcp_url or args.memory_endpoint or args.local_test or args.client or args.output or args.archive or args.version != RELEASE_VERSION:
                 raise ValueError('Committed packages use NDA Hindsight at hindsight-api.pila.vn and do not take a custom endpoint.')
             for output in publish_committed(source):
                 print(output)
@@ -247,16 +356,17 @@ def main(argv=None):
         if not args.client or not args.output:
             parser.error('--client and --output are required unless --publish-committed is set')
         supplied = args.hindsight_mcp_url is not None or bool(args.memory_endpoint) or args.local_test or os.environ.get('HINDSIGHT_MCP_URL')
+        builder = build_archive if args.archive else build
         if supplied:
             endpoint = args.hindsight_mcp_url if args.hindsight_mcp_url is not None else os.environ.get('HINDSIGHT_MCP_URL')
             endpoints = memory_endpoints(endpoint, args.memory_endpoint, local_test=args.local_test)
-            output = build(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints)
+            output = builder(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints, version=args.version)
         else:
-            output = build(source, args.output, args.client)
+            output = builder(source, args.output, args.client, version=args.version)
         print(output)
         return 0
-    except (OSError, ValueError, tarfile.TarError):
-        print('Package build failed: check client, endpoint, pinned assets and a new writable output directory.', file=__import__('sys').stderr)
+    except (OSError, ValueError, KeyError, tarfile.TarError, zipfile.BadZipFile) as error:
+        print(f'Package build failed: {error}', file=__import__('sys').stderr)
         return 2
 
 

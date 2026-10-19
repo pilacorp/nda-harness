@@ -38,7 +38,7 @@ def paths(options, home):
 
 def load_receipt(state):
     path = state / "receipt.json"
-    guard_path(path)
+    guard_path(path, write=False)
     try:
         receipt = json.loads(path.read_text()) if path.exists() else {"schema_version": 1, "owned": {}, "recovery": []}
         if receipt.get("schema_version") != 1 or not isinstance(receipt.get("owned"), dict):
@@ -247,7 +247,7 @@ def verify(options, home, live_mcp=True):
         raw_path, tag = key.rsplit("::", 1)
         path = Path(raw_path)
         try:
-            guard_path(path)
+            guard_path(path, write=False)
             content = path.read_bytes()
             if path.parent == state / "hooks" and not os.access(path, os.X_OK):
                 raise ValueError()

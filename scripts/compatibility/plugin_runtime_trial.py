@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import selectors
 import subprocess
 import tempfile
@@ -90,10 +91,16 @@ def trial(executable, package):
                       'skill_error_count': sum(len(entry.get('errors', [])) for entry in skills),
                       'discovered_plugin_skills': sorted({s['name'] for entry in skills for s in entry.get('skills', []) if s.get('pluginId') == 'nda-harness@nda-harness-local'}),
                       'model_invoked': False, 'memory_operations': False, 'hook_execution': 'not_attempted_trust_required'}
-            if 'hindsight' in detail.get('mcpServers', []):
-                discovered = runtime.request('mcpServerStatus/list', {'serverName': 'hindsight', 'detail': 'toolsAndAuthOnly'})
-                server = next((s for s in discovered.get('data', []) if s.get('name') == 'hindsight'), {})
-                result['memory_discovery'] = {'auth_status': server.get('authStatus'), 'tool_count': len(server.get('tools', {}))}
+            for name in detail.get('mcpServers', []):
+                if re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None:
+                    raise RuntimeError('Native MCP identifier is invalid: ' + name)
+            memory_server = 'nda-harness-hindsight'
+            if memory_server in detail.get('mcpServers', []):
+                discovered = runtime.request('mcpServerStatus/list', {'serverName': memory_server, 'detail': 'toolsAndAuthOnly'})
+                server = next((s for s in discovered.get('data', []) if s.get('name') == memory_server), {})
+                tools = sorted(server.get('tools', {}))
+                result['memory_discovery'] = {'auth_status': server.get('authStatus'), 'tool_count': len(tools),
+                                              'tools': tools, 'required_tools_available': {'list_banks', 'create_bank', 'recall', 'retain'} <= set(tools)}
             expected = {'session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume',
                         'nda-setup', 'nda-verify', 'hindsight-memory', 'test-driven-development', 'using-superpowers'}
             names = {name.split(':')[-1] for name in result['discovered_plugin_skills']}

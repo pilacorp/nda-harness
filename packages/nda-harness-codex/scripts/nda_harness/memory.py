@@ -23,7 +23,7 @@ SYSTEMS = {
     'hindsight': {
         'label': 'NDA Hindsight',
         'skill': 'hindsight-memory',
-        'server': 'NDA Hindsight',
+        'server': 'nda-harness-hindsight',
         'tools': ('list_banks', 'create_bank', 'recall', 'retain'),
         'session': (
             'NDA Hindsight is optional. Do not initiate login. Its MCP URL is https://hindsight-api.pila.vn/mcp/. '

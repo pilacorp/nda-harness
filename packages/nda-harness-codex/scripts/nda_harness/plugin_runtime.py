@@ -67,6 +67,14 @@ def bootstrap(package, client, home):
             # Absolute executable paths stay exclusively in private machine-local state.
             atomic(status_path, json_bytes({**result, 'rtk_path': str(executable)}))
             return result
+        except Conflict as error:
+            if 'Unwritable destination' in str(error):
+                raise
+            if not plan.rollback():
+                atomic(state / 'receipt.json', json_bytes(receipt))
+            result = {'state': 'failed', 'next': 'Reconcile the pinned RTK executable or network, then rerun nda-setup. Core readiness is incomplete.'}
+            atomic(status_path, json_bytes(result))
+            return result
         except (OSError, ValueError, subprocess.TimeoutExpired):
             if not plan.rollback():
                 atomic(state / 'receipt.json', json_bytes(receipt))
@@ -189,6 +197,28 @@ def hook(package, client, event, home, payload):
     return {'hookSpecificOutput': {'hookEventName': event, 'additionalContext': instruction}}, 0
 
 
+def diagnose(error):
+    """Map a known conflict to operator guidance. Never return the raw path."""
+    text = str(error)
+    if 'Unwritable destination' in text and '.nda-harness' in text:
+        if '(sandbox)' in text:
+            return ('private_state_sandbox', 'Grant write access to ~/.nda-harness. The sandbox denied the write (EPERM).')
+        return ('private_state_unwritable', 'Grant write access to ~/.nda-harness.')
+    diagnostics = (
+        ('ambiguous or has no remote', 'project_identity_required', 'Ask for a stable project name, including when the folder is not a Git checkout, or an explicit remote selection; use nda-setup with --project-name or --remote.'),
+        ('Choose one memory system', 'memory_system_required', 'Ask which one packaged memory system to use and pass it to nda-setup with --memory-system.'),
+        ('Unknown memory system', 'memory_system_unknown', 'Use a memory system registered by this package.'),
+        ('not packaged', 'memory_system_unavailable', 'Choose a memory system whose endpoint is packaged, or continue without memory.'),
+        ('bank identity conflicts', 'project_identity_conflict', 'Reconcile current Git identity with the committed project bank; do not silently replace it.'),
+        ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
+        ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),
+        ('Multiple worktrees', 'worktree_configuration_required', 'Enable Git worktree-local configuration before activating this checkout; sibling configuration was preserved.'),
+        ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.11+ and Git on the client PATH.'),
+    )
+    return next(((name, guidance) for match, name, guidance in diagnostics if match in text),
+                 ('configuration_conflict', 'Reconcile plugin integrity, project configuration or private recovery ownership, then use nda-setup.'))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', *OPERATIONS))
@@ -242,19 +272,7 @@ def main(argv=None):
     except Conflict as error:
         # Map known conflicts to reviewed guidance; never echo paths, command
         # contents or untrusted exception strings into reports.
-        diagnostics = (
-            ('ambiguous or has no remote', 'project_identity_required', 'Ask for a stable project name, including when the folder is not a Git checkout, or an explicit remote selection; use nda-setup with --project-name or --remote.'),
-            ('Choose one memory system', 'memory_system_required', 'Ask which one packaged memory system to use and pass it to nda-setup with --memory-system.'),
-            ('Unknown memory system', 'memory_system_unknown', 'Use a memory system registered by this package.'),
-            ('not packaged', 'memory_system_unavailable', 'Choose a memory system whose endpoint is packaged, or continue without memory.'),
-            ('bank identity conflicts', 'project_identity_conflict', 'Reconcile current Git identity with the committed project bank; do not silently replace it.'),
-            ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
-            ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),
-            ('Multiple worktrees', 'worktree_configuration_required', 'Enable Git worktree-local configuration before activating this checkout; sibling configuration was preserved.'),
-            ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.11+ and Git on the client PATH.'),
-        )
-        diagnostic = next(((name, guidance) for match, name, guidance in diagnostics if match in str(error)),
-                          ('configuration_conflict', 'Reconcile plugin integrity, project configuration or private recovery ownership, then use nda-setup.'))
+        diagnostic = diagnose(error)
         print(json.dumps({'status': 'blocked', 'diagnostic': diagnostic[0], 'next': diagnostic[1], 'implementation_authorized': False}))
         return 2
     except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired):
