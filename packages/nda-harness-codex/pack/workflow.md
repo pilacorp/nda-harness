@@ -23,12 +23,13 @@ through the plugin. Explicit Skip stores `true` and does not mean tests ran.
 One memory system is active per project, recorded as `memory.system`. When the
 package offers one system, setup selects it. When it offers several, ask the user
 and pass `--memory-system`. Do not use a second system in the same project.
-Hindsight is the packaged system today and is optional. The user opts in through the native
-plugin Hindsight MCP row's Authenticate/Authorize action. The host owns OAuth;
+NDA Hindsight is the packaged system today and is optional. MCP is
+`https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
+The user opts in through the native plugin NDA Hindsight MCP row's Authenticate/Authorize action. The host owns OAuth;
 no provider configuration or credential storage belongs to this harness. When the
-selected system is Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
+selected system is NDA Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
 hindsight-memory and call them before substantive work. Do not wait for the user
-to mention Hindsight. Use exactly `memory.bank_id` from project configuration:
+to mention NDA Hindsight. Use exactly `memory.bank_id` from project configuration:
 `list_banks` for that id, `create_bank` with that same id when it is missing,
 then `recall` and later `retain`. One bank per project is shared by Codex
 and Cursor and equivalent Git clones. Dev/staging/prod are labels within that bank,

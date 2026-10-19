@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from .files import digest, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
-from .memory import SYSTEMS
+from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services
 
 CLIENTS = ('codex', 'cursor', 'claude')
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
@@ -108,7 +108,10 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
     source, destination = Path(source).resolve(), Path(destination).absolute()
     if client not in CLIENTS:
         raise ValueError('Only Codex Desktop, Cursor IDE, and Claude Code Desktop packages are supported.')
-    endpoints = dict(memory_endpoints or {})
+    if memory_endpoints is None and not endpoint:
+        endpoints = {'hindsight': NDA_HINDSIGHT['mcp']}
+    else:
+        endpoints = dict(memory_endpoints or {})
     if endpoint:
         url = validate_endpoint(endpoint, local_test)
         if 'hindsight' in endpoints and endpoints['hindsight'] != url:
@@ -137,7 +140,10 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         for path in sorted((source / 'plugin/skills').rglob('*')):
             if path.is_file():
                 write(root, Path('skills') / path.relative_to(source / 'plugin/skills'), path.read_bytes())
-        config = {'schema_version': 1, 'client': client, 'memory_systems': {'endpoints': endpoints},
+        services = {system_id: hindsight_services(url) if system_id == 'hindsight' else {'mcp': url}
+                    for system_id, url in endpoints.items()}
+        config = {'schema_version': 1, 'client': client,
+                  'memory_systems': {'endpoints': endpoints, 'services': services},
                   'local_test': bool(local_test), 'superpowers_revision': SUPERPOWERS_REVISION}
         write(root, 'nda-plugin.json', json_bytes(config))
         description = 'NDA development workflow, project test gates and one optional memory system.'
@@ -150,7 +156,7 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         elif client == 'codex':
             manifest.update({'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './.mcp.json',
                              'interface': {'displayName': 'NDA Harness', 'developerName': 'NDA Harness',
-                                           'shortDescription': 'Development workflow with optional Hindsight memory'}})
+                                           'shortDescription': 'Development workflow with optional NDA Hindsight memory'}})
         else:
             manifest.update({'author': {'name': 'NDA Harness'}, 'rules': './rules/',
                              'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json'})
@@ -230,15 +236,19 @@ def main(argv=None):
         source = Path(__file__).resolve().parents[2]
         if args.publish_committed:
             if args.hindsight_mcp_url or args.memory_endpoint or args.local_test or args.client or args.output:
-                raise ValueError('Committed packages omit memory endpoints and are only Codex and Cursor.')
+                raise ValueError('Committed packages use NDA Hindsight at hindsight-api.pila.vn and do not take a custom endpoint.')
             for output in publish_committed(source):
                 print(output)
             return 0
         if not args.client or not args.output:
             parser.error('--client and --output are required unless --publish-committed is set')
-        endpoint = args.hindsight_mcp_url if args.hindsight_mcp_url is not None else os.environ.get('HINDSIGHT_MCP_URL')
-        endpoints = memory_endpoints(endpoint, args.memory_endpoint, local_test=args.local_test)
-        output = build(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints)
+        supplied = args.hindsight_mcp_url is not None or bool(args.memory_endpoint) or args.local_test or os.environ.get('HINDSIGHT_MCP_URL')
+        if supplied:
+            endpoint = args.hindsight_mcp_url if args.hindsight_mcp_url is not None else os.environ.get('HINDSIGHT_MCP_URL')
+            endpoints = memory_endpoints(endpoint, args.memory_endpoint, local_test=args.local_test)
+            output = build(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints)
+        else:
+            output = build(source, args.output, args.client)
         print(output)
         return 0
     except (OSError, ValueError, tarfile.TarError):

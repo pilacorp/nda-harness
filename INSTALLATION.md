@@ -33,10 +33,16 @@ include the same canonical engine/assets, complete specialist and pinned Superpo
 skills, licenses and provenance. Builds fetch nothing. A release hash manifest
 covers packaged files. Runtime needs neither the source checkout nor a global CLI.
 
-For memory the maintainer supplies `HINDSIGHT_MCP_URL` during the build, or passes
-`--hindsight-mcp-url https://<internal-host>/mcp/`. It must be HTTPS with exact
-`/mcp/`, no userinfo/query/fragment. The production hostname is still unset. Without
-it, core packages build normally and omit Hindsight; memory needs a configured build.
+NDA Hindsight is the packaged memory provider. A package built without an override
+uses this host:
+
+- MCP: `https://hindsight-api.pila.vn/mcp/`
+- OAuth: `https://hindsight-api.pila.vn`
+- REST: `https://hindsight-api.pila.vn`
+
+The client connects to the MCP URL and discovers OAuth on that host. No token or
+auth header is packaged. `--hindsight-mcp-url` still overrides the MCP URL for a
+one-off package. It must be HTTPS with exact `/mcp/`, no userinfo/query/fragment.
 
 Local development Hindsight only:
 
@@ -141,14 +147,14 @@ belong there. Every clone activates its local composed Git pre-commit hook. Exis
 checks run before configured tests, from the project root; either failure blocks
 commit. A missing profile or removed runtime also blocks the installed check.
 
-A project uses one memory system, stored as `memory.system`. Hindsight is the
-only system a package can include today. When a later package offers more than
+A project uses one memory system, stored as `memory.system`. NDA Hindsight is the
+only system a package includes today. When a later package offers more than
 one, ask which system and pass `--memory-system`. Setup selects the only packaged
 system automatically.
 
-## Optional Hindsight
+## Optional NDA Hindsight
 
-Use **Hindsight → Authenticate/Authorize** in native plugin details to opt in.
+Use **NDA Hindsight → Authenticate/Authorize** in native plugin details to opt in.
 Setup never starts login. Each client signs in separately and connects directly to
 `/mcp/`; the client owns discovery, PKCE, callback, credentials, renewal and logout.
 Never provide tokens or provider settings to the harness. No auth proxy exists.

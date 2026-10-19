@@ -36,6 +36,7 @@ machine-specific path out of committed project files and task records.
 
 One memory system is active per project. If the package offers several, ask which
 one and pass `--memory-system`. A single packaged system is selected automatically.
-Do not start login here. The user may Authenticate/Authorize the selected system's
+Do not start login here. NDA Hindsight uses MCP `https://hindsight-api.pila.vn/mcp/`
+and OAuth and REST on `https://hindsight-api.pila.vn`. The user may Authenticate/Authorize the NDA Hindsight
 row in plugin details. No endpoint packaged means optional memory is
 disabled; core setup continues. Report core and memory status separately.

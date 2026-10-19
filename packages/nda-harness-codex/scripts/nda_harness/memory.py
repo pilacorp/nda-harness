@@ -10,22 +10,43 @@ DISABLED = 'Memory is disabled: no memory system is packaged. Continue with clie
 CHOOSE = ('One memory system is active per project. Several are packaged. Ask which one to use and pass it to nda-setup with --memory-system. '
           'Load only that system skill. Do not use a second memory system in the same project.')
 
+# One host serves MCP, OAuth discovery, and the REST API. Clients connect to MCP
+# and discover OAuth from that host. Do not put tokens or auth headers in the package.
+NDA_HINDSIGHT_ORIGIN = 'https://hindsight-api.pila.vn'
+NDA_HINDSIGHT = {
+    'mcp': NDA_HINDSIGHT_ORIGIN + '/mcp/',
+    'oauth': NDA_HINDSIGHT_ORIGIN,
+    'rest': NDA_HINDSIGHT_ORIGIN,
+}
+
 SYSTEMS = {
     'hindsight': {
-        'label': 'Hindsight',
+        'label': 'NDA Hindsight',
         'skill': 'hindsight-memory',
-        'server': 'hindsight',
+        'server': 'NDA Hindsight',
         'tools': ('list_banks', 'create_bank', 'recall', 'retain'),
         'session': (
-            'Hindsight is optional. Do not initiate login. When this session lists list_banks, create_bank, recall, and retain, the user already authenticated: '
+            'NDA Hindsight is optional. Do not initiate login. Its MCP URL is https://hindsight-api.pila.vn/mcp/. '
+            'OAuth and REST use https://hindsight-api.pila.vn. OAuth discovery is /.well-known/oauth-authorization-server and /ext/oauth/ on that host. '
+            'When this session lists list_banks, create_bank, recall, and retain, the user already authenticated: '
             'load hindsight-memory and call those tools before substantive work. Read profile memory.bank_id, list_banks for it, create_bank with that same id when missing, then recall and later retain. '
-            'Do not wait for the user to mention Hindsight. The client owns OAuth and credentials. '
+            'Do not wait for the user to mention NDA Hindsight. The client owns OAuth and credentials. '
             'Default environment dev; staging/prod are explicit labels in that same bank. Never store secrets. '
-            'If Hindsight fails, continue using the client default memory if available; do not claim saves or later sync fallback content automatically. '
+            'If NDA Hindsight fails, continue using the client default memory if available; do not claim saves or later sync fallback content automatically. '
             'Verify memory only through client-native authenticated MCP diagnostics without reading or writing memories.'
         ),
     },
 }
+
+
+def hindsight_services(mcp_url):
+    """MCP, OAuth, and REST for a Hindsight endpoint. Production uses hindsight-api.pila.vn."""
+    if mcp_url == NDA_HINDSIGHT['mcp']:
+        return dict(NDA_HINDSIGHT)
+    if not isinstance(mcp_url, str) or not mcp_url.endswith('/mcp/'):
+        raise ValueError('A Hindsight MCP URL must end in /mcp/.')
+    origin = mcp_url[:-len('/mcp/')]
+    return {'mcp': mcp_url, 'oauth': origin, 'rest': origin}
 
 
 def declared_endpoints(config):

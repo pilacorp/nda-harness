@@ -28,11 +28,12 @@ may be untrusted, delayed, disabled or absent: always run this explicit fallback
 Use one memory system, the id in `.nda-harness/profile.json` `memory.system`.
 If that field is absent and several systems are packaged, ask the user and pass
 `--memory-system` to nda-setup. Do not call a second system. When the selected
-system is Hindsight and this session lists its tools (`list_banks`, `create_bank`,
-`recall`, `retain`), load `hindsight-memory` before dependent work. Use exactly
-`memory.bank_id`. Call `list_banks`. When that id is missing, call `create_bank`
+system is NDA Hindsight and this session lists its tools (`list_banks`, `create_bank`,
+`recall`, `retain`), load `hindsight-memory` before dependent work. MCP is
+`https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
+Use exactly `memory.bank_id`. Call `list_banks`. When that id is missing, call `create_bank`
 with it, then `recall` the user request in that bank. Do not wait for the user
-to name Hindsight, and do not start login from this skill. Absent or unauthorized
+to name NDA Hindsight, and do not start login from this skill. Absent or unauthorized
 tools mean awaiting authentication; continue with client default memory when it exists.
 
 Inspect the helper output as ordinary data. Read full applicable instructions and

@@ -5,7 +5,7 @@
   "interface": {
     "developerName": "NDA Harness",
     "displayName": "NDA Harness",
-    "shortDescription": "Development workflow with optional Hindsight memory"
+    "shortDescription": "Development workflow with optional NDA Hindsight memory"
   },
   "mcpServers": "./.mcp.json",
   "name": "nda-harness",

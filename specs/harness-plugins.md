@@ -157,14 +157,16 @@ that commits are guarded.
 A project uses one memory system at a time. The package lists the systems it can
 offer. Setup writes that choice to `memory.system`. One packaged system is
 selected automatically. Several packaged systems require an explicit
-`--memory-system` choice. Hindsight is the only system in this phase.
+`--memory-system` choice. NDA Hindsight is the only system in this phase. Its MCP URL is
+`https://hindsight-api.pila.vn/mcp/`. OAuth discovery and the REST API use
+`https://hindsight-api.pila.vn`.
 
 ## Optional Hindsight memory
 
-The only service address the harness needs is `HINDSIGHT_MCP_URL`, a deployment
-value packaged with the plugins: an HTTPS URL ending in `/mcp/`, without userinfo,
-query, or fragment. The actual internal hostname remains to be supplied. Lack of
-this value blocks enabling memory, not installation or core harness operation.
+NDA Hindsight is packaged at `https://hindsight-api.pila.vn`. MCP is
+`https://hindsight-api.pila.vn/mcp/`. OAuth metadata and `/ext/oauth/`, and the
+REST API, use the same host. The URL is HTTPS, ends in `/mcp/` for MCP, and has
+no userinfo, query, or fragment. A missing override does not block installation.
 
 1. Install and initialize the plugin without authenticating to memory.
 2. The plugin detail page presents a Hindsight memory row with the client's native

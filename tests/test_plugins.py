@@ -55,10 +55,12 @@ class PluginTests(unittest.TestCase):
         self.assertTrue((self.package / 'skills/diagram-design/assets/example-loop.html').is_file())
         self.assertFalse((self.package / 'scripts/nda_harness/hindsight.py').exists())
         mcp = json.loads((self.package / '.mcp.json').read_text())['mcpServers']
-        self.assertNotIn('hindsight', mcp)
+        self.assertEqual(mcp['NDA Hindsight'], {'type': 'http', 'url': 'https://hindsight-api.pila.vn/mcp/'})
+        services = json.loads((self.package / 'nda-plugin.json').read_text())['memory_systems']['services']['hindsight']
+        self.assertEqual(services, {'mcp': 'https://hindsight-api.pila.vn/mcp/', 'oauth': 'https://hindsight-api.pila.vn', 'rest': 'https://hindsight-api.pila.vn'})
         cursor = self.base / 'cursor'
         build(ROOT, cursor, 'cursor', 'https://memory.example.test/mcp/')
-        self.assertEqual(json.loads((cursor / 'mcp.json').read_text())['mcpServers']['hindsight'], {'url': 'https://memory.example.test/mcp/'})
+        self.assertEqual(json.loads((cursor / 'mcp.json').read_text())['mcpServers']['NDA Hindsight'], {'url': 'https://memory.example.test/mcp/'})
         hooks = json.loads((cursor / 'hooks/hooks.json').read_text())['hooks']
         self.assertIn('sessionStart', hooks)
         self.assertNotIn('SessionStart', hooks)
@@ -155,7 +157,8 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(tree(packages / 'nda-harness-cursor'), tree(cursor))
         for client, manifest in (('codex', '.mcp.json'), ('cursor', 'mcp.json')):
             servers = json.loads((packages / f'nda-harness-{client}' / manifest).read_text())['mcpServers']
-            self.assertNotIn('hindsight', servers)
+            self.assertEqual(servers['NDA Hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
+            self.assertNotIn('Authorization', json.dumps(servers))
 
     def test_claude_package_matches_shared_engine_and_native_hooks(self):
         claude = self.base / 'claude'
@@ -190,7 +193,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(market['owner'], {'name': 'NDA Harness'})
         self.assertEqual(market['plugins'][0]['source'], '.')
         servers = json.loads(claude_files['.mcp.json'])['mcpServers']
-        self.assertEqual(servers['hindsight'], {'type': 'http', 'url': endpoint})
+        self.assertEqual(servers['NDA Hindsight'], {'type': 'http', 'url': endpoint})
         self.assertEqual(servers['nda-harness-context7']['type'], 'http')
         for server in servers.values():
             self.assertNotIn('headers', server)
