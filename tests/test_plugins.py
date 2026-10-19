@@ -97,6 +97,103 @@ class PluginTests(unittest.TestCase):
         self.assertIn('resolve-library-id', packaged)
         self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
 
+    def test_claude_package_matches_shared_engine_and_native_hooks(self):
+        claude = self.base / 'claude'
+        codex = self.base / 'codex-memory'
+        endpoint = 'https://memory.example.test/mcp/'
+        build(ROOT, claude, 'claude', endpoint)
+        build(ROOT, codex, 'codex', endpoint)
+
+        def files(root):
+            return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+
+        claude_files, codex_files = files(claude), files(codex)
+        self.assertEqual(set(claude_files) - set(codex_files), {'.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'})
+        self.assertEqual(set(codex_files) - set(claude_files), {'.codex-plugin/plugin.json', '.agents/plugins/marketplace.json'})
+        bound = {f'skills/{name}/SKILL.md' for name in (
+            'nda-setup', 'nda-verify', 'session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')}
+        differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json'}
+        for name in set(claude_files) & set(codex_files) - differ:
+            self.assertEqual(claude_files[name], codex_files[name], name)
+        self.assertEqual(claude_files['.mcp.json'], codex_files['.mcp.json'])
+        self.assertFalse((claude / 'rules/nda-harness.mdc').exists())
+        self.assertFalse((claude / 'CLAUDE.md').exists())
+
+        manifest = json.loads(claude_files['.claude-plugin/plugin.json'])
+        self.assertEqual(manifest['name'], 'nda-harness')
+        self.assertEqual(manifest['author'], {'name': 'NDA Harness'})
+        self.assertNotIn('hooks', manifest)
+        self.assertNotIn('mcpServers', manifest)
+        self.assertNotIn('skills', manifest)
+        market = json.loads(claude_files['.claude-plugin/marketplace.json'])
+        self.assertEqual(market['name'], 'nda-harness-local')
+        self.assertEqual(market['owner'], {'name': 'NDA Harness'})
+        self.assertEqual(market['plugins'][0]['source'], '.')
+        servers = json.loads(claude_files['.mcp.json'])['mcpServers']
+        self.assertEqual(servers['hindsight'], {'type': 'http', 'url': endpoint})
+        self.assertEqual(servers['nda-harness-context7']['type'], 'http')
+        for server in servers.values():
+            self.assertNotIn('headers', server)
+            self.assertNotIn('Authorization', json.dumps(server))
+        hooks = json.loads(claude_files['hooks/hooks.json'])['hooks']
+        self.assertEqual(set(hooks), {'SessionStart', 'UserPromptSubmit', 'PreCompact'})
+        for event, entries in hooks.items():
+            self.assertEqual(len(entries), 1)
+            command = entries[0]['hooks']
+            self.assertEqual(len(command), 1)
+            self.assertIn('${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin', command[0]['command'])
+            self.assertIn(f'--client claude --event {event}', command[0]['command'])
+            self.assertEqual(command[0]['timeout'], 60 if event == 'SessionStart' else 15)
+        setup = (claude / 'skills/nda-setup/SKILL.md').read_text()
+        self.assertIn('--client claude', setup)
+        self.assertIn('${CLAUDE_PLUGIN_ROOT}', setup)
+        self.assertNotIn('@CLIENT@', setup)
+        self.assertNotIn('@ROOT@', setup)
+
+        payload = {'cwd': str(self.project), 'prompt': 'SECRET-raw-prompt', 'transcript_path': 'SECRET-path'}
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')), patch.dict(os.environ, self.env), patch('pathlib.Path.home', return_value=self.home):
+            started, start_code = hook(claude, 'claude', 'SessionStart', self.home, payload)
+            prompted, prompt_code = hook(claude, 'claude', 'UserPromptSubmit', self.home, payload)
+            compact, compact_code = hook(claude, 'claude', 'PreCompact', self.home, payload)
+        self.assertEqual((start_code, prompt_code, compact_code), (0, 0, 0))
+        self.assertNotIn('decision', compact)
+        session_texts = (
+            started['hookSpecificOutput']['additionalContext'],
+            prompted['hookSpecificOutput']['additionalContext'],
+        )
+        self.assertEqual(started['hookSpecificOutput']['hookEventName'], 'SessionStart')
+        self.assertEqual(prompted['hookSpecificOutput']['hookEventName'], 'UserPromptSubmit')
+        rendered = json.dumps({'started': started, 'prompted': prompted, 'compact': compact})
+        self.assertNotIn('SECRET', rendered)
+        for text in session_texts:
+            self.assertIn('create_bank', text)
+            self.assertIn('rtk --version', text)
+            self.assertIn('resolve-library-id', text)
+            self.assertIn('query-docs', text)
+            self.assertIn('after resume or compaction', text)
+        self.assertIn('context-checkpoint', compact['systemMessage'])
+        self.assertIn('context-resume', compact['systemMessage'])
+
+        rejected = subprocess.run([str(claude / 'bin/nda-plugin'), 'hook', '--client', 'claude', '--event', 'sessionStart'],
+                                  cwd=self.home, env=self.env, capture_output=True, text=True)
+        self.assertEqual(rejected.returncode, 2)
+        verified = subprocess.run([str(claude / 'bin/nda-plugin'), 'verify', '--client', 'claude', '--project', str(self.project)],
+                                  cwd=self.home, env=self.env, capture_output=True, text=True)
+        self.assertEqual(json.loads(verified.stdout)['client'], 'claude')
+        self.assertEqual(json.loads(verified.stdout)['memory'], 'disabled')
+
+    def test_claude_project_shares_bank_with_codex_and_cursor(self):
+        claude = self.base / 'claude'
+        cursor = self.base / 'cursor'
+        build(ROOT, claude, 'claude')
+        build(ROOT, cursor, 'cursor')
+        self.assertEqual(configure(self.project, claude, self.home, skip=True)['status'], 'ready')
+        bank = json.loads((self.project / '.nda-harness/profile.json').read_text())['memory']['bank_id']
+        for package in (claude, self.package, cursor):
+            status = inspect_project(self.project, package, self.home)
+            self.assertEqual(status['status'], 'ready')
+            self.assertEqual(status['bank_id'], bank)
+
     def test_endpoint_rejects_secrets_and_nonproduction_http(self):
         for url in ('http://example.test/mcp/', 'https://user:secret@example.test/mcp/',
                     'https://@example.test/mcp/',
@@ -153,6 +250,30 @@ class PluginTests(unittest.TestCase):
         self.git('remote', 'add', 'fork', 'https://github.com/other/project.git')
         with self.assertRaises(Conflict):
             project_identity(self.project)
+
+    def test_directory_without_git_uses_project_name_and_skips_hooks(self):
+        folder = self.base / 'local notes'
+        folder.mkdir()
+        with self.assertRaises(Conflict):
+            configure(folder, self.package, self.home, skip=True)
+        self.assertFalse((folder / '.nda-harness/profile.json').exists())
+        result = configure(folder, self.package, self.home, skip=True, name='local-notes')
+        self.assertEqual(result['status'], 'ready')
+        self.assertEqual(result['protection'], 'not_applicable')
+        profile = json.loads((folder / '.nda-harness/profile.json').read_text())
+        self.assertEqual(profile['test_command'], 'true')
+        self.assertEqual(profile['memory']['name'], 'local-notes')
+        self.assertNotIn('remote', profile['memory'])
+        status = inspect_project(folder, self.package, self.home)
+        self.assertEqual(status['status'], 'ready')
+        self.assertEqual(status['protection'], 'not_applicable')
+        self.assertEqual(status['bank_id'], profile['memory']['bank_id'])
+        run = subprocess.run([str(self.package / 'bin/nda-plugin'), 'session-bootstrap', '--client', 'codex', '--project', str(folder)],
+                             env=self.env, cwd=folder, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        report = json.loads(run.stdout)
+        self.assertIsNone(report['head'])
+        self.assertFalse(report['implementation_authorized'])
 
     def test_no_remote_needs_name_and_identity_does_not_follow_new_origin(self):
         self.git('remote', 'remove', 'origin')

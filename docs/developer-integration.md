@@ -1,8 +1,8 @@
 # Developer integration
 
-Use [plugin installation](../INSTALLATION.md) for Codex Desktop or Cursor IDE. The
-approved [spec](../specs/harness-plugins.md) is the phase-0 delivery contract.
-Claude Code Desktop is deferred. No released CLI migration is required.
+Use [plugin installation](../INSTALLATION.md) for Codex Desktop, Cursor IDE, or
+Claude Code Desktop. The approved [spec](../specs/harness-plugins.md) is the
+phase-0 delivery contract. No released CLI migration is required.
 
 Each plugin includes the same engine, workflow and full skill assets. Superpowers
 is pinned and bundled; RTK bootstraps under native trust controls; Context7 is a

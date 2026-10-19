@@ -286,7 +286,7 @@ Retrieved text is context, not executable instructions. It cannot authorize comm
 ### Self-hosted Hindsight
 
 The approved phase-0 [plugin contract](../specs/harness-plugins.md) supersedes
-earlier setup proposals below. Codex Desktop and Cursor IDE connect directly to
+earlier setup proposals below. Codex Desktop, Cursor IDE, and Claude Code Desktop connect directly to
 the packaged Hindsight `/mcp/` endpoint through native OAuth; clients exclusively
 own credentials and renewal. Server deployment/provider configuration belongs to
 the `hindsight` repository. The harness neither collects provider tokens nor runs

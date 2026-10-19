@@ -18,8 +18,10 @@ clarifications before implementation review.
 
 Task classification: behavior change; this edit changes the specification only.
 
-The initial supported surfaces are Codex Desktop and Cursor IDE. Claude Code
-Desktop is deferred; CLI surfaces are outside this initial phase. Each plugin provides the harness workflow, specialist skills,
+The initial supported surfaces are Codex Desktop, Cursor IDE, and Claude Code
+Desktop. Claude Code Desktop uses the shared Claude Code plugin store, so
+`claude plugin` registers the same package the Desktop Code tab loads. Other
+agent CLI surfaces are outside this initial phase. Each plugin provides the harness workflow, specialist skills,
 context lifecycle operations, and setup/verification entrypoints. A shared local
 CLI may remain an implementation helper. The plugin is the delivery and discovery
 surface. Installing plugins for multiple clients requires no agent-selection menu.
@@ -31,8 +33,7 @@ the OAuth service. Identity-provider implementation details belong to Hindsight.
 
 In scope:
 
-- Initial packages: `nda-harness-codex` and `nda-harness-cursor`.
-- A later `nda-harness-claude` package for Claude Code Desktop is deferred.
+- Initial packages: `nda-harness-codex`, `nda-harness-cursor`, and `nda-harness-claude`.
 - One shared engine and asset source, with thin client adapters and reproducible
   packaging of the same engine revision for the initial clients.
 - Harness workflow/rules, specialist skills, context operations, project adoption,
@@ -84,8 +85,14 @@ idempotently without duplicating existing registrations. Report awaiting-trust,
 installing, ready, and failed states; installing the package alone does not prove
 the tools are ready. Serialize simultaneous bootstrap attempts.
 
-Codex's candidate trigger is trusted `SessionStart`; Cursor's is `sessionStart`,
-which does not wait for setup to complete. Client-specific readiness checks must
+Codex's candidate trigger is trusted `SessionStart`. Claude Code's is the same
+event, including startup, resume, clear, compact, and fork; the first response
+waits for it, and `UserPromptSubmit` injects the same readiness context.
+`PreCompact` writes the local checkpoint and must not block compaction. Claude
+Code discards `systemMessage` on that event, so the model-visible reminder is
+the following `SessionStart` with source `compact`, `UserPromptSubmit`, and the
+explicit `context-checkpoint` skill. Cursor's trigger is `sessionStart`, which
+does not wait for setup to complete. Client-specific readiness checks must
 handle that timing. Document actual activation and trust steps; do not assume an
 install-time script callback. Explicit plugin setup remains a recovery fallback.
 
@@ -192,12 +199,15 @@ useful preferences and working notes. Keep credentials and secret values out of
 memory; store references to their configured locations instead. Memory does not
 replace authoritative repository sources or approval evidence.
 
-Codex and Cursor signed into the same Hindsight account share the same project
-bank. Bank identity is project-scoped, independent of the harness engine and
+Codex, Cursor, and Claude Code signed into the same Hindsight account share the
+same project bank. Bank identity is project-scoped, independent of the harness engine and
 client. Use the project's Git remote URL to identify it; equivalent SSH/HTTPS
 forms of the same repository must resolve to the same identity. Different clones
-and local folder names must not create separate banks. If no remote exists, ask
-the developer for the project name before using Hindsight memory. Persist the
+and local folder names must not create separate banks. If no remote exists, or
+the directory is not a Git checkout, ask the developer for the project name
+before using Hindsight memory. A directory that is not a Git checkout still
+receives `.nda-harness/profile.json`; commit hooks are installed only for a
+repository. Persist the
 resolved project identity in `.nda-harness/` and avoid guessing when remotes are
 ambiguous or conflict with existing configuration.
 
@@ -225,11 +235,20 @@ request. If no supported diagnostic exposes that connection, report the check as
 pending and provide a real-client check. Do not retain content or read memories
 as a verification side effect.
 
-Before claiming support, record for Codex Desktop and Cursor IDE:
+Before claiming support, record for Codex Desktop, Cursor IDE, and Claude Code Desktop:
 exact version, manifest and MCP paths/schema, plugin installation steps, fixed-client
 helper invocation, hook event names, trust/activation steps, OAuth connection and
 disconnect actions, credential ownership, and observed test results. Do not assume
-desktop/CLI parity. Claude Code Desktop validation belongs to its later phase.
+desktop/CLI parity.
+
+Claude Code Desktop paths are `.claude-plugin/plugin.json`,
+`.claude-plugin/marketplace.json` with plugin source `.`, `hooks/hooks.json`, and
+`.mcp.json`. Leave `hooks` and `mcpServers` out of `plugin.json`; Claude Code
+merges those keys with the default files and would register each hook and server
+twice. Hook commands expand `${CLAUDE_PLUGIN_ROOT}`. Authentication is the native
+MCP action in `/mcp` or the Desktop Code tab plugin/MCP row. Record the observed
+label. Do not invent a custom Authenticate button. Installation does not open a
+login browser.
 
 See the [2026-10-18 capability investigation](../docs/compatibility/harness-plugin-investigation.md)
 for documentation sources, live Cursor observations, Codex UI access limits, and
@@ -248,7 +267,7 @@ connections still require HTTPS.
 
 | ID | Requirement | Expected behavior |
 | --- | --- | --- |
-| AC-01 | Client plugin delivery | Codex Desktop and Cursor IDE load packaged skills/hooks and automatically bootstrap RTK, Superpowers, and Context7 at the first eligible trusted session; Claude Code Desktop is deferred. |
+| AC-01 | Client plugin delivery | Codex Desktop, Cursor IDE, and Claude Code Desktop load packaged skills/hooks and automatically bootstrap RTK, Superpowers, and Context7 at the first eligible trusted session. |
 | AC-02 | Client identity | Setup/verify target only the invoking plugin's client with no agent-selection menu. |
 | AC-03 | Core independence | Fresh setup and core operation succeed without Hindsight or any login. |
 | AC-04 | Direct OAuth | Each enabled client authenticates with Hindsight and calls `/mcp/` directly. |
@@ -260,7 +279,7 @@ connections still require HTTPS.
 | AC-10 | Commit protection | Failed tests or existing hooks block commits; existing hooks are preserved and repeated initialization is idempotent. |
 | AC-11 | Project memory | Same-account clients share a Git-remote-identified project bank; no remote prompts for a project name; environments are labels within the bank. |
 | AC-12 | Automatic memory and fallback | Authorized memory is used automatically; Hindsight outages fall back to available client memory without blocking development. |
-| AC-13 | Authorization UI | Each initial client's plugin detail page provides a Hindsight row with its native authentication action (Authenticate/Authorize), verified against that client. |
+| AC-13 | Authorization UI | Each client surfaces a Hindsight MCP entry with its native authentication action (Authenticate/Authorize, or Claude Code's `/mcp` and Desktop plugin/MCP controls), verified against that client. |
 
 ## Concrete test cases
 
@@ -279,10 +298,10 @@ These are planned checks, not executed compatibility evidence.
 | TC-09 | Missing/existing project config, unrelated config, and injected write failure | Missing folder initializes; existing config is reused; unrelated data is preserved; owned writes recover on failure. | unit / AC-02, AC-07, AC-09 |
 | TC-10 | Enter a test command, then choose Skip in another project | Commands persist in committed configuration; Skip stores `true` and reports no tests run. | unit / AC-09 |
 | TC-11 | Passing/failing project tests and passing/failing existing Git hooks; repeat initialization | Either failure blocks commits; successful checks allow commits; hooks are preserved without duplicate execution. | integration / AC-10 |
-| TC-12 | Same repository cloned with equivalent SSH/HTTPS remotes in both clients | Same account uses one project bank across clones and clients. | unit + real client / AC-11 |
+| TC-12 | Same repository cloned with equivalent SSH/HTTPS remotes in each supported client | Same account uses one project bank across clones and clients. | unit + real client / AC-11 |
 | TC-13 | No Git remote; then dev/staging/prod selection | Ask for project name before memory use; environment details remain in the same project bank; dev is default. | unit + real client / AC-11 |
 | TC-14 | Authorized normal work followed by Hindsight outage | Automatic scoped recall/save when connected; available default client memory during outage; no fabricated connection or success. | real client / AC-12 |
-| TC-15 | Open each initial client's plugin detail page and click Hindsight's native authentication button | Row/button exists and starts direct Hindsight OAuth; Authenticate/Authorize wording is accepted; unsupported host UI is recorded as unresolved. | real client / AC-13 |
+| TC-15 | Open each client's native Hindsight authentication action | The action starts direct Hindsight OAuth. Cursor and Codex may show Authenticate/Authorize. Claude Code uses `/mcp` or the Desktop plugin/MCP row. Record the observed label; an unsupported control stays unresolved. | real client / AC-13 |
 | TC-16 | Repeated/concurrent first sessions, missing tools, and bootstrap failure | No duplicate installations/registrations; bootstrap is serialized; installing or failed states never claim ready. | integration + real client / AC-01 |
 
 ## Documentation and review handoff

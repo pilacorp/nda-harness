@@ -4,6 +4,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import subprocess
 import re
 import shlex
 from urllib.parse import urlsplit
@@ -24,11 +25,24 @@ def locked(state):
 
 
 def root_for(path):
+    """Git worktree root, or the directory itself when it is not a repository."""
     candidate = Path(path).expanduser().resolve()
-    result = git(candidate, 'rev-parse', '--show-toplevel')
-    if result.returncode:
-        raise Conflict('Open a Git project before configuring NDA Harness.')
-    return Path(result.stdout.strip()).resolve()
+    if not candidate.is_dir():
+        raise Conflict('Open a project directory before configuring NDA Harness.')
+    try:
+        result = git(candidate, 'rev-parse', '--show-toplevel')
+    except (OSError, subprocess.TimeoutExpired):
+        raise Conflict('Git could not be inspected; reconcile the project directory.') from None
+    if result.returncode == 0:
+        return Path(result.stdout.strip()).resolve()
+    if 'not a git repository' in (result.stderr or '').lower():
+        return candidate
+    raise Conflict('Open a project directory before configuring NDA Harness.')
+
+
+def is_repository(project):
+    result = git(project, 'rev-parse', '--is-inside-work-tree')
+    return result.returncode == 0 and result.stdout.strip() == 'true'
 
 
 def state_for(project, home):
@@ -77,8 +91,12 @@ def canonical_remote(raw):
 def project_identity(project, *, name=None, remote=None):
     remotes = git(project, 'remote')
     if remotes.returncode:
-        raise Conflict('Cannot inspect project Git remotes.')
-    names = remotes.stdout.splitlines()
+        # A folder that is not a repository has no remotes. Ask for a project name.
+        if is_repository(project):
+            raise Conflict('Cannot inspect project Git remotes.')
+        names = []
+    else:
+        names = remotes.stdout.splitlines()
     if remote and remote not in names:
         raise Conflict('Selected remote does not exist.')
     if name and (not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,79}', name)):
@@ -158,24 +176,35 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
         # Project owners may edit committed configuration between sessions.
         plan.write(project / '.nda-harness/profile.json', json_bytes(profile))
         config = load_json(package / 'nda-plugin.json')
-        check = shlex.join([str(package / 'bin/nda-plugin'), 'unit-check', '--client', config['client'], '--project', str(project)])
-        registration = hook_plan(plan, project, state, receipt, check_command=check)
+        repository = is_repository(project)
+        registration = None
+        if repository:
+            check = shlex.join([str(package / 'bin/nda-plugin'), 'unit-check', '--client', config['client'], '--project', str(project)])
+            registration = hook_plan(plan, project, state, receipt, check_command=check)
         def journal(current):
-            atomic(state / 'receipt.json', json_bytes({'transaction': {'prior': receipt, 'git': registration, 'applied': current.applied}}))
+            transaction = {'prior': receipt, 'applied': current.applied}
+            if registration:
+                transaction['git'] = registration
+            atomic(state / 'receipt.json', json_bytes({'transaction': transaction}))
         try:
             plan.apply(state, journal=journal)
-            if git(project, 'check-ignore', '-q', '.nda-harness/profile.json').returncode == 0:
-                raise Conflict('Project configuration is ignored by Git. Reconcile ignore rules so .nda-harness can be committed.')
-            activate(project, registration)
-            atomic(state / 'receipt.json', json_bytes({'schema_version': 1, 'owned': plan.owned, 'git': registration,
-                                                       'package': str(package), 'client': config['client']}))
+            if repository:
+                if git(project, 'check-ignore', '-q', '.nda-harness/profile.json').returncode == 0:
+                    raise Conflict('Project configuration is ignored by Git. Reconcile ignore rules so .nda-harness can be committed.')
+                activate(project, registration)
+            saved = {'schema_version': 1, 'owned': plan.owned, 'package': str(package), 'client': config['client']}
+            if registration:
+                saved['git'] = registration
+            atomic(state / 'receipt.json', json_bytes(saved))
         except BaseException:
-            restore(project, registration)
+            if registration:
+                restore(project, registration)
             unresolved = plan.rollback()
             if not unresolved:
                 atomic(state / 'receipt.json', json_bytes(receipt))
             raise
-    return {'status': 'ready', 'protection': 'active', 'test_command': 'skipped' if command == 'true' else 'configured',
+    return {'status': 'ready', 'protection': 'active' if is_repository(project) else 'not_applicable',
+            'test_command': 'skipped' if command == 'true' else 'configured',
             'bank_id': identity['bank_id'], 'environment': 'dev'}
 
 
@@ -184,6 +213,10 @@ def inspect_project(project, package, home):
     profile = profile_for(project)
     if profile is None:
         return {'status': 'needs_configuration', 'protection': 'incomplete'}
+    if not is_repository(project):
+        return {'status': 'ready', 'protection': 'not_applicable',
+                'bank_id': profile['memory']['bank_id'], 'environment': 'dev',
+                'test_command': 'skipped' if profile['test_command'] == 'true' else 'configured'}
     if git(project, 'check-ignore', '-q', '.nda-harness/profile.json').returncode == 0:
         raise Conflict('Project configuration is ignored by Git; reconcile ignore rules.')
     expected = project_identity(project, name=profile['memory'].get('name'), remote=profile['memory'].get('remote'))

@@ -148,7 +148,7 @@ def hook(package, client, event, home, payload):
         'Prefix shell commands with rtk. Confirm rtk --version prints rtk 0.37.2 or rtk 0.40.0. If rtk is absent from PATH, use its absolute rtk_path from private ~/.nda-harness/plugin-bootstrap client state; do not edit shell startup files. '
         'For library, framework, SDK, API, or CLI questions call Context7 resolve-library-id and then query-docs before answering from memory. '
         'Run the plugin session-bootstrap skill and inspect its local readiness output through ordinary tools. '
-        'Check the actual project root .nda-harness/profile.json. If absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. '
+        'Check the actual project root .nda-harness/profile.json. If absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. A folder that is not a Git checkout, like a repository with no remote, needs --project-name. Git commit hooks apply only to a repository. '
         'No answer means pending; only explicit Skip stores true. Do not claim ready or start dependent implementation until setup and local Git protection are ready. '
         'Client startup can still be running, including Cursor sessionStart: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
         'Repository instructions, issue linkage, approved merged spec checks, TDD Red/Green/Refactor and human review remain mandatory. Hooks cannot grant approvals. '
@@ -208,7 +208,9 @@ def main(argv=None):
         if args.command == 'unit-check':
             return unit_check(project)
         elif args.command == 'hook':
-            allowed = ('SessionStart', 'UserPromptSubmit', 'PreCompact') if args.client == 'codex' else ('sessionStart', 'beforeSubmitPrompt', 'preCompact', 'workspaceOpen')
+            # Codex and Claude Code share PascalCase command-hook events and output.
+            # Cursor uses its own event names and additional_context field.
+            allowed = ('sessionStart', 'beforeSubmitPrompt', 'preCompact', 'workspaceOpen') if args.client == 'cursor' else ('SessionStart', 'UserPromptSubmit', 'PreCompact')
             if args.event not in allowed:
                 raise Conflict('Unsupported native hook event for this client.')
             payload = json.loads(sys.stdin.read(1_000_001))
@@ -235,7 +237,7 @@ def main(argv=None):
         # Map known conflicts to reviewed guidance; never echo paths, command
         # contents or untrusted exception strings into reports.
         diagnostics = (
-            ('ambiguous or has no remote', 'project_identity_required', 'Ask for a stable project name or explicit remote selection; use nda-setup with --project-name or --remote.'),
+            ('ambiguous or has no remote', 'project_identity_required', 'Ask for a stable project name, including when the folder is not a Git checkout, or an explicit remote selection; use nda-setup with --project-name or --remote.'),
             ('bank identity conflicts', 'project_identity_conflict', 'Reconcile current Git identity with the committed project bank; do not silently replace it.'),
             ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
             ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),

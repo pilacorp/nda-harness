@@ -111,8 +111,9 @@ def atomic(path, value):
 def prepare(args):
     root = Path(args.project).expanduser().resolve()
     top = git(root, "rev-parse", "--show-toplevel").decode().strip()
-    if not top or Path(top).resolve() != root:
+    if top and Path(top).resolve() != root:
         raise ValueError("--project must name the actual Git worktree root")
+    # A directory that is not a repository is its own project root.
     pack = Path(__file__).resolve().parents[1]
     adopted_pack = root / ".nda-harness"
     profile = adopted_pack / "profile.json"
@@ -184,7 +185,8 @@ def prepare(args):
             if not task:
                 blockers.append("Select a durable task record with --task before checkpoint/resume")
             elif args.operation == "context-checkpoint":
-                if record.get("Revision") != head or record.get("Input fingerprint") != fingerprint:
+                # Without a commit, Revision has no HEAD to match. Fingerprint still must be current.
+                if (head and record.get("Revision") != head) or record.get("Input fingerprint") != fingerprint:
                     blockers.append("Task record is stale; save current Revision and Input fingerprint first")
                 for key in ("Stage", "Evidence", "Next action"):
                     if not record.get(key) or record[key].startswith("<"):

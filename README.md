@@ -31,8 +31,8 @@ Memory storage stays internal; processing sends relevant memory content through 
 
 ## Current phase
 
-Phase 0 targets **Codex Desktop and Cursor IDE on Apple Silicon macOS**. Claude
-Code Desktop is deferred. No release or migration exists. The approved
+Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
+Silicon macOS**. No release or migration exists. The approved
 [plugin specification](specs/harness-plugins.md) was merged in
 [PR #14](https://github.com/pilacorp/nda-harness/pull/14).
 

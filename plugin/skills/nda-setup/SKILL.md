@@ -14,8 +14,9 @@ test command in chat, offering Skip. Then pass the exact user-chosen command as 
 from absent input, failures, or noninteractive hooks. Avoid commands containing
 credentials; configure references to local secret stores instead.
 
-For projects with no remote ask for a stable shared project name (`--project-name`
-lowercase slug). For distinct remotes ask which remote identifies this project
+For a folder that is not a Git checkout, and for a repository with no remote, ask
+for a stable shared project name (`--project-name` lowercase slug). Git commit
+hooks are installed only for a repository. For distinct remotes ask which remote identifies this project
 (`--remote`); do not choose based on branch or client. Identity conflicts require
 owner reconciliation, not deleting the profile or silently switching banks.
 

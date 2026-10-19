@@ -12,7 +12,7 @@ unauthorized, report awaiting authentication and continue without Hindsight.
 
 Read `.nda-harness/profile.json` and use **exactly** `memory.bank_id` for every
 bank-scoped operation. Reconcile identity through nda-setup if the profile is absent
-or conflicts with the project's remotes. Codex and Cursor share this ID. Clones with
+or conflicts with the project's remotes. Codex, Cursor, and Claude Code share this ID. Clones with
 equivalent SSH/HTTPS remotes share it. Never create a bank per client, environment,
 task, session or random identifier. Do not choose an unrelated bank from a list.
 

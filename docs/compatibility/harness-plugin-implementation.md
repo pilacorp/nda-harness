@@ -3,11 +3,21 @@
 Checked 2026-10-18 on `implementation/hindsight-supabase-auth`, based on merged
 `dev` revision `f035ccf1dbbb74131834f6673647474299447937` (PR #14).
 
-The local approved `specs/harness-plugins.md` matches that merged revision byte for
-byte. Its SHA-256 is recorded in [package-contract.json](evidence/harness-plugin-implementation-2026-10-18/package-contract.json).
+The 2026-10-18 [package contract](evidence/harness-plugin-implementation-2026-10-18/package-contract.json)
+recorded that the local spec matched that merged revision byte for byte. The
+2026-10-19 Claude Code Desktop edit changes the local spec after that record.
 Issue #10 was rechecked and still contains the earlier CLI/provider-token design;
 the owner's subsequent clarifications and explicit implementation instruction
 authorize the merged plugin contract. No server implementation is changed here.
+
+## Claude Code Desktop package
+
+Added 2026-10-19. `plugin_build --client claude` emits `nda-harness-claude` from
+the same engine as Codex and Cursor. Automated package, hook-output, and shared
+bank tests cover that contract. Native Desktop trust, OAuth, and hook execution
+have not been observed in the Claude Code Desktop app. Those unit tests are not
+Desktop UI evidence. The 2026-10-18 sections below remain the Codex and Cursor
+record from that date.
 
 ## Implemented behavior
 

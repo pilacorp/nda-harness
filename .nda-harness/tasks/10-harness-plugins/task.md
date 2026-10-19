@@ -8,9 +8,10 @@ Next action: finish runtime validation and implementation review; record remaini
 The live feature issue was checked on 2026-10-18. It still describes the previous
 CLI/provider-token approach. The owner's later clarification and approved merged
 plugin spec govern this work. Do not add provider credentials, token conversion,
-released-installation migration, or Claude support to the initial packages.
+or released-installation migration. Claude Code Desktop is an initial package by
+owner instruction on 2026-10-19; it uses the shared engine and native Claude plugin files.
 
-Implemented: reproducible client packages, bundled dependencies/assets, native
+Implemented: reproducible Codex, Cursor, and Claude Code packages, bundled dependencies/assets, native
 MCP declarations and deferred Codex authentication, fixed-client setup/verify,
 locked automatic bootstrap, committed project profile, composed local Git test
 checks, transactional recovery, shared project bank identity, five context skills,

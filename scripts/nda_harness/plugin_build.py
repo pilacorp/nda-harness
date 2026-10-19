@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 from .files import digest, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
 
-CLIENTS = ('codex', 'cursor')
+CLIENTS = ('codex', 'cursor', 'claude')
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
@@ -89,7 +89,7 @@ def superpowers(source, root, client):
 def build(source, destination, client, endpoint=None, *, local_test=False):
     source, destination = Path(source).resolve(), Path(destination).absolute()
     if client not in CLIENTS:
-        raise ValueError('Only Codex Desktop and Cursor IDE packages are supported.')
+        raise ValueError('Only Codex Desktop, Cursor IDE, and Claude Code Desktop packages are supported.')
     endpoint = validate_endpoint(endpoint, local_test)
     if destination.exists() or destination.is_symlink():
         raise ValueError('Choose a new package output directory; existing files are preserved.')
@@ -113,30 +113,32 @@ def build(source, destination, client, endpoint=None, *, local_test=False):
         config = {'schema_version': 1, 'client': client, 'hindsight_mcp_url': endpoint,
                   'local_test': bool(local_test), 'superpowers_revision': SUPERPOWERS_REVISION}
         write(root, 'nda-plugin.json', json_bytes(config))
+        description = 'NDA development workflow, project test gates and optional Hindsight memory.'
         manifest = {'name': 'nda-harness', 'displayName': 'NDA Harness', 'version': '0.0.0',
-                    'description': 'NDA development workflow, project test gates and optional Hindsight memory.',
-                    'skills': './skills/', 'hooks': './hooks/hooks.json',
-                    'mcpServers': './.mcp.json' if client == 'codex' else './mcp.json'}
-        if client == 'codex':
-            manifest['interface'] = {'displayName': 'NDA Harness', 'developerName': 'NDA Harness',
-                                     'shortDescription': 'Development workflow with optional Hindsight memory'}
+                    'description': description}
+        if client == 'claude':
+            # skills/, hooks/hooks.json, and .mcp.json load from their default
+            # locations. Declaring them in the manifest merges a second copy.
+            manifest['author'] = {'name': 'NDA Harness'}
+        elif client == 'codex':
+            manifest.update({'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './.mcp.json',
+                             'interface': {'displayName': 'NDA Harness', 'developerName': 'NDA Harness',
+                                           'shortDescription': 'Development workflow with optional Hindsight memory'}})
         else:
-            manifest.update({'author': {'name': 'NDA Harness'}, 'rules': './rules/'})
+            manifest.update({'author': {'name': 'NDA Harness'}, 'rules': './rules/',
+                             'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json'})
         write(root, f'.{client}-plugin/plugin.json', json_bytes(manifest))
         servers = {'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'}}
         if endpoint:
             servers['hindsight'] = {'url': endpoint}
-        if client == 'codex':
+        if client in ('codex', 'claude'):
             for server in servers.values():
                 server['type'] = 'http'
-        write(root, '.mcp.json' if client == 'codex' else 'mcp.json', json_bytes({'mcpServers': servers}))
-        variable = '${PLUGIN_ROOT}' if client == 'codex' else '${CURSOR_PLUGIN_ROOT}'
+        write(root, 'mcp.json' if client == 'cursor' else '.mcp.json', json_bytes({'mcpServers': servers}))
+        variable = {'codex': '${PLUGIN_ROOT}', 'cursor': '${CURSOR_PLUGIN_ROOT}', 'claude': '${CLAUDE_PLUGIN_ROOT}'}[client]
         def command(operation):
             return f'"{variable}/bin/nda-plugin" hook --client {client} --event {operation}'
-        if client == 'codex':
-            hooks = {'hooks': {event: [{'hooks': [{'type': 'command', 'command': command(event), 'timeout': 60 if event == 'SessionStart' else 15}]}]
-                               for event in ('SessionStart', 'UserPromptSubmit', 'PreCompact')}}
-        else:
+        if client == 'cursor':
             hooks = {'version': 1, 'hooks': {event: [{'command': command(event), 'timeout': 60 if event == 'sessionStart' else 15}]
                                             for event in ('sessionStart', 'beforeSubmitPrompt', 'preCompact', 'workspaceOpen')}}
             # Our own bootstrap loads the bundled introductory skill. Registering
@@ -144,6 +146,9 @@ def build(source, destination, client, endpoint=None, *, local_test=False):
             # installation; leave its hooks and client configuration untouched.
             rule = (source / 'plugin/rules/nda-harness.mdc').read_text()
             write(root, 'rules/nda-harness.mdc', rule)
+        else:
+            hooks = {'hooks': {event: [{'hooks': [{'type': 'command', 'command': command(event), 'timeout': 60 if event == 'SessionStart' else 15}]}]
+                               for event in ('SessionStart', 'UserPromptSubmit', 'PreCompact')}}
         write(root, 'hooks/hooks.json', json_bytes(hooks))
         # Client-bound wrapper skills never offer a client/scope selection menu.
         for name in ('nda-setup', 'nda-verify', 'session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume'):
@@ -154,6 +159,10 @@ def build(source, destination, client, endpoint=None, *, local_test=False):
                 'name': 'nda-harness-local', 'interface': {'displayName': 'NDA Harness'},
                 'plugins': [{'name': 'nda-harness', 'source': {'source': 'local', 'path': './'},
                              'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_USE'}, 'category': 'Productivity'}]}))
+        elif client == 'claude':
+            write(root, '.claude-plugin/marketplace.json', json_bytes({
+                'name': 'nda-harness-local', 'owner': {'name': 'NDA Harness'},
+                'plugins': [{'name': 'nda-harness', 'source': '.', 'description': description}]}))
         hashes = {p.relative_to(root).as_posix(): digest(p.read_bytes()) for p in sorted(root.rglob('*')) if p.is_file()}
         write(root, 'release.json', json_bytes({'schema_version': 1, 'asset_hashes': hashes}))
         os.replace(root, destination)
