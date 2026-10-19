@@ -11,13 +11,14 @@ from urllib.parse import urlsplit
 
 from .files import digest, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
+from .memory import SYSTEMS
 
 CLIENTS = ('codex', 'cursor', 'claude')
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
-           'dependencies.py', 'files.py', 'hooks.py', 'bundled.py')
+           'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py')
 
 
 def validate_endpoint(url, local_test=False):
@@ -86,11 +87,37 @@ def superpowers(source, root, client):
         'active_skill_adaptation': 'Generated Markdown namespace references use nda-harness:; original source and handlers preserved here.'}))
 
 
-def build(source, destination, client, endpoint=None, *, local_test=False):
+def memory_endpoints(hindsight_url=None, pairs=(), *, local_test=False):
+    """One HTTPS endpoint per memory system. Hindsight keeps its existing flag."""
+    endpoints = {}
+    if hindsight_url:
+        endpoints['hindsight'] = validate_endpoint(hindsight_url, local_test)
+    for item in pairs:
+        if not isinstance(item, str) or item.count('=') != 1:
+            raise ValueError('Use --memory-endpoint <system>=<https-mcp-url> once per memory system.')
+        system_id, url = item.split('=', 1)
+        if system_id not in SYSTEMS:
+            raise ValueError('Unknown memory system.')
+        if system_id in endpoints:
+            raise ValueError('Each memory system has one endpoint.')
+        endpoints[system_id] = validate_endpoint(url, local_test)
+    return endpoints
+
+
+def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None):
     source, destination = Path(source).resolve(), Path(destination).absolute()
     if client not in CLIENTS:
         raise ValueError('Only Codex Desktop, Cursor IDE, and Claude Code Desktop packages are supported.')
-    endpoint = validate_endpoint(endpoint, local_test)
+    endpoints = dict(memory_endpoints or {})
+    if endpoint:
+        url = validate_endpoint(endpoint, local_test)
+        if 'hindsight' in endpoints and endpoints['hindsight'] != url:
+            raise ValueError('Each memory system has one endpoint.')
+        endpoints['hindsight'] = url
+    for system_id, url in list(endpoints.items()):
+        if system_id not in SYSTEMS:
+            raise ValueError('Unknown memory system.')
+        endpoints[system_id] = validate_endpoint(url, local_test)
     if destination.exists() or destination.is_symlink():
         raise ValueError('Choose a new package output directory; existing files are preserved.')
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -110,10 +137,10 @@ def build(source, destination, client, endpoint=None, *, local_test=False):
         for path in sorted((source / 'plugin/skills').rglob('*')):
             if path.is_file():
                 write(root, Path('skills') / path.relative_to(source / 'plugin/skills'), path.read_bytes())
-        config = {'schema_version': 1, 'client': client, 'hindsight_mcp_url': endpoint,
+        config = {'schema_version': 1, 'client': client, 'memory_systems': {'endpoints': endpoints},
                   'local_test': bool(local_test), 'superpowers_revision': SUPERPOWERS_REVISION}
         write(root, 'nda-plugin.json', json_bytes(config))
-        description = 'NDA development workflow, project test gates and optional Hindsight memory.'
+        description = 'NDA development workflow, project test gates and one optional memory system.'
         manifest = {'name': 'nda-harness', 'displayName': 'NDA Harness', 'version': '0.0.0',
                     'description': description}
         if client == 'claude':
@@ -129,8 +156,8 @@ def build(source, destination, client, endpoint=None, *, local_test=False):
                              'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json'})
         write(root, f'.{client}-plugin/plugin.json', json_bytes(manifest))
         servers = {'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'}}
-        if endpoint:
-            servers['hindsight'] = {'url': endpoint}
+        for system_id, url in endpoints.items():
+            servers[SYSTEMS[system_id]['server']] = {'url': url}
         if client in ('codex', 'claude'):
             for server in servers.values():
                 server['type'] = 'http'
@@ -196,20 +223,22 @@ def main(argv=None):
     parser.add_argument('--client', choices=CLIENTS)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--hindsight-mcp-url', default=None)
+    parser.add_argument('--memory-endpoint', action='append', default=[])
     parser.add_argument('--local-test', action='store_true')
     args = parser.parse_args(argv)
     try:
         source = Path(__file__).resolve().parents[2]
         if args.publish_committed:
-            if args.hindsight_mcp_url or args.local_test or args.client or args.output:
-                raise ValueError('Committed packages omit Hindsight and are only Codex and Cursor.')
+            if args.hindsight_mcp_url or args.memory_endpoint or args.local_test or args.client or args.output:
+                raise ValueError('Committed packages omit memory endpoints and are only Codex and Cursor.')
             for output in publish_committed(source):
                 print(output)
             return 0
         if not args.client or not args.output:
             parser.error('--client and --output are required unless --publish-committed is set')
         endpoint = args.hindsight_mcp_url if args.hindsight_mcp_url is not None else os.environ.get('HINDSIGHT_MCP_URL')
-        output = build(source, args.output, args.client, endpoint, local_test=args.local_test)
+        endpoints = memory_endpoints(endpoint, args.memory_endpoint, local_test=args.local_test)
+        output = build(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints)
         print(output)
         return 0
     except (OSError, ValueError, tarfile.TarError):

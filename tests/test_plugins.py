@@ -92,10 +92,55 @@ class PluginTests(unittest.TestCase):
             self.assertIn('rtk --version', text)
             self.assertIn('resolve-library-id', text)
             self.assertIn('query-docs', text)
-        packaged = (memory / 'scripts/nda_harness/plugin_runtime.py').read_text()
-        self.assertIn('create_bank', packaged)
-        self.assertIn('resolve-library-id', packaged)
+        provider = (memory / 'scripts/nda_harness/memory.py').read_text()
+        self.assertIn('create_bank', provider)
+        runtime = (memory / 'scripts/nda_harness/plugin_runtime.py').read_text()
+        self.assertIn('session_instruction', runtime)
+        self.assertIn('resolve-library-id', runtime)
         self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
+
+    def test_project_uses_one_selected_memory_system(self):
+        from nda_harness.memory import SYSTEMS, packaged, select_system, session_instruction
+        example = {'label': 'Example', 'skill': 'example-memory', 'server': 'example-memory',
+                   'tools': ('remember',), 'session': 'Example memory is selected. Load example-memory.'}
+        SYSTEMS['example-memory'] = example
+        self.addCleanup(SYSTEMS.pop, 'example-memory', None)
+        both = {'memory_systems': {'endpoints': {
+            'hindsight': 'https://memory.example.test/mcp/',
+            'example-memory': 'https://example.example.test/mcp/'}}}
+        with self.assertRaises(Conflict):
+            select_system(both)
+        self.assertEqual(select_system(both, requested='example-memory'), 'example-memory')
+        self.assertIn('Example memory is selected', session_instruction(both, 'example-memory'))
+        self.assertIn('--memory-system', session_instruction(both))
+        self.assertEqual(select_system({'hindsight_mcp_url': 'https://memory.example.test/mcp/'}), 'hindsight')
+        self.assertIsNone(select_system({'memory_systems': {'endpoints': {}}}))
+
+        single = self.base / 'one-memory'
+        build(ROOT, single, 'codex', 'https://memory.example.test/mcp/')
+        configure(self.project, single, self.home, skip=True)
+        profile = json.loads((self.project / '.nda-harness/profile.json').read_text())
+        self.assertEqual(profile['memory']['system'], 'hindsight')
+        self.assertEqual(packaged(json.loads((single / 'nda-plugin.json').read_text())),
+                         {'hindsight': 'https://memory.example.test/mcp/'})
+
+        several = self.base / 'several-memory'
+        build(ROOT, several, 'codex', 'https://memory.example.test/mcp/')
+        config_path = several / 'nda-plugin.json'
+        config = json.loads(config_path.read_text())
+        config['memory_systems']['endpoints']['example-memory'] = 'https://example.example.test/mcp/'
+        config_path.write_text(json.dumps(config))
+        other = self.base / 'other-project'
+        other.mkdir()
+        subprocess.run(['git', '-C', str(other), 'init', '-q'], env=self.env, check=True)
+        subprocess.run(['git', '-C', str(other), 'remote', 'add', 'origin', 'git@github.com:example/other.git'], env=self.env, check=True)
+        with self.assertRaises(Conflict):
+            configure(other, several, self.home, skip=True)
+        self.assertFalse((other / '.nda-harness/profile.json').exists())
+        configure(other, several, self.home, skip=True, system='example-memory')
+        chosen = json.loads((other / '.nda-harness/profile.json').read_text())
+        self.assertEqual(chosen['memory']['system'], 'example-memory')
+        self.assertIn('bank_id', chosen['memory'])
 
     def test_repository_packages_are_built_codex_and_cursor_only(self):
         packages = ROOT / 'packages'

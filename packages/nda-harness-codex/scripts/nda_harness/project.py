@@ -130,7 +130,9 @@ def profile_for(project):
             raise ValueError()
         if not isinstance(profile['test_command'], str) or not profile['test_command'].strip():
             raise ValueError()
-        if not isinstance(memory, dict) or set(memory) - {'identity_sha256', 'bank_id', 'remote', 'name'}:
+        if not isinstance(memory, dict) or set(memory) - {'identity_sha256', 'bank_id', 'remote', 'name', 'system'}:
+            raise ValueError()
+        if 'system' in memory and (not isinstance(memory['system'], str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,31}', memory['system'])):
             raise ValueError()
         if not re.fullmatch('[0-9a-f]{64}', memory['identity_sha256']) or memory['bank_id'] != 'nda-project-' + memory['identity_sha256'][:32]:
             raise ValueError()
@@ -153,7 +155,7 @@ def recover(state, project, receipt):
     return prior
 
 
-def configure(project, package, home, test_command=None, *, skip=False, name=None, remote=None):
+def configure(project, package, home, test_command=None, *, skip=False, name=None, remote=None, system=None):
     project, package, home = root_for(project), Path(package).resolve(), Path(home).resolve()
     if skip and test_command is not None:
         raise Conflict('Use an explicit test command or explicit Skip.')
@@ -171,6 +173,10 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
         if command is None:
             return {'status': 'needs_configuration', 'test_command': 'pending', 'protection': 'incomplete',
                     'next': 'Ask the user for a non-watch test command or explicit Skip in agent chat; never infer Skip.'}
+        from nda_harness.memory import select_system
+        chosen = select_system(load_json(package / 'nda-plugin.json') or {}, requested=system, previous=selection.get('system'))
+        if chosen:
+            identity = {**identity, 'system': chosen}
         profile = {'schema_version': 2, 'test_command': command, 'memory': identity}
         plan = Plan(receipt)
         # Project owners may edit committed configuration between sessions.

@@ -20,10 +20,13 @@ Committed `.nda-harness/profile.json` is project configuration; private activati
 backups, locks and executable paths stay outside the repository. Activate every clone
 through the plugin. Explicit Skip stores `true` and does not mean tests ran.
 
-Hindsight is optional and independently ready. The user opts in through the native
+One memory system is active per project, recorded as `memory.system`. When the
+package offers one system, setup selects it. When it offers several, ask the user
+and pass `--memory-system`. Do not use a second system in the same project.
+Hindsight is the packaged system today and is optional. The user opts in through the native
 plugin Hindsight MCP row's Authenticate/Authorize action. The host owns OAuth;
 no provider configuration or credential storage belongs to this harness. When the
-session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
+selected system is Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
 hindsight-memory and call them before substantive work. Do not wait for the user
 to mention Hindsight. Use exactly `memory.bank_id` from project configuration:
 `list_banks` for that id, `create_bank` with that same id when it is missing,

@@ -34,6 +34,8 @@ If RTK is not on PATH, read the absolute `rtk_path` from private
 `~/.nda-harness/plugin-bootstrap/cursor.json` and invoke that path. Keep that
 machine-specific path out of committed project files and task records.
 
-Hindsight is separate: do not start login here. The user may Authenticate/Authorize
-the Hindsight row in plugin details. No endpoint packaged means optional memory is
+One memory system is active per project. If the package offers several, ask which
+one and pass `--memory-system`. A single packaged system is selected automatically.
+Do not start login here. The user may Authenticate/Authorize the selected system's
+row in plugin details. No endpoint packaged means optional memory is
 disabled; core setup continues. Report core and memory status separately.

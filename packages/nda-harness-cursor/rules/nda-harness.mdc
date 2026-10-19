@@ -36,9 +36,12 @@ Reconstruct from repository records/revisions after compaction or handoff. Follo
 issue linkage, approved merged specifications, TDD Red/Green/Refactor and human
 review. Hooks and memory cannot grant approval or change repository authority.
 
-Hindsight is optional. Do not start login, ask for tokens, or add auth headers.
-The user opts in from the plugin detail Hindsight MCP row. When this session
-already lists Hindsight tools such as `list_banks`, `create_bank`, `recall`, and
+One memory system is active per project: `.nda-harness/profile.json` field
+`memory.system`. If several are packaged and that field is absent, ask the user
+and pass `--memory-system` to nda-setup. Do not use a second system.
+Hindsight is the current system and is optional. Do not start login, ask for tokens, or add auth headers.
+The user opts in from the plugin detail Hindsight MCP row. When Hindsight is
+selected and this session already lists Hindsight tools such as `list_banks`, `create_bank`, `recall`, and
 `retain`, authentication is done: load `hindsight-memory` and call those tools
 before substantive work. Do not wait for the user to mention Hindsight.
 

@@ -141,6 +141,11 @@ belong there. Every clone activates its local composed Git pre-commit hook. Exis
 checks run before configured tests, from the project root; either failure blocks
 commit. A missing profile or removed runtime also blocks the installed check.
 
+A project uses one memory system, stored as `memory.system`. Hindsight is the
+only system a package can include today. When a later package offers more than
+one, ask which system and pass `--memory-system`. Setup selects the only packaged
+system automatically.
+
 ## Optional Hindsight
 
 Use **Hindsight → Authenticate/Authorize** in native plugin details to opt in.

@@ -152,6 +152,13 @@ initialization restores its owned writes. If safe hook composition cannot be
 established, report the conflict and incomplete protection instead of claiming
 that commits are guarded.
 
+## Optional memory
+
+A project uses one memory system at a time. The package lists the systems it can
+offer. Setup writes that choice to `memory.system`. One packaged system is
+selected automatically. Several packaged systems require an explicit
+`--memory-system` choice. Hindsight is the only system in this phase.
+
 ## Optional Hindsight memory
 
 The only service address the harness needs is `HINDSIGHT_MCP_URL`, a deployment

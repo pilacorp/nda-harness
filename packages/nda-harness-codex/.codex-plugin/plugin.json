@@ -1,5 +1,5 @@
 {
-  "description": "NDA development workflow, project test gates and optional Hindsight memory.",
+  "description": "NDA development workflow, project test gates and one optional memory system.",
   "displayName": "NDA Harness",
   "hooks": "./hooks/hooks.json",
   "interface": {

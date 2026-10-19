@@ -1,7 +1,9 @@
 {
   "client": "codex",
-  "hindsight_mcp_url": null,
   "local_test": false,
+  "memory_systems": {
+    "endpoints": {}
+  },
   "schema_version": 1,
   "superpowers_revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3"
 }

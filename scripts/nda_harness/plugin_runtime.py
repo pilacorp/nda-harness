@@ -14,6 +14,7 @@ from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
+from nda_harness.memory import declared_endpoints, packaged, session_instruction, SYSTEMS
 
 
 OPERATIONS = ('session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')
@@ -23,7 +24,11 @@ def package_config(package, client):
     config = load_json(package / 'nda-plugin.json')
     if not config or config.get('schema_version') != 1 or config.get('client') != client:
         raise Conflict('Use the helper bound to the invoking client plugin.')
-    validate_endpoint(config.get('hindsight_mcp_url'), config.get('local_test', False))
+    local_test = config.get('local_test', False)
+    for system_id, url in declared_endpoints(config).items():
+        if system_id not in SYSTEMS:
+            raise Conflict('Unknown memory system.')
+        validate_endpoint(url, local_test)
     release = load_json(package / 'release.json')
     if not release or not isinstance(release.get('asset_hashes'), dict) or not release['asset_hashes']:
         raise Conflict('Package release metadata is missing or invalid.')
@@ -84,8 +89,9 @@ def verify(package, client, project, home):
             'project': project_status,
             'bootstrap': bootstrap_state,
             'native_hooks': 'pending_trusted_session_observation',
-            'memory': 'disabled', 'memory_state_source': 'native_client_required' if config.get('hindsight_mcp_url') else 'endpoint_not_packaged',
-            'memory_verification': 'pending_native_authenticated_diagnostic' if config.get('hindsight_mcp_url') else 'endpoint_not_packaged',
+            'memory': 'disabled', 'memory_systems': sorted(packaged(config)),
+            'memory_state_source': 'native_client_required' if packaged(config) else 'endpoint_not_packaged',
+            'memory_verification': 'pending_native_authenticated_diagnostic' if packaged(config) else 'endpoint_not_packaged',
             'implementation_authorized': False}
 
 
@@ -159,16 +165,15 @@ def hook(package, client, event, home, payload):
         instruction = ('NDA Harness checkpoint: run context-checkpoint using the selected durable project task record before handoff. '
                        'Save sanitized revision, stage, evidence references and next action. Never infer missing state or approvals from a transcript. '
                        'Compaction hooks cannot guarantee completion; use context-resume afterward.')
-    elif config.get('hindsight_mcp_url'):
-        instruction += (
-            'Hindsight is optional. Do not initiate login. When this session lists list_banks, create_bank, recall, and retain, the user already authenticated: '
-            'load hindsight-memory and call those tools before substantive work. Read profile memory.bank_id, list_banks for it, create_bank with that same id when missing, then recall and later retain. '
-            'Do not wait for the user to mention Hindsight. The client owns OAuth and credentials. '
-            'Default environment dev; staging/prod are explicit labels in that same bank. Never store secrets. '
-            'If Hindsight fails, continue using the client default memory if available; do not claim saves or later sync fallback content automatically. '
-            'Verify memory only through client-native authenticated MCP diagnostics without reading or writing memories.')
     else:
-        instruction += 'Hindsight is disabled: no endpoint is packaged. Continue with client default memory if available.'
+        selected = None
+        try:
+            profile = profile_for(root_for(cwd))
+        except (Conflict, OSError):
+            profile = None
+        if profile:
+            selected = profile['memory'].get('system')
+        instruction += session_instruction(config, selected)
     if local_status in ('blocked', 'needs_context'):
         instruction += ' Local setup/context is incomplete or changed: use the explicit context operation and reconcile its ordinary tool output before dependent work.'
     # Only reviewed static instructions go into privileged hook context. Project
@@ -193,6 +198,7 @@ def main(argv=None):
     parser.add_argument('--skip-tests', action='store_true')
     parser.add_argument('--project-name')
     parser.add_argument('--remote')
+    parser.add_argument('--memory-system')
     parser.add_argument('--environment', choices=('dev', 'staging', 'prod'), default='dev')
     parser.add_argument('--event')
     parser.add_argument('--task')
@@ -221,7 +227,7 @@ def main(argv=None):
             output = {'status': 'pending_client_checks', 'bootstrap': bootstrap(package, args.client, home)}
             if output['bootstrap']['state'] == 'ready':
                 output['project'] = configure(project, package, home, args.test_command, skip=args.skip_tests,
-                                              name=args.project_name, remote=args.remote)
+                                              name=args.project_name, remote=args.remote, system=args.memory_system)
             code = 3
         elif args.command == 'verify':
             output = verify(package, args.client, project, home)
@@ -238,6 +244,9 @@ def main(argv=None):
         # contents or untrusted exception strings into reports.
         diagnostics = (
             ('ambiguous or has no remote', 'project_identity_required', 'Ask for a stable project name, including when the folder is not a Git checkout, or an explicit remote selection; use nda-setup with --project-name or --remote.'),
+            ('Choose one memory system', 'memory_system_required', 'Ask which one packaged memory system to use and pass it to nda-setup with --memory-system.'),
+            ('Unknown memory system', 'memory_system_unknown', 'Use a memory system registered by this package.'),
+            ('not packaged', 'memory_system_unavailable', 'Choose a memory system whose endpoint is packaged, or continue without memory.'),
             ('bank identity conflicts', 'project_identity_conflict', 'Reconcile current Git identity with the committed project bank; do not silently replace it.'),
             ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
             ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),
