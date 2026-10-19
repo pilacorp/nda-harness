@@ -13,7 +13,9 @@ authorize the merged plugin contract. No server implementation is changed here.
 ## Claude Code Desktop package
 
 Added 2026-10-19. `plugin_build --client claude` emits `nda-harness-claude` from
-the same engine as Codex and Cursor. Automated package, hook-output, and shared
+the same engine as Codex and Cursor. That package is created for a release and
+is not stored in the repository. `packages/nda-harness-codex` and
+`packages/nda-harness-cursor` are the stored builds. Automated package, hook-output, and shared
 bank tests cover that contract. Native Desktop trust, OAuth, and hook execution
 have not been observed in the Claude Code Desktop app. Those unit tests are not
 Desktop UI evidence. The 2026-10-18 sections below remain the Codex and Cursor

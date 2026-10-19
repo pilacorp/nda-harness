@@ -34,6 +34,8 @@ the OAuth service. Identity-provider implementation details belong to Hindsight.
 In scope:
 
 - Initial packages: `nda-harness-codex`, `nda-harness-cursor`, and `nda-harness-claude`.
+  The repository stores built Codex and Cursor packages. The Claude Code package
+  is created when cutting a release and is not stored in the repository.
 - One shared engine and asset source, with thin client adapters and reproducible
   packaging of the same engine revision for the initial clients.
 - Harness workflow/rules, specialist skills, context operations, project adoption,

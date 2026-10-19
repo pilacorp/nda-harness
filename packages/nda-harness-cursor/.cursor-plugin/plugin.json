@@ -1,0 +1,13 @@
+{
+  "author": {
+    "name": "NDA Harness"
+  },
+  "description": "NDA development workflow, project test gates and optional Hindsight memory.",
+  "displayName": "NDA Harness",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./mcp.json",
+  "name": "nda-harness",
+  "rules": "./rules/",
+  "skills": "./skills/",
+  "version": "0.0.0"
+}

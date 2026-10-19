@@ -169,15 +169,47 @@ def build(source, destination, client, endpoint=None, *, local_test=False):
     return destination
 
 
+COMMITTED_CLIENTS = ('codex', 'cursor')
+
+
+def publish_committed(source):
+    """Replace the stored Codex and Cursor packages. Claude is a release output only."""
+    source = Path(source).resolve()
+    packages = source / 'packages'
+    packages.mkdir(parents=True, exist_ok=True)
+    claude = packages / 'nda-harness-claude'
+    if claude.exists() or claude.is_symlink():
+        shutil.rmtree(claude)
+    built = []
+    for client in COMMITTED_CLIENTS:
+        destination = packages / f'nda-harness-{client}'
+        if destination.exists() or destination.is_symlink():
+            shutil.rmtree(destination)
+        built.append(build(source, destination, client))
+    return built
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--client', required=True, choices=CLIENTS)
-    parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--hindsight-mcp-url', default=os.environ.get('HINDSIGHT_MCP_URL'))
+    parser.add_argument('--publish-committed', action='store_true',
+                        help='Replace packages/nda-harness-codex and packages/nda-harness-cursor. Does not write a Claude package.')
+    parser.add_argument('--client', choices=CLIENTS)
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--hindsight-mcp-url', default=None)
     parser.add_argument('--local-test', action='store_true')
     args = parser.parse_args(argv)
     try:
-        output = build(Path(__file__).resolve().parents[2], args.output, args.client, args.hindsight_mcp_url, local_test=args.local_test)
+        source = Path(__file__).resolve().parents[2]
+        if args.publish_committed:
+            if args.hindsight_mcp_url or args.local_test or args.client or args.output:
+                raise ValueError('Committed packages omit Hindsight and are only Codex and Cursor.')
+            for output in publish_committed(source):
+                print(output)
+            return 0
+        if not args.client or not args.output:
+            parser.error('--client and --output are required unless --publish-committed is set')
+        endpoint = args.hindsight_mcp_url if args.hindsight_mcp_url is not None else os.environ.get('HINDSIGHT_MCP_URL')
+        output = build(source, args.output, args.client, endpoint, local_test=args.local_test)
         print(output)
         return 0
     except (OSError, ValueError, tarfile.TarError):

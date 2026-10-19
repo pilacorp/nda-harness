@@ -97,6 +97,21 @@ class PluginTests(unittest.TestCase):
         self.assertIn('resolve-library-id', packaged)
         self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
 
+    def test_repository_packages_are_built_codex_and_cursor_only(self):
+        packages = ROOT / 'packages'
+        self.assertFalse((packages / 'nda-harness-claude').exists())
+
+        def tree(root):
+            return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+
+        self.assertEqual(tree(packages / 'nda-harness-codex'), tree(self.package))
+        cursor = self.base / 'cursor-committed'
+        build(ROOT, cursor, 'cursor')
+        self.assertEqual(tree(packages / 'nda-harness-cursor'), tree(cursor))
+        for client, manifest in (('codex', '.mcp.json'), ('cursor', 'mcp.json')):
+            servers = json.loads((packages / f'nda-harness-{client}' / manifest).read_text())['mcpServers']
+            self.assertNotIn('hindsight', servers)
+
     def test_claude_package_matches_shared_engine_and_native_hooks(self):
         claude = self.base / 'claude'
         codex = self.base / 'codex-memory'

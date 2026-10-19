@@ -9,17 +9,26 @@ This is development installation, not a published release. The
 [implementation report](docs/compatibility/harness-plugin-implementation.md)
 separates automated checks from native-client observations still pending.
 
-## Build a complete package
+## Install the stored Codex and Cursor packages
 
-From the approved nda-harness checkout:
+The checkout stores built packages at `packages/nda-harness-codex` and
+`packages/nda-harness-cursor`. Install those directories. They contain no
+Hindsight endpoint. The Claude Code package is not stored here; create it when
+cutting a release, into a directory outside the repository:
 
 ```sh
-PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex --output /tmp/nda-harness-codex
-PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client cursor --output /tmp/nda-harness-cursor
 PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client claude --output /tmp/nda-harness-claude
 ```
 
-Choose a **new** output directory each time; existing files are preserved. Packages
+After engine or skill changes, refresh only the stored Codex and Cursor packages:
+
+```sh
+PYTHONPATH=scripts python3 -m nda_harness.plugin_build --publish-committed
+```
+
+That command never writes `packages/nda-harness-claude`. A one-off package for
+any client still uses `--client` and a **new** `--output` directory; existing
+files are preserved. Packages
 include the same canonical engine/assets, complete specialist and pinned Superpowers
 skills, licenses and provenance. Builds fetch nothing. A release hash manifest
 covers packaged files. Runtime needs neither the source checkout nor a global CLI.
@@ -42,7 +51,7 @@ auth headers enter the package.
 
 ## Load the plugin
 
-**Codex Desktop:** use the generated local marketplace directory. Its
+**Codex Desktop:** use `packages/nda-harness-codex`. Its
 `.agents/plugins/marketplace.json` declares AVAILABLE installation and **ON_USE**
 authentication; installation does not require Hindsight login. The manifest is
 `.codex-plugin/plugin.json`, MCP is `.mcp.json`, and hooks are `hooks/hooks.json`.
@@ -60,7 +69,7 @@ The path depends on the distribution. Use the installed Desktop runtime; do not
 assume parity with an unrelated CLI. Exact Desktop detail UI/trust checks remain
 separate from runtime registration evidence.
 
-**Cursor IDE:** for development, copy the complete generated package to
+**Cursor IDE:** for development, copy `packages/nda-harness-cursor` to
 `~/.cursor/plugins/local/nda-harness`, then **Developer: Reload Window**.
 Use a real directory, not an external symlink. Preserve existing plugins; reconcile
 an existing target instead of replacing it blindly. Organization policy may disable
@@ -79,7 +88,7 @@ marketplace. `.claude-plugin/plugin.json` names the plugin and does not repeat
 Register it with the Claude Code plugin store shared by the Desktop Code tab:
 
 ```sh
-claude plugin marketplace add /tmp/nda-harness-claude
+claude plugin marketplace add /absolute/release/nda-harness-claude
 claude plugin install nda-harness@nda-harness-local
 ```
 
