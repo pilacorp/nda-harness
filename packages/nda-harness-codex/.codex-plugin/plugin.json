@@ -3,8 +3,10 @@
   "displayName": "NDA Harness",
   "hooks": "./hooks/hooks.json",
   "interface": {
+    "composerIcon": "./assets/logo.jpg",
     "developerName": "NDA Harness",
     "displayName": "NDA Harness",
+    "logo": "./assets/logo.jpg",
     "shortDescription": "Development workflow with optional NDA Hindsight memory"
   },
   "mcpServers": "./.mcp.json",

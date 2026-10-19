@@ -149,16 +149,20 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         description = 'NDA development workflow, project test gates and one optional memory system.'
         manifest = {'name': 'nda-harness', 'displayName': 'NDA Harness', 'version': '0.0.0',
                     'description': description}
+        logo = (source / 'plugin/assets/logo.jpg').read_bytes()
+        write(root, 'assets/logo.jpg', logo)
         if client == 'claude':
             # skills/, hooks/hooks.json, and .mcp.json load from their default
             # locations. Declaring them in the manifest merges a second copy.
             manifest['author'] = {'name': 'NDA Harness'}
+            manifest['logo'] = './assets/logo.jpg'
         elif client == 'codex':
             manifest.update({'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './.mcp.json',
                              'interface': {'displayName': 'NDA Harness', 'developerName': 'NDA Harness',
-                                           'shortDescription': 'Development workflow with optional NDA Hindsight memory'}})
+                                           'shortDescription': 'Development workflow with optional NDA Hindsight memory',
+                                           'logo': './assets/logo.jpg', 'composerIcon': './assets/logo.jpg'}})
         else:
-            manifest.update({'author': {'name': 'NDA Harness'}, 'rules': './rules/',
+            manifest.update({'author': {'name': 'NDA Harness'}, 'logo': 'assets/logo.jpg', 'rules': './rules/',
                              'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json'})
         write(root, f'.{client}-plugin/plugin.json', json_bytes(manifest))
         servers = {'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'}}
