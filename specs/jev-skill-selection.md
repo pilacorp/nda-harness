@@ -385,8 +385,10 @@ generation changes during a request prevent publishing its result. Already-retur
 body text cannot be recalled from a running agent.
 
 Save only selection ID, input fingerprint, selected IDs, catalog/release/rules/model
-versions, and stage inline in the existing issue task record. Do not save absolute
-machine paths, provider input, probabilities, or full responses in Git. Resume
+versions, and stage inline in the existing local issue task record. Keep
+`.nda-harness/tasks/` local and ignored by Git; never commit its records. Do not
+save absolute machine paths, provider input, probabilities, or full responses in
+shared artifacts. Resume
 reconstructs input from current authoritative sources, compares provenance, and
 reselects when needed. A valid old record alone never permits loading.
 
