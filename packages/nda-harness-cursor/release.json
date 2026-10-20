@@ -26,7 +26,7 @@
     "pack/scripts/prepare-context": "c09b797967f555eb3917a73ebda1d86588efadafa4e83ee0b275b912721f69f3",
     "pack/scripts/unit_check.py": "f6ce84be13706ca798a22d801c6f6899d87caaf7e97b82c0ead83a10dcde7d4f",
     "pack/templates/context-brief.md": "9f0c5d6bf7d1003e843538ae9809caf90678718e984ef2f1737d7a2ab9206d63",
-    "pack/templates/developer-spec.md": "c6468471de35e40cc7ec808bbdb15f89df10271e7315690e9c98602c5c4472e1",
+    "pack/templates/developer-spec.md": "e550dbb7d76c676319e83b7d850c0e709df54dab6f143b551e6106236ec6495d",
     "pack/templates/task-record.md": "49c8ea18f5248bbd5674cb4c4c70c2a475e4c80e649ac393a3cff9622d8e765d",
     "pack/workflow.md": "68e7fb94fefb8ca57c2507edc79c12aa6d86455490c3f06883e6fa17ea21c904",
     "rules/nda-harness.mdc": "3557cdc84712c1c4a8eee96dc3e2ab6b85d677041663ec8a3561cd6f47dfa0f5",
