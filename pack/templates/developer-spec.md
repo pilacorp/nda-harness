@@ -1,6 +1,5 @@
 # <Feature title>
 
-Status: draft
 Feature issue: <published issue URL>
 Issue updated at: <UTC timestamp>
 Issue body SHA-256: <fingerprint>

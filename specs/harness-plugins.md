@@ -1,6 +1,5 @@
 # Developer spec: NDA Harness client plugins
 
-Status: draft for human review
 Feature issue: [pilacorp/nda-harness#10](https://github.com/pilacorp/nda-harness/issues/10)
 Spec branch: `specs/hindsight-supabase-auth`
 Requirement clarification: owner instructions on 2026-10-18 in this development conversation.

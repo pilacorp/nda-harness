@@ -1,11 +1,22 @@
 # <Feature title>
 
-Status: draft for human review
 Feature issue: <published issue URL>
 Issue updated at: <UTC timestamp>
 Issue body SHA-256: <fingerprint>
 Consulted source revisions: <references>
 Spec branch: <branch>
+
+## Summary
+
+<Explain the problem, proposed behavior, key decisions, and important limits in
+clear upper-intermediate English. Keep this section easy to verify before reading
+the detailed implementation contract below.>
+
+## Setup and daily use
+
+<When setup is needed, describe administrator and developer steps, prerequisites,
+credential handling, verification, and normal use. Mark proposed commands clearly.
+Omit this section when no setup or usage changes are needed.>
 
 ## Outcome and boundaries
 

@@ -1,6 +1,5 @@
 # Developer spec: select relevant skills with Jev
 
-Status: owner-approved; pending GitHub review and merge
 Feature issue: [nda-harness#16](https://github.com/pilacorp/nda-harness/issues/16)
 Spec branch: `spec/jev-skill-selection`
 

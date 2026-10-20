@@ -1,6 +1,5 @@
 # Hindsight authentication reporting and manual recovery
 
-Status: draft for human review
 Feature issue: https://github.com/pilacorp/nda-harness/issues/18
 Issue updated at: 2026-10-20T07:13:35Z
 Issue body SHA-256: cc1884da6baaa0fefc2204e49b7b6afdeea2e614dbe473146344aa6d74a92dbd
