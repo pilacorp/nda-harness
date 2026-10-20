@@ -58,3 +58,5 @@ alone does not establish failed refresh. Continue with client default memory whe
 it exists; do not fabricate saves or later synchronization.
 
 @AUTH_GUIDANCE@
+
+@SELECTION_GUIDANCE@

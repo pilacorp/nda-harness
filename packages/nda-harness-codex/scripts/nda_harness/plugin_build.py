@@ -15,6 +15,7 @@ import zipfile
 from .files import digest, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
 from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
+from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
 RELEASE_VERSION = '0.0.3'
@@ -22,7 +23,8 @@ SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
-           'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py')
+           'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
+           'credentials.py', 'openrouter.py', 'skill_selection.py')
 
 
 def validate_endpoint(url, local_test=False):
@@ -193,16 +195,16 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
             # a second upstream handler would duplicate an existing Superpowers
             # installation; leave its hooks and client configuration untouched.
             rule = (source / 'plugin/rules/nda-harness.mdc').read_text()
-            write(root, 'rules/nda-harness.mdc', rule.replace('@AUTH_GUIDANCE@', auth_guidance(client)))
+            write(root, 'rules/nda-harness.mdc', rule.replace('@AUTH_GUIDANCE@', auth_guidance(client)).replace('@SELECTION_GUIDANCE@', selection_guidance(client)))
         else:
             hooks = {'hooks': {event: [{'hooks': [{'type': 'command', 'command': command(event), 'timeout': 60 if event == 'SessionStart' else 15}]}]
                                for event in ('SessionStart', 'UserPromptSubmit', 'PreCompact')}}
         write(root, 'hooks/hooks.json', json_bytes(hooks))
         # Client-bound wrapper skills never offer a client/scope selection menu.
-        for name in ('nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume'):
+        for name in ('nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume', 'skill-selection'):
             path = root / 'skills' / name / 'SKILL.md'
             path.write_text(path.read_text().replace('@CLIENT@', client).replace('@ROOT@', variable)
-                            .replace('@AUTH_GUIDANCE@', auth_guidance(client)))
+                            .replace('@AUTH_GUIDANCE@', auth_guidance(client)).replace('@SELECTION_GUIDANCE@', selection_guidance(client)))
         if client == 'codex':
             write(root, '.agents/plugins/marketplace.json', json_bytes({
                 'name': 'nda-harness-local', 'interface': {'displayName': 'NDA Harness'},

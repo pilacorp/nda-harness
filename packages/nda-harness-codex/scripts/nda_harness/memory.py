@@ -208,4 +208,6 @@ def session_instruction(config, selected=None):
     instruction = SYSTEMS[system]['session']
     if system == 'hindsight' and config.get('client') in RECOVERY:
         instruction += ' ' + auth_guidance(config['client'])
+        from nda_harness.skill_selection import selection_guidance
+        instruction += ' ' + selection_guidance(config['client'])
     return instruction

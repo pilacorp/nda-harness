@@ -14,6 +14,9 @@ from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
+from nda_harness.credentials import MacKeychain, selection_setup
+from nda_harness.openrouter import selection_verify
+from nda_harness.skill_selection import SelectionError, load_selected_skills, read_selection_request, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
 
 
@@ -238,7 +241,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', 'selection-setup', 'selection-verify', 'select-skills', 'load-selected-skills', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -252,6 +255,10 @@ def main(argv=None):
     parser.add_argument('--role', choices=('developer', 'tech-lead'))
     parser.add_argument('--stage', choices=('specification', 'implementation'), default='specification')
     parser.add_argument('--session', default='manual')
+    parser.add_argument('--remove', action='store_true')
+    parser.add_argument('--live', action='store_true')
+    parser.add_argument('--request-file')
+    parser.add_argument('--refresh', action='store_true')
     args = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[2]
     home = Path.home().resolve()
@@ -261,7 +268,38 @@ def main(argv=None):
             native, invalid = read_memory_diagnostic(sys.stdin)
             print(json.dumps(memory_status(config, args.client, native, invalid=invalid), indent=2))
             return 2 if invalid else 0
+        if args.command == 'selection-verify':
+            report, code = selection_verify(package, MacKeychain(), live=args.live)
+            print(json.dumps(report))
+            return code
+        if args.command == 'selection-setup':
+            if not sys.stdin.isatty():
+                print(json.dumps({'status': 'blocked', 'diagnostic': 'terminal_required', 'implementation_authorized': False}))
+                return 2
+            report, code = selection_setup(MacKeychain(), sys.stdin, home / '.nda-harness', remove=args.remove)
+            print(json.dumps(report))
+            return code
         project = args.project or str(Path.cwd())
+        if args.command in ('select-skills', 'load-selected-skills'):
+            try:
+                data = read_selection_request(args.request_file, sys.stdin)
+            except SelectionError:
+                print(json.dumps({'diagnostic': 'invalid_task_input', 'implementation_authorized': False, 'status': 'blocked'}))
+                return 2
+            manifest = {}
+            release = package / 'release.json'
+            if release.is_file() and not release.is_symlink():
+                try:
+                    manifest = json.loads(release.read_text(encoding='utf-8')).get('asset_hashes') or {}
+                except (OSError, UnicodeError, json.JSONDecodeError):
+                    manifest = {}
+            kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': MacKeychain()}
+            if args.command == 'select-skills':
+                report, code = select_skills(data, transport=None, refresh=args.refresh, **kwargs)
+            else:
+                report, code = load_selected_skills(data, **kwargs)
+            print(json.dumps(report))
+            return code
         if args.command == 'unit-check':
             return unit_check(project)
         elif args.command == 'hook':
