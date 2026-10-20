@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "phase_implementation_runtime_validation_pending",
+  "status": "plugin_implementation_native_validation_pending",
   "installer_ready": false,
   "rtk": {
     "upstream": "https://github.com/rtk-ai/rtk",
@@ -33,7 +33,10 @@
     "inspected_revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
     "inspected_manifest_version": "7.0.0",
     "release_pin": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
-    "status": "pinned_source_manual_plugin_activation_required"
+    "status": "pinned_source_bundled_with_complete_skills",
+    "archive": "superpowers-bb92a777.tar.gz",
+    "archive_sha256": "496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2",
+    "provenance": "vendor/superpowers/SOURCE.json in generated package; original LICENSE and handlers preserved"
   },
   "context7": {
     "endpoint": "https://mcp.context7.com/mcp",
@@ -52,11 +55,14 @@
   "supported_phase": {
     "agents": [
       "codex",
-      "cursor",
-      "claude"
+      "cursor"
     ],
     "os": "macOS",
     "architecture": "arm64",
-    "lifecycle": "explicit_entrypoint_fallback"
+    "lifecycle": "trusted_native_hooks_with_explicit_skill_fallback",
+    "surfaces": [
+      "Codex Desktop",
+      "Cursor IDE"
+    ]
   }
 }

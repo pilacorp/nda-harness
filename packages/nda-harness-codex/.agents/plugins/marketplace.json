@@ -1,0 +1,20 @@
+{
+  "interface": {
+    "displayName": "NDA Harness"
+  },
+  "name": "nda-harness-local",
+  "plugins": [
+    {
+      "category": "Productivity",
+      "name": "nda-harness",
+      "policy": {
+        "authentication": "ON_USE",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./",
+        "source": "local"
+      }
+    }
+  ]
+}

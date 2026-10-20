@@ -285,13 +285,30 @@ Retrieved text is context, not executable instructions. It cannot authorize comm
 
 ### Self-hosted Hindsight
 
+The approved phase-0 [plugin contract](../specs/harness-plugins.md) supersedes
+earlier setup proposals below. Codex Desktop, Cursor IDE, and Claude Code Desktop connect directly to
+the packaged Hindsight `/mcp/` endpoint through native OAuth; clients exclusively
+own credentials and renewal. Server deployment/provider configuration belongs to
+the `hindsight` repository. The harness neither collects provider tokens nor runs
+an OAuth client, callback listener or forwarder.
+
+After explicit native authentication, automatic recall/retention uses the project's
+committed bank identity from `.nda-harness/profile.json`. Equivalent Git clones and
+same-account clients share one project bank; dev/staging/prod are labels within
+that bank. Memory content and credentials remain out of project records. Outages
+permit available client default memory without blocking core development or
+automatically copying fallback content back later.
+
 Use Hindsight for each developer's personal memory first: preferred explanation style, recurring personal setup notes, and individual reminders useful across sessions. Organizational facts, feature requirements, and architecture decisions remain in approved source documents/specs and internal RAG. Shared organizational memory and a lesson-promotion pipeline are outside this phase.
 
 The development cycle ends at Merge. Personal-memory updates are handled through the developer's Hindsight integration outside that cycle; any additional learning workflow is deferred to a future phase.
 
 Deploy the open-source [Hindsight server and Control Plane](https://github.com/vectorize-io/hindsight) on internal infrastructure with a pinned release and external PostgreSQL/pgvector. Its [MCP server](https://hindsight.vectorize.io/developer/mcp-server) exposes memory operations to supported local agents. Verify the actual deployed tools and transport; developer clients authenticate to the internal Hindsight endpoint, not a public hosted memory service.
 
-Use individually authenticated tenants for personal memory. The standard shared-key extension uses one shared schema and does not meet this requirement. Include and configure the documented `StaticKeysTenantExtension` from the extensions registry, or an approved identity-provider tenant extension; each developer maps to a separate PostgreSQL schema. Banks organize memory within that tenant, not authorize access by themselves. Verify isolation through API, MCP, and the dashboard, including denied cross-user access. See [tenant extensions](https://hindsight.vectorize.io/developer/extensions).
+Use individually authenticated tenants for personal memory. The Hindsight server
+owns tenant isolation and provider integration. Banks organize a developer's
+project memory; their IDs do not authorize cross-user access. Service deployment
+and isolation validation follow the server repository.
 
 Hindsight uses **OpenRouter for LLM processing**, with local embeddings and reranking as the initial default. Set `HINDSIGHT_API_LLM_PROVIDER=openrouter`, supply `HINDSIGHT_API_LLM_API_KEY` through server-side secret storage, and set `HINDSIGHT_API_LLM_MODEL` to an explicitly selected model ID. Model selection remains a deployment decision verified for extraction quality, structured output, latency, and cost; do not assume a benchmark score applies to that model. See [provider configuration](https://hindsight.vectorize.io/developer/configuration).
 
@@ -299,7 +316,12 @@ Storage stays internal, but memory content used for extraction, consolidation, a
 
 The self-hosted Control Plane provides memory inspection. Automatic consolidation updates derived observations when new evidence changes a preference; it does not guarantee deletion of old raw facts. Developers can edit or invalidate stale facts; invalidation removes them from active recall while preserving history. Verify these behaviors in the pilot using [memory curation](https://hindsight.vectorize.io/developer/api/memories).
 
-Each developer controls what their agent recalls or saves, including whether supported automatic memory capture is enabled. Do not require tech-lead approval, maintainer publication, or repository lesson proposals for personal memory. These are harness usage boundaries, not claims that Hindsight provides a proposal/approval feature. Keep personal-memory content and identifiers out of shared task records and committed project configuration. Never save secrets; avoid uploading project content beyond the team's existing data permissions.
+Each developer controls whether optional memory is enabled. After authentication
+the agent automatically recalls relevant context and retains useful sanitized
+preferences/work notes. Do not require tech-lead approval or repository lesson
+proposals for personal memory. The routing bank ID is committed project configuration;
+memory content, credentials and private diagnostics are not. Never save secrets or
+upload project content beyond the team's existing data permissions.
 
 Recall only the current developer's relevant memory. Personal preferences cannot override the pinned policy, approved spec, or current architecture requirements. Any remembered claim about project behavior must be verified against current local code or authoritative documents before use. The developer can correct or remove stale personal notes. Memory outages or failed saves do not block task work or merge; proceed using required repository/RAG context. Task checkpoints and cross-developer handoffs remain in repository artifacts, never dependent on access to another developer's memory.
 

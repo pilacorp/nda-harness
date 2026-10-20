@@ -1,0 +1,14 @@
+{
+  "author": {
+    "name": "NDA Harness"
+  },
+  "description": "NDA development workflow, project test gates and one optional memory system.",
+  "displayName": "NDA Harness",
+  "hooks": "./hooks/hooks.json",
+  "logo": "assets/logo.jpg",
+  "mcpServers": "./mcp.json",
+  "name": "nda-harness",
+  "rules": "./rules/",
+  "skills": "./skills/",
+  "version": "0.0.3"
+}

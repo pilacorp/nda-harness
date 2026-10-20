@@ -16,7 +16,7 @@ def value(project, *args):
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def hook_plan(plan, project, state, receipt):
+def hook_plan(plan, project, state, receipt, check_command=None):
     worktree_local = value(project, "config", "--get", "extensions.worktreeConfig") == "true"
     worktrees = git(project, "worktree", "list", "--porcelain").stdout.count("worktree ")
     if worktrees > 1 and not worktree_local:
@@ -54,7 +54,8 @@ def hook_plan(plan, project, state, receipt):
         body = "#!/bin/sh\nset -eu\n"
         if name == "pre-commit":
             body += f"if [ -x {shlex.quote(str(original_hook))} ]; then\n  {shlex.quote(str(original_hook))} \"$@\"\nfi\n"
-            body += f"exec {shlex.quote(str(project / '.nda-harness/hooks/pre-commit'))} \"$@\"\n"
+            command = check_command or shlex.quote(str(project / '.nda-harness/hooks/pre-commit'))
+            body += f"exec {command} \"$@\"\n"
         else:
             body += f"if [ -x {shlex.quote(str(original_hook))} ]; then exec {shlex.quote(str(original_hook))} \"$@\"; fi\n"
         plan.file(destination / name, body.encode(), 0o755)

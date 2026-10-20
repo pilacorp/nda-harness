@@ -1,6 +1,6 @@
 # Skills hub
 
-This folder is the source Skills hub for NDA Harness. During repository adoption, copy it from the pinned release to `.nda-harness/skills/`. The catalog is discovery metadata; load a skill body only for the assigned task. These skills are instructions, not installed tools or enforced gates.
+This folder is the source Skills hub for NDA Harness. Native plugins bundle it once alongside the shared engine; do not copy shared skills into each project's `.nda-harness/`. The catalog is discovery metadata; load a skill body only for the assigned task. These skills are instructions, not installed tools or enforced gates.
 
 | Skill | Select when | Required context | Output |
 | --- | --- | --- | --- |

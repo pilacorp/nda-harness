@@ -11,7 +11,7 @@ import urllib.error
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from nda_harness.dependencies import unpack, identity, prepare
-from nda_harness.files import Conflict, Plan, atomic
+from nda_harness.files import Conflict, Plan, atomic, guard_path, read
 from nda_harness.engine import exit_code
 from nda_harness.mcp import check_context7, decode_response
 
@@ -40,6 +40,38 @@ class SafetyTests(unittest.TestCase):
                         self.assertEqual(identity(executable), expected)
             with patch("subprocess.run", side_effect=AssertionError("must not run an unknown binary")):
                 self.assertFalse(identity(executable))
+
+    def test_read_does_not_require_a_writable_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary).resolve() / "package"
+            directory.mkdir()
+            target = directory / "nda-plugin.json"
+            target.write_bytes(b'{"ok": true}\n')
+            directory.chmod(0o555)
+            try:
+                self.assertEqual(read(target), b'{"ok": true}\n')
+                self.assertIsNone(read(directory / "missing.json"))
+            finally:
+                directory.chmod(0o755)
+
+    def test_write_to_unwritable_parent_names_the_permission_failure(self):
+        import errno
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary).resolve() / "state"
+            directory.mkdir()
+            directory.chmod(0o555)
+            try:
+                with self.assertRaises(Conflict) as caught:
+                    atomic(directory / "receipt.json", b"{}\n")
+                self.assertIn("Unwritable destination (permissions)", str(caught.exception))
+                self.assertFalse((directory / "receipt.json").exists())
+            finally:
+                directory.chmod(0o755)
+            parent = Path(temporary).resolve()
+            with patch("nda_harness.files.os.access", return_value=False), patch("nda_harness.files.os.open", side_effect=PermissionError(errno.EPERM, "operation not permitted")):
+                with self.assertRaises(Conflict) as caught:
+                    guard_path(parent / "receipt.json")
+            self.assertIn("Unwritable destination (sandbox)", str(caught.exception))
 
     def test_wrong_archive_checksum_never_extracts(self):
         with self.assertRaisesRegex(Conflict, "checksum mismatch"):

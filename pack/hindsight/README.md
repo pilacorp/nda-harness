@@ -11,11 +11,13 @@ Choose the template by the bank's purpose, not the client application:
 
 ## Creating a bank
 
-1. Call `list_banks` first, following pagination, and reuse an appropriate existing
-   bank. Respect explicit user bank IDs and routing rules. Do not apply a template
+1. Read the committed project `.nda-harness/profile.json` and use exactly
+   `memory.bank_id`. Equivalent clones and both clients share this project bank;
+   dev/staging/prod are labels within it, never separate banks. Call `list_banks`
+   first, following pagination, and reuse that exact bank. Do not apply a template
    to an existing bank just because its configuration differs from these defaults.
-2. If no appropriate bank exists, read the chosen JSON file in full. Create a bank
-   with a stable ID and descriptive name using `create_bank`. Do not create a bank
+2. If that exact bank is missing, read the chosen JSON file in full. Create a bank
+   with the configured ID and a project-scoped purpose using `create_bank`. Do not create a bank
    per conversation or overwrite an existing bank's purpose. List again if creation
    reports an existing bank or a conflict; reuse it without reconfiguration.
 3. Inspect the discovered MCP schemas. For the bank you just created, call
@@ -51,5 +53,6 @@ moving memories, changing access controls, or sharing banks across user accounts
 The manifests also use the upstream
 [bank template import format](https://github.com/vectorize-io/hindsight/blob/main/skills/hindsight-docs/references/developer/api/bank-templates.md).
 MCP application uses the native tools rather than exposing API keys to shell
-commands. CLI setup and verification install/check the local assets and discover
-tool capabilities; they do not create banks, apply templates, or synthesize models.
+commands. The native client owns OAuth. Plugin setup and verification check local
+assets; authenticated discovery uses native client diagnostics. Verification never
+creates banks, applies templates, recalls/retains memories or synthesizes models.

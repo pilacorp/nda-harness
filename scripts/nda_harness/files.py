@@ -1,4 +1,5 @@
 """Preflighted, atomic writes and hash-aware recovery."""
+import errno
 import hashlib
 import json
 import os
@@ -22,25 +23,55 @@ def json_bytes(value):
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
 
 
-def guard_path(path):
+def guard_path(path, *, write=True):
     for parent in [path, *path.parents]:
         if parent.is_symlink():
             raise Conflict(f"Destination symlink requires reconciliation: {parent}")
     if path.exists() and not path.is_file():
         raise Conflict(f"Expected a file: {path}")
+    if not write:
+        return
     parent = path.parent
     while not parent.exists():
         parent = parent.parent
-    if not os.access(parent, os.W_OK):
-        raise Conflict(f"Unwritable destination: {parent}")
+    if os.access(parent, os.W_OK):
+        return
+    reason = write_denial(parent)
+    if reason is None:
+        return
+    message = f"Unwritable destination ({reason}): {parent}"
+    if ".nda-harness" in parent.parts:
+        message += ". Grant write access to ~/.nda-harness."
+    raise Conflict(message)
+
+
+def write_denial(parent):
+    """Return sandbox, permissions, unwritable, or None when a create actually succeeds."""
+    probe = parent / (".nda-probe-" + uuid.uuid4().hex)
+    try:
+        fd = os.open(probe, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except OSError as error:
+        if error.errno == errno.EPERM:
+            return "sandbox"
+        if error.errno == errno.EACCES:
+            return "permissions"
+        return "unwritable"
+    else:
+        os.close(fd)
+        try:
+            os.unlink(probe)
+        except OSError:
+            pass
+        return None
 
 
 def read(path):
-    guard_path(path)
+    guard_path(path, write=False)
     return path.read_bytes() if path.exists() else None
 
 
 def atomic(path, content, mode=0o600):
+    guard_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp = tempfile.mkstemp(prefix=".nda-", dir=path.parent)
     try:
@@ -147,7 +178,7 @@ class Plan:
         self.write(path, content, 0o600, private=private)
         return old is None
 
-    def apply(self, state):
+    def apply(self, state, journal=None):
         backup_dir = state / "backups" / uuid.uuid4().hex
         for path, (old, new, mode) in self.writes.items():
             if read(path) != old:
@@ -161,10 +192,17 @@ class Plan:
                 backup_dir.chmod(0o700)
                 backup_dir.parent.chmod(0o700)
             absent = [p for p in [path.parent, *path.parent.parents] if not p.exists()]
-            atomic(path, new, mode)
             self.created_directories.extend(reversed(absent))
-            self.applied.append({"path": str(path), "backup": str(backup) if backup else None,
-                                 "written_sha256": digest(new), "old_mode": original_mode})
+            item = {"path": str(path), "backup": str(backup) if backup else None,
+                    "written_sha256": digest(new), "old_mode": original_mode}
+            if journal:
+                # Durable intent precedes the write. Recovery also handles an
+                # operation that was journaled but never reached os.replace.
+                self.applied.append(item)
+                journal(self)
+            atomic(path, new, mode)
+            if not journal:
+                self.applied.append(item)
 
     def rollback(self, shared_paths=()):
         unresolved = []
@@ -172,7 +210,16 @@ class Plan:
             path = Path(item["path"])
             if path in shared_paths:
                 continue
-            if path.is_symlink() or not path.exists() or digest(path.read_bytes()) != item["written_sha256"]:
+            try:
+                guard_path(path)
+            except Conflict:
+                unresolved.append(str(path))
+                continue
+            if not path.exists() and not path.is_symlink() and not item['backup']:
+                continue
+            if item['backup'] and path.is_file() and not path.is_symlink() and path.read_bytes() == Path(item['backup']).read_bytes():
+                continue  # Not written yet, or a prior recovery already restored it.
+            if path.is_symlink() or not path.is_file() or digest(path.read_bytes()) != item["written_sha256"]:
                 unresolved.append(str(path))
                 continue
             if item["backup"]:

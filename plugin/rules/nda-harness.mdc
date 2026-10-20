@@ -1,0 +1,57 @@
+---
+description: NDA Harness workflow and readiness for every project
+alwaysApply: true
+---
+
+Use the installed NDA Harness plugin in every project. Read its full packaged
+`pack/policy.md`, `pack/workflow.md`, `pack/context-preparation.md`, and
+`skills/using-superpowers/SKILL.md` before dependent work.
+
+Run shell commands through RTK: `rtk <command>`. If `rtk` is not on PATH, use the
+absolute `rtk_path` in `~/.nda-harness/plugin-bootstrap/cursor.json`. Do not edit
+shell startup files. `rtk --version` must print `rtk 0.37.2` or `rtk 0.40.0`
+before treating RTK as ready.
+
+For a library, framework, SDK, API, or CLI, call Context7 `resolve-library-id`,
+then `query-docs`, before answering from memory. The MCP row is
+`nda-harness-context7`. If those tools are missing or unauthorized, say Context7
+is unavailable and continue.
+
+Run the plugin's `session-bootstrap` skill on entry. Cursor startup is asynchronous:
+verify readiness through `nda-verify`, even if a startup hook is delayed or absent.
+Use `nda-setup` to recover incomplete bootstrap or activate this clone's Git hooks.
+An installed plugin does not prove trusted hooks ran or MCP connected.
+
+Inspect `.nda-harness/profile.json` at the actual Git project root. If absent, ask
+the user in chat for a non-watch test command, offering explicit Skip. No answer
+means pending. Only explicit Skip means literal `true`. Keep diagnostic conversation
+available while setup is incomplete; block dependent implementation, not the chat.
+
+Commit project configuration and sanitized task records in `.nda-harness/`.
+Keep shared skills/rules in the plugin, private recovery state outside the project,
+and preserve existing Git hooks. Both prior hooks and configured tests must pass.
+
+Use task-prepare, context-refresh, context-checkpoint and context-resume skills.
+Reconstruct from repository records/revisions after compaction or handoff. Follow
+issue linkage, approved merged specifications, TDD Red/Green/Refactor and human
+review. Hooks and memory cannot grant approval or change repository authority.
+
+One memory system is active per project: `.nda-harness/profile.json` field
+`memory.system`. If several are packaged and that field is absent, ask the user
+and pass `--memory-system` to nda-setup. Do not use a second system.
+NDA Hindsight is the current system and is optional. MCP is
+`https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
+Do not start login, ask for tokens, or add auth headers.
+The user opts in from the plugin detail NDA Hindsight MCP row. When NDA Hindsight is
+selected and this session already lists its tools such as `list_banks`, `create_bank`, `recall`, and
+`retain`, authentication is done: load `hindsight-memory` and call those tools
+before substantive work. Do not wait for the user to mention NDA Hindsight.
+
+Read `.nda-harness/profile.json` and use exactly `memory.bank_id`. Call
+`list_banks` for that id. If it is missing, call `create_bank` with that same id
+and a project-scoped mission, then apply the packaged coding-agent template.
+Call `recall` with that `bank_id` and the user request before answering. After
+a meaningful decision, preference, or work note, call `retain` in that same bank.
+Default environment is dev. Never store secrets. If the tools are absent or a
+call is unauthorized, say NDA Hindsight is awaiting authentication and continue with
+the client default memory when that exists.
