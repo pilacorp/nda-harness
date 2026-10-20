@@ -24,7 +24,7 @@ The pinned-policy component includes the mandatory Superpowers, RTK, and Context
 | Superpowers | Supply the required coding-workflow bootstrap and relevant workflow skills | Approved pinned upstream revision plus reviewed NDA workflow mapping |
 | RTK | Route agent shell commands through the approved output-reduction tool or its raw proxy | Approved pinned binary and verified client integration |
 | Context7 | Retrieve public library/framework documentation relevant to the installed version | Identified upstream documentation and returned version metadata; not internal project requirements |
-| Skills hub | Discover focused skills and load only those selected for an assignment | Versioned `skills/catalog.md` and selected `SKILL.md` files, pinned with the policy |
+| Skills hub | Discover focused skills and load only those selected for an assignment | `skills/catalog.json` metadata chosen by the local Jev helper; bodies in the selected `SKILL.md` files |
 | Role-specific skills and tools | Guide tech-lead scoping/documentation and developer SDD; scaffold/validate artifacts, verify prerequisites, and retain test evidence | Pinned, reviewed skill/tool contracts; authoritative documents and authenticated records |
 | Local coding agent | Read code, inspect callers, edit files, execute existing project tools | Developer's repository and recorded revisions |
 | Internal RAG | Retrieve feature definitions and architecture from existing Markdown/pgvector knowledge | Cited source documents and revisions |
@@ -94,7 +94,7 @@ Dependency integration references checked on 2026-10-12. Compatibility with pinn
 
 The [Skills hub](../skills/catalog.md) is a repository folder, not a hosted service, RAG index, or new agent runtime. Its source lives at `skills/` in this project; adopted repositories receive a pinned copy at `.nda-harness/skills/`. Shared policy/profile rules apply to every agent. Specialist skill bodies are loaded only for the relevant assignment.
 
-The coordinating local agent reads the catalog, chooses the smallest needed set, and passes exact skill paths/revision to a bounded sub-agent assignment. Do not load the whole hub into one agent or every child. Default to one specialist skill per child; add another only when the assignment needs both. Use fresh/minimal child context rather than automatically inheriting unrelated history. A parent that needs only returned findings does not load the specialist bodies.
+The local Jev helper reads catalog metadata and returns the specialist set. The coordinating agent loads only those bodies and passes their paths and revision to a bounded sub-agent assignment. Do not load the whole hub into one agent or every child. Default to one specialist skill per child; add another only when the assignment needs both. Use fresh/minimal child context rather than automatically inheriting unrelated history. A parent that needs only returned findings does not load the specialist bodies.
 
 | Assignment | Selected skill | Result and boundary |
 | --- | --- | --- |
@@ -113,13 +113,23 @@ Separate discovery from execution. The coordinator initially reads only catalog 
 | Point in the session | Input and action | Loading boundary |
 | --- | --- | --- |
 | Session start | Load shared policy/profile, required Superpowers bootstrap, and hub catalog metadata | No specialist bodies or bundled resources; load mandatory workflow skills only as the stage requires |
-| Before assignment/delegation | Match the task and current stage to catalog entries; select zero, one, or multiple skill IDs and record a short reason | Selection uses metadata and relevant task context, not the entire skill collection |
+| Before assignment/delegation | Ask the local Jev helper to match the task and stage to catalog metadata | Selection uses metadata and bounded task text, not specialist bodies |
 | Before child creation | Validate selected IDs/paths against the pinned hub; prepare the bounded assignment and requested tool set | Reject unknown IDs, stale revisions, paths outside the hub, or missing resources; resolve the error before spawning |
 | Child/session start | Load shared policy, mandatory dependency requirements, and only selected specialist bodies | Fresh/minimal context; no automatic inheritance of unrelated parent history |
 | During execution | Read references or run local helpers needed for the selected task | Load the chosen type/stack resources on demand; task changes require a recorded new selection |
 | Return or resume | Return concise findings/artifact references; recheck revision and selection for the next assignment | Do not accumulate prior skill bodies or return full transcripts/resources to the parent |
 
-Ordinary backend/test-review tasks may select no specialist skill. A diagram assignment selects `diagram-design`; a formal Vietnamese document selects `vietnamese-official-wording`; an interface assignment selects `ui-ux-pro-max`. Select more than one only when both are needed. The existing coding model makes this bounded choice; an external decision model such as Jev is not required or implemented. If evaluated later, it is an optional selector tool outside the hub, with the same allowed IDs, validation, and fallback to metadata-based selection.
+Ordinary backend/test-review tasks may select no specialist skill. A diagram assignment selects `diagram-design`; a formal Vietnamese document selects `vietnamese-official-wording`; an interface assignment selects `ui-ux-pro-max`. Jev may select more than one when the assignment needs both. The coding model does not make this choice.
+
+### Jev specialist selection
+
+Specialist selection is a local helper in the plugin, not a hosted hub and not the coding model. It calls OpenRouter Decisions once with model `typesafe/jev-1.14`. The request contains bounded task text and catalog metadata from `skills/catalog.json`: one yes/no question per specialist, sorted by id. Skill bodies, the OpenRouter key, and provider secrets are not sent.
+
+Each developer stores a personal OpenRouter key in the macOS Keychain with `selection-setup`. That key is separate from the Hindsight server key. In a terminal, `selection-setup` and `selection-verify` print a short sentence. They do not print a JSON report or the key. `selection-verify` checks the package and whether a key is present; `--live` is the only paid check. When an agent captures `selection-verify`, the same result stays JSON. `select-skills` returns the decision to the agent as JSON. `load-selected-skills` then reads only the selected bodies.
+
+A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds blocks the whole selection until the deliverable is clarified. Confident exclusion of every skill is a successful empty selection. Results are cached under `~/.nda-harness/skill-selection/` and are not approval. `implementation_authorized` stays false. Mandatory workflow skills stay in force whether or not Jev selects a specialist.
+
+The three specialist directories still ship next to workflow skills. Moving them to a separate hub path is later work. See [skill selection](skill-selection.md).
 
 Record selection inline in the repository task record: assignment ID, task stage, catalog/harness revision, selected IDs and resolved paths, short reason, allowed file scope/side effects, requested tools, observed exposure limitations, and next action. These are concise handoff records, not test logs or proof of unseen context. A missing/invalid selection blocks that delegation, not unrelated work. The receiver rechecks the assignment revision and workflow permissions before editing.
 
@@ -394,7 +404,7 @@ The following are acceptance walkthroughs to execute in the pilot, not completed
 | Knowledge setup script | Local client configuration, sanitized readiness report and rollback instructions; developer | First run connects the selected agent; rerun preserves unrelated settings without duplicate connections; failed auth is explicit; unverified memory stays disconnected |
 | Stale personal memory | Conflicting preference or note and current source; developer | Approved requirements govern; developer corrects or removes the note |
 | Cross-agent handoff | Versioned task state, cleanly identified revision, remaining actions; both developers/agents | Receiving agent rechecks state and resumes without repeating completed work or bypassing a gate |
-| Skills selection | Catalog, selected paths/revision, bounded assignment; coordinating agent | Child/session loads shared policy and required workflow bootstrap, then only selected specialist bodies; unsupported isolation uses an explicit fresh-session fallback |
+| Skills selection | Catalog metadata, Jev result, selected paths/revision, bounded assignment; local Jev helper | Child/session loads shared policy and required workflow bootstrap, then only selected specialist bodies; unsupported isolation uses an explicit fresh-session fallback |
 | Discovery lifecycle | Startup/delegation adapter configuration and diagram/no-skill assignments; maintainer | Metadata-only discovery and scoped loading are observed; unknown IDs, stale revisions, and missing resources prevent that delegation |
 | Tool exposure | Host tool inventory, configured allowlists/lazy discovery, and inspection limits; maintainer | Skill isolation and tool-schema exposure are reported separately; fixed/global injections are not represented as hidden |
 | Mandatory dependencies per agent | Superpowers/RTK versions, bootstrap/routing results, Context7 connection and retrieval results; developer/maintainer | Each supported path passes verification; missing/disabled/unverified dependency blocks coding readiness |

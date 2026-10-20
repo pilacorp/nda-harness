@@ -1,15 +1,17 @@
 """Keychain setup for the OpenRouter skill-selection key."""
+import io
 import json
 import stat
 import sys
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from nda_harness.credentials import generation_id, selection_setup
+from nda_harness.credentials import generation_id, selection_setup, setup_message
 
 
 FIRST = 'first-openrouter-key'
@@ -132,6 +134,44 @@ class CredentialTests(unittest.TestCase):
         self.assertEqual(report['diagnostic'], 'credential_unavailable')
         self.assertEqual(keychain.writes, 0)
         self.assertNotIn(FIRST.encode(), self.files())
+
+    def test_setup_terminal_text_is_not_json(self):
+        saved = setup_message({'implementation_authorized': False, 'status': 'ready'})
+        self.assertEqual(saved, 'OpenRouter key saved.')
+        self.assertNotIn('{', saved)
+        self.assertEqual(setup_message({'status': 'ready', 'diagnostic': 'credential_removed'}), 'OpenRouter key removed.')
+        self.assertEqual(setup_message({'status': 'cancelled'}), 'Cancelled. The saved key was not changed.')
+        self.assertEqual(setup_message({'status': 'blocked', 'diagnostic': 'invalid_credential'}), 'The key was empty. Nothing was saved.')
+        self.assertNotIn('first-openrouter-key', setup_message({'status': 'ready'}))
+
+    def test_unwritable_stdin_prompts_on_stderr(self):
+        class ReadOnlyTTY(ScriptedTTY):
+            def write(self, text):
+                raise io.UnsupportedOperation('not writable')
+
+        streams = []
+
+        def fake_getpass(prompt, stream=None):
+            streams.append((prompt, stream))
+            return FIRST
+
+        with patch('getpass.getpass', fake_getpass):
+            report, code = selection_setup(FakeKeychain(), ReadOnlyTTY([]), self.home)
+        self.assertEqual(code, 0)
+        self.assertEqual(streams, [('OpenRouter key: ', sys.stderr)])
+        self.assertNotIn(FIRST, json.dumps(report))
+
+    def test_setup_command_prints_a_sentence_without_a_terminal(self):
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from nda_harness.plugin_runtime import main
+        output = StringIO()
+        with patch('sys.stdin.isatty', return_value=False), patch('nda_harness.plugin_runtime.package_config', return_value={'schema_version': 1, 'client': 'cursor'}), redirect_stdout(output):
+            code = main(['selection-setup', '--client', 'cursor'])
+        text = output.getvalue()
+        self.assertEqual(code, 2)
+        self.assertEqual(text.strip(), 'A local terminal is required.')
+        self.assertNotIn('{', text)
 
     def test_setup_command_rejects_a_key_argument(self):
         from io import StringIO

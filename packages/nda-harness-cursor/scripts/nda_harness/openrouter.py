@@ -105,6 +105,27 @@ def post_decision(request, key, *, transport=None):
     }
 
 
+def verify_message(report):
+    """Human terminal text. selection-verify does not print the JSON report on a terminal."""
+    status = report.get('status') if isinstance(report, dict) else None
+    diagnostic = report.get('diagnostic') if isinstance(report, dict) else None
+    model = report.get('model_returned') if isinstance(report, dict) else None
+    if status == 'ready' and accept_model(model):
+        return 'Live check passed. Model ' + model + '.'
+    if status == 'ready':
+        return 'OpenRouter key is present.'
+    return {
+        'credential_missing': 'No OpenRouter key is saved.',
+        'credential_unavailable': 'Keychain could not be read.',
+        'invalid_catalog': 'The skill selection package is invalid.',
+        'authorization_failed': 'OpenRouter rejected the key. ' + REAUTHENTICATION,
+        'credit_or_limit': 'OpenRouter reported a credit or limit problem.',
+        'rate_limited': 'OpenRouter rate limited the check.',
+        'provider_unavailable': 'OpenRouter could not be reached.',
+        'invalid_provider_response': 'OpenRouter returned an unusable response.',
+    }.get(diagnostic, 'Skill selection check did not finish.')
+
+
 def selection_verify(package, keychain, *, live=False, transport=None):
     """Offline package and credential check, or one explicit synthetic decision call."""
     package = Path(package)

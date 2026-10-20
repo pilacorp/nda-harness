@@ -253,6 +253,39 @@ class SelectionTests(unittest.TestCase):
             answers = json.loads(json.dumps(raw))
         return classify_answers(task(), catalog, answers, model)
 
+    def test_verify_terminal_text_is_not_json(self):
+        from io import StringIO
+        from contextlib import redirect_stdout
+        from nda_harness.openrouter import verify_message
+        from nda_harness.plugin_runtime import main
+        ready = verify_message({'implementation_authorized': False, 'status': 'ready', 'usage': None})
+        self.assertEqual(ready, 'OpenRouter key is present.')
+        self.assertNotIn('{', ready)
+        live = verify_message({
+            'implementation_authorized': False,
+            'model_returned': 'typesafe/jev-1.14-20261014',
+            'provider_request_id': 'gen-dec-1',
+            'status': 'ready',
+            'usage': {'cost': 0.01, 'input_tokens': 3, 'output_tokens': 1},
+        })
+        self.assertEqual(live, 'Live check passed. Model typesafe/jev-1.14-20261014.')
+        self.assertNotIn('gen-dec-1', live)
+        self.assertNotIn('bearer-token', verify_message({'status': 'blocked', 'diagnostic': 'authorization_failed', 'next': 'bearer-token'}))
+        self.assertEqual(verify_message({'status': 'blocked', 'diagnostic': 'credential_missing', 'implementation_authorized': False}), 'No OpenRouter key is saved.')
+        class _Terminal(StringIO):
+            def isatty(self):
+                return True
+
+        report = {'implementation_authorized': False, 'status': 'ready', 'usage': None}
+        terminal = _Terminal()
+        with patch('nda_harness.plugin_runtime.package_config', return_value={'schema_version': 1, 'client': 'cursor'}), patch('nda_harness.plugin_runtime.selection_verify', return_value=(report, 0)), redirect_stdout(terminal):
+            self.assertEqual(main(['selection-verify', '--client', 'cursor']), 0)
+        self.assertEqual(terminal.getvalue().strip(), 'OpenRouter key is present.')
+        captured = StringIO()
+        with patch('nda_harness.plugin_runtime.package_config', return_value={'schema_version': 1, 'client': 'cursor'}), patch('nda_harness.plugin_runtime.selection_verify', return_value=(report, 0)), redirect_stdout(captured):
+            self.assertEqual(main(['selection-verify', '--client', 'cursor']), 0)
+        self.assertEqual(json.loads(captured.getvalue())['status'], 'ready')
+
     def test_verify_and_transport_keep_the_key_on_the_fixed_origin(self):
         package = self._package()
         sentinel = 'SENTINEL_BODY_NOT_FOR_JEV'
@@ -473,6 +506,13 @@ class SelectionTests(unittest.TestCase):
             for command in ('selection-setup', 'selection-verify', 'select-skills', 'load-selected-skills'):
                 self.assertIn(command, skill)
             self.assertIn('Replace the saved OpenRouter key', skill)
+            self.assertIn('open a terminal and run', skill)
+            self.assertIn('not JSON', skill)
+            self.assertIn('scripts/open-terminal.sh', skill)
+            opener = (destination / 'skills/skill-selection/scripts/open-terminal.sh').read_text(encoding='utf-8')
+            self.assertIn('do script', opener)
+            self.assertIn('cd ', opener)
+            self.assertIn('selection-setup --client', opener)
             self.assertNotIn('Forty-four visual types', skill)
             self.assertIn('skill-selection', bootstrap)
             self.assertIn('selection-setup', bootstrap)

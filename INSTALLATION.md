@@ -154,6 +154,10 @@ hook execution. Hindsight authentication is the native MCP action in `/mcp` or
 the Desktop plugin/MCP row. Record the label that client shows. Do not invent an
 Authenticate button. Installation does not open a login browser.
 
+## Skill selection key
+
+After the plugin is loaded, run `selection-setup` in a local terminal and enter the personal OpenRouter key. The terminal prints `OpenRouter key saved.` It does not print JSON. That key is only for Jev skill selection and stays in the macOS Keychain. See [skill selection](docs/skill-selection.md).
+
 ## First trusted session and project setup
 
 The plugin is available in every project with no client or scope menu. Trusted

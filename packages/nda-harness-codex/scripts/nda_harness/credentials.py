@@ -1,6 +1,7 @@
 """Keychain storage for one OpenRouter skill-selection key. No plaintext fallback."""
 import ctypes
 from pathlib import Path
+import sys
 import uuid
 
 from nda_harness.files import atomic
@@ -41,11 +42,46 @@ def _rotate(home):
     return value
 
 
+def _output(tty):
+    """Prompts must go to a writable stream. Standard input can be a terminal and still refuse writes."""
+    try:
+        tty.write('')
+        tty.flush()
+    except (AttributeError, OSError, ValueError):
+        return sys.stderr
+    return tty
+
+
 def _confirm(tty, prompt):
-    tty.write(prompt + ' [y/N] ')
-    tty.flush()
+    out = _output(tty)
+    out.write(prompt + ' [y/N] ')
+    out.flush()
     answer = tty.readline()
     return isinstance(answer, str) and answer.strip().lower() in {'y', 'yes'}
+
+
+def setup_message(report):
+    """Human terminal text. selection-setup never prints the JSON report."""
+    status = report.get('status')
+    diagnostic = report.get('diagnostic')
+    if status == 'ready' and diagnostic == 'credential_removed':
+        return 'OpenRouter key removed.'
+    if status == 'ready':
+        return 'OpenRouter key saved.'
+    if status == 'cancelled':
+        return 'Cancelled. The saved key was not changed.'
+    mapped = {
+        'terminal_required': 'A local terminal is required.',
+        'invalid_credential': 'The key was empty. Nothing was saved.',
+        'credential_unavailable': 'Keychain could not store the key.',
+        'credential_missing': 'No OpenRouter key is saved.',
+    }.get(diagnostic)
+    if mapped:
+        return mapped
+    guidance = report.get('next')
+    if isinstance(guidance, str) and guidance and '{' not in guidance:
+        return guidance
+    return 'Skill selection setup did not finish.'
 
 
 def _report(status, code, diagnostic=None):
@@ -80,7 +116,7 @@ def selection_setup(keychain, tty, home, *, remove=False, read_secret=None):
         return _report('cancelled', 130)
     if read_secret is None:
         import getpass
-        secret = getpass.getpass('OpenRouter key: ', stream=tty)
+        secret = getpass.getpass('OpenRouter key: ', stream=_output(tty))
     else:
         secret = read_secret()
     if not isinstance(secret, str) or not secret.strip():

@@ -37,6 +37,8 @@ or switching clients use context-resume and reconcile the current checkout/task.
 Do not reconstruct authority from transcripts, branch names or memory. Explicit
 skills remain the fallback for missing, disabled or delayed native hooks.
 
+Specialist skills are selected by the local Jev helper, not by the coding model. Run `selection-setup` once in a local terminal and enter the personal OpenRouter key there. That terminal, and `selection-verify` in a terminal, answer with a sentence, not JSON. Then the agent calls `select-skills` and `load-selected-skills` for the assignment. See [skill selection](skill-selection.md). This key is not the Hindsight server key, and selection does not grant approval.
+
 Hindsight is optional. Authenticate from plugin details using native MCP controls;
 no provider settings or credentials belong in the harness. After authentication,
 hindsight-memory automatically uses the configured project bank. Same-account clients

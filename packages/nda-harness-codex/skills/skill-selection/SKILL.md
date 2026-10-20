@@ -1,9 +1,16 @@
 ---
 name: skill-selection
 description: Set up or reuse Jev skill selection for this client, then load only the selected specialist bodies.
+disable-model-invocation: true
 ---
 
 This plugin is bound to **codex**. Never ask the user to choose a client.
+
+When the user invokes this command, open a terminal and run selection-setup. Do not run it in the agent shell. Pass the actual project root:
+
+`sh ${PLUGIN_ROOT}/skills/skill-selection/scripts/open-terminal.sh codex <project-root>`
+
+That script opens Terminal, changes to that project directory, and then runs `rtk proxy ${PLUGIN_ROOT}/bin/nda-plugin selection-setup --client codex`. Leave that terminal focused so the user can answer the prompt. The terminal prints a short sentence, not JSON.
 
 Task text and catalog metadata are sent to OpenRouter at `https://openrouter.ai/api/alpha/decisions` using model `typesafe/jev-1.14`. The OpenRouter key stays in the macOS Keychain. Never paste a key into chat, a command argument, or a project file.
 

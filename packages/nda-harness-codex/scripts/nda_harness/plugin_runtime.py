@@ -14,8 +14,8 @@ from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
-from nda_harness.credentials import MacKeychain, selection_setup
-from nda_harness.openrouter import selection_verify
+from nda_harness.credentials import MacKeychain, selection_setup, setup_message
+from nda_harness.openrouter import selection_verify, verify_message
 from nda_harness.skill_selection import SelectionError, load_selected_skills, read_selection_request, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
 
@@ -270,14 +270,14 @@ def main(argv=None):
             return 2 if invalid else 0
         if args.command == 'selection-verify':
             report, code = selection_verify(package, MacKeychain(), live=args.live)
-            print(json.dumps(report))
+            print(verify_message(report) if sys.stdout.isatty() else json.dumps(report))
             return code
         if args.command == 'selection-setup':
             if not sys.stdin.isatty():
-                print(json.dumps({'status': 'blocked', 'diagnostic': 'terminal_required', 'implementation_authorized': False}))
+                print(setup_message({'status': 'blocked', 'diagnostic': 'terminal_required'}))
                 return 2
             report, code = selection_setup(MacKeychain(), sys.stdin, home / '.nda-harness', remove=args.remove)
-            print(json.dumps(report))
+            print(setup_message(report))
             return code
         project = args.project or str(Path.cwd())
         if args.command in ('select-skills', 'load-selected-skills'):
@@ -332,10 +332,19 @@ def main(argv=None):
         # Map known conflicts to reviewed guidance; never echo paths, command
         # contents or untrusted exception strings into reports.
         diagnostic = diagnose(error)
+        if args.command == 'selection-setup':
+            print(setup_message({'status': 'blocked', 'diagnostic': diagnostic[0], 'next': diagnostic[1]}))
+            return 2
+        if args.command == 'selection-verify' and sys.stdout.isatty():
+            print(verify_message({'status': 'blocked', 'diagnostic': diagnostic[0]}))
+            return 2
         print(json.dumps({'status': 'blocked', 'diagnostic': diagnostic[0], 'next': diagnostic[1], 'implementation_authorized': False}))
         return 2
     except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.TimeoutExpired):
         # Do not echo exceptions: subprocesses and invalid user config may carry secrets.
+        if args.command == 'selection-setup':
+            print(setup_message({}))
+            return 2
         print(json.dumps({'status': 'blocked', 'implementation_authorized': False,
                           'next': 'Reconcile plugin integrity, project configuration, Git identity/hook ownership or prerequisites; rerun nda-setup.'}))
         return 2
