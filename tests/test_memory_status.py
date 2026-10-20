@@ -53,6 +53,34 @@ class MemoryStatusTests(unittest.TestCase):
         self.assertEqual(self.report('codex', {'name': SERVER, 'status': 'needs-auth'})['memory_state'],
                          'pending_native_diagnostic')
 
+    def test_cursor_needs_auth_is_targeted_to_client_and_server(self):
+        catalog = 'plugin-nda-harness-' + SERVER
+        for data in (
+                {'namespace': catalog, 'namespaceStatus': 'needsAuth'},
+                {'server': SERVER, 'serverStatus': 'needsAuth'},
+                {'serverIdentifier': catalog, 'status': 'needsAuth'},
+                {'name': SERVER, 'status': 'needsAuth'}):
+            with self.subTest(data=data):
+                result = self.report('cursor', data)
+                self.assertEqual(result['memory_state'], 'awaiting_authentication')
+                self.assertEqual(result['diagnostic'], 'authentication_required')
+                self.assertIn('agent mcp login', result['next_action'])
+                for client in ('codex', 'claude'):
+                    self.assertEqual(self.report(client, data)['memory_state'], 'pending_native_diagnostic')
+        for status, expected in (('error', 'unavailable'), ('loading', 'pending_native_diagnostic'),
+                                 ('ready', 'connected'), ('connected', 'connected')):
+            result = self.report('cursor', {'namespace': catalog, 'namespaceStatus': status, 'namespaceError': 'SECRET'})
+            with self.subTest(status=status):
+                self.assertEqual(result['memory_state'], expected)
+                self.assertNotIn('SECRET', json.dumps(result))
+        for data in (
+                {'namespace': 'plugin-other-' + SERVER, 'namespaceStatus': 'needsAuth'},
+                {'namespace': catalog, 'name': 'other', 'namespaceStatus': 'needsAuth'},
+                {'namespace': catalog, 'namespaceStatus': 'needsAuth', 'status': 'error'},
+                {'namespaceStatus': 'needsAuth'}):
+            with self.subTest(data=data):
+                self.assertEqual(self.report('cursor', data)['memory_state'], 'pending_native_diagnostic')
+
     def test_missing_tools_and_saved_oauth_are_not_authentication_verdicts(self):
         for data in (None, {}, {'name': SERVER, 'authStatus': 'oAuth'},
                      {'name': SERVER, 'authStatus': 'oAuth', 'tools': {}},
@@ -102,6 +130,8 @@ class PackagedMemoryStatusTests(unittest.TestCase):
         for client, data, expected in (
                 ('codex', notification(failureReason='reauthenticationRequired'), 'awaiting_authentication'),
                 ('claude', {'name': SERVER, 'status': 'needs-auth'}, 'awaiting_authentication'),
+                ('cursor', {'namespace': 'plugin-nda-harness-' + SERVER, 'namespaceStatus': 'needsAuth'},
+                 'awaiting_authentication'),
                 ('cursor', notification(failureReason='reauthenticationRequired'), 'pending_native_diagnostic')):
             with self.subTest(client=client):
                 run = self.run_helper(client, json.dumps(data))
@@ -156,6 +186,9 @@ class PackagedMemoryStatusTests(unittest.TestCase):
             self.assertNotIn('SECRET', text)
             self.assertNotIn('reauthenticationRequired', text if client != 'codex' else '')
             self.assertNotIn('needs-auth', text if client != 'claude' else '')
+            self.assertNotIn('needsAuth', text if client != 'cursor' else '')
+            if client == 'cursor':
+                self.assertIn('needsAuth', text)
             for name in ('hindsight-memory', 'session-bootstrap', 'nda-verify'):
                 skill = (package / 'skills' / name / 'SKILL.md').read_text()
                 self.assertIn(marker, skill)

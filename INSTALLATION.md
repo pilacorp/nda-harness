@@ -255,9 +255,20 @@ This reports `awaiting_authentication`. Only Codex interprets that event. A nati
 Codex inventory entry needs both OAuth status and nonempty discovered tools to
 report connected. Claude accepts matching native MCP status snapshots such as
 `{"name":"nda-harness-hindsight","status":"needs-auth"}`; pending remains
-unresolved and failed means unavailable. These observations do not test memory
-operations or future renewal. Cursor has no established equivalent local
-structured callback, so its classifier remains `pending_native_diagnostic`.
+unresolved and failed means unavailable. Cursor's equivalent is a matching
+catalog entry whose `namespaceStatus` is `needsAuth`:
+
+```sh
+rtk proxy /absolute/package/path/bin/nda-plugin memory-status --client cursor <<'JSON'
+{"namespace":"plugin-nda-harness-nda-harness-hindsight","namespaceStatus":"needsAuth"}
+JSON
+```
+
+The mcp.json key `nda-harness-hindsight` with `serverStatus` or `status`
+`needsAuth` is the same verdict. `error` means unavailable, `loading` stays
+pending, and `ready` or `connected` reports discovery only. These observations
+do not test memory operations or future renewal. Codex and Claude do not
+interpret `needsAuth`.
 
 Without native JSON, run with empty stdin for a pending report; terminal stdin
 returns immediately. Disabled packages report disabled. Reports do not change

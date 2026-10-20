@@ -19,9 +19,10 @@ NDA_HINDSIGHT = {
     'rest': NDA_HINDSIGHT_ORIGIN,
 }
 
+CURSOR_PLUGIN_NAME = 'nda-harness'
 NATIVE_CHECK = {
     'codex': 'Inspect the Hindsight native MCP startup or tool-discovery diagnostic in Codex.',
-    'cursor': 'Inspect Hindsight in Cursor MCP settings; use agent mcp list where the CLI is installed. No local structured auth callback is established.',
+    'cursor': 'Inspect the Hindsight entry in the Cursor MCP tool catalog. namespaceStatus needsAuth means authentication is required.',
     'claude': 'Inspect Hindsight with /mcp; a supported SDK status snapshot may still be pending.',
 }
 RECOVERY = {
@@ -48,11 +49,39 @@ def auth_guidance(client):
         'codex': ('Only for Codex, a matching mcpServer/startupStatus/updated notification with status failed and '
                   'failureReason reauthenticationRequired confirms reauthentication is required. '
                   'Native discovery with authStatus oAuth and tools proves connection/tool discovery only. '),
-        'cursor': 'Do not interpret another client\'s auth signals or Cursor Cloud telemetry as a local Cursor callback. ',
+        'cursor': ('Only for Cursor, a matching MCP catalog entry with namespaceStatus needsAuth, or the same '
+                   'serverStatus or status on the Hindsight server, confirms authentication is required. '
+                   'error means unavailable, loading stays pending, and ready or connected proves discovery only. '
+                   'The catalog identifier is plugin-nda-harness-nda-harness-hindsight; the mcp.json key '
+                   'nda-harness-hindsight is the same server. Do not interpret another client\'s auth signals or '
+                   'Cursor Cloud telemetry as this callback. '),
         'claude': ('Only for Claude, a matching native MCP status needs-auth confirms authentication is required; '
                    'pending remains unresolved and failed means unavailable. '),
     }
     return common + signals[client] + NATIVE_CHECK[client] + ' Manual, user-triggered recovery: ' + RECOVERY[client]
+
+
+def _one_value(data, keys):
+    present = [data[key] for key in keys if key in data]
+    if not present or len(set(map(str, present))) != 1 or any(not isinstance(value, str) for value in present):
+        return None
+    return present[0]
+
+
+def _cursor_status(data, server):
+    """Cursor catalog namespaceStatus, or the same server's serverStatus/status.
+
+    A Claude-shaped {name, status} snapshot is not a Cursor diagnostic unless
+    status is needsAuth. Claude's connected, failed, and pending values stay pending.
+    """
+    identifier = _one_value(data, ('namespace', 'server', 'serverIdentifier', 'name'))
+    if identifier not in {server, f'plugin-{CURSOR_PLUGIN_NAME}-{server}'}:
+        return None
+    status = _one_value(data, ('namespaceStatus', 'serverStatus', 'status'))
+    claude_shape = not any(key in data for key in ('namespace', 'server', 'serverIdentifier', 'namespaceStatus', 'serverStatus'))
+    if claude_shape and status != 'needsAuth':
+        return None
+    return status
 
 
 def memory_status(config, client, native=None, *, invalid=False):
@@ -64,29 +93,39 @@ def memory_status(config, client, native=None, *, invalid=False):
     elif 'hindsight' not in packaged(config):
         state, diagnostic = 'disabled', 'endpoint_not_packaged'
         action = 'Continue core work; use client default memory only if available.'
-    elif isinstance(native, dict) and client != 'cursor':
-        data = native
-        notification = 'method' in data
-        if notification:
-            data = (data.get('params') if client == 'codex'
-                    and data['method'] == 'mcpServer/startupStatus/updated' else None)
-        if isinstance(data, dict) and data.get('name') == SYSTEMS['hindsight']['server']:
-            status = data.get('status')
-            if status == 'failed':
-                state, diagnostic = 'unavailable', 'native_connection_failed'
-                if client == 'codex' and notification and data.get('failureReason') == 'reauthenticationRequired':
-                    state, diagnostic = 'awaiting_authentication', 'reauthentication_required'
-            elif client == 'claude' and status == 'needs-auth':
+    elif isinstance(native, dict):
+        server = SYSTEMS['hindsight']['server']
+        data, notification, status = native, False, None
+        if client == 'cursor':
+            status = _cursor_status(data, server)
+            if status == 'needsAuth':
                 state, diagnostic = 'awaiting_authentication', 'authentication_required'
-            elif (client == 'claude' and status == 'connected'
-                  or client == 'codex' and not notification and status is None
-                  and data.get('authStatus') == 'oAuth'
-                  and isinstance(data.get('tools'), (dict, list)) and data['tools']):
+            elif status == 'error':
+                state, diagnostic = 'unavailable', 'native_connection_failed'
+            elif status in ('ready', 'connected'):
                 state, diagnostic = 'connected', 'native_connection_observed'
-            if state == 'awaiting_authentication':
-                action = RECOVERY[client]
-            elif state == 'connected':
-                action = 'Use available Hindsight tools; memory operations and future refresh are not verified by discovery.'
+        else:
+            notification = 'method' in data
+            if notification:
+                data = (data.get('params') if client == 'codex'
+                        and data['method'] == 'mcpServer/startupStatus/updated' else None)
+            if isinstance(data, dict) and data.get('name') == server:
+                status = data.get('status')
+                if status == 'failed':
+                    state, diagnostic = 'unavailable', 'native_connection_failed'
+                    if client == 'codex' and notification and data.get('failureReason') == 'reauthenticationRequired':
+                        state, diagnostic = 'awaiting_authentication', 'reauthentication_required'
+                elif client == 'claude' and status == 'needs-auth':
+                    state, diagnostic = 'awaiting_authentication', 'authentication_required'
+                elif (client == 'claude' and status == 'connected'
+                      or client == 'codex' and not notification and status is None
+                      and data.get('authStatus') == 'oAuth'
+                      and isinstance(data.get('tools'), (dict, list)) and data['tools']):
+                    state, diagnostic = 'connected', 'native_connection_observed'
+        if state == 'awaiting_authentication':
+            action = RECOVERY[client]
+        elif state == 'connected':
+            action = 'Use available Hindsight tools; memory operations and future refresh are not verified by discovery.'
     return {'schema_version': 1, 'client': client, 'server': SYSTEMS['hindsight']['server'],
             'memory_state': state, 'diagnostic': diagnostic, 'next_action': action}
 

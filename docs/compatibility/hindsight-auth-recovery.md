@@ -18,7 +18,7 @@ Documentation retrieved through Context7 on 2026-10-20:
 | Codex | [App-server notifications](https://learn.chatgpt.com/docs/app-server#api-overview-1) | Targeted failed `mcpServer/startupStatus/updated` with `failureReason: reauthenticationRequired`. |
 | Codex | [MCP configuration/login](https://learn.chatgpt.com/docs/extend/mcp) | Native OAuth/tool discovery, manual login, and temporary configuration override. |
 | Claude | [SDK MCP status](https://code.claude.com/docs/en/agent-sdk/mcp) and [native MCP controls](https://code.claude.com/docs/en/mcp) | Native server-status snapshot `needs-auth`, `pending`, `failed`, or `connected`; SDK status is not a Desktop SDK bridge. |
-| Cursor | [MCP controls](https://cursor.com/docs/mcp) and [Agent CLI](https://cursor.com/docs/cli/mcp) | Native UI/status and user-triggered CLI login; no documented equivalent local structured callback was established. |
+| Cursor | Installed agent catalog (`namespace` / `namespaceStatus`) and [Agent CLI](https://cursor.com/docs/cli/mcp) | `needsAuth` on `plugin-nda-harness-nda-harness-hindsight` or `nda-harness-hindsight` means authentication is required. `error` is unavailable; `loading` stays pending; `ready` or `connected` is discovery only. |
 
 Cursor Cloud's `cursor.cloud_agent.mcp_auth_error` telemetry is not interpreted
 as a local Cursor plugin signal. One client's authentication spelling is not
@@ -26,7 +26,7 @@ accepted as another client's event. Server names must match exactly.
 
 ## Verification scope
 
-On 2026-10-20, `python3 -m unittest discover -s tests` passed all 170 tests.
+On 2026-10-20, `python3 -m unittest discover -s tests` passed all 171 tests.
 Fresh Codex, Cursor and Claude release archives passed structural/hash validation;
 committed Codex/Cursor packages passed reproducibility and integrity checks.
 An independent source review reported no actionable findings. Native Codex
