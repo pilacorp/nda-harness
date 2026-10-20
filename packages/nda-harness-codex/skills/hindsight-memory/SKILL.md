@@ -9,12 +9,20 @@ NDA Hindsight is the memory provider. Use only this host:
 - OAuth: `https://hindsight-api.pila.vn` (discovery `/.well-known/oauth-authorization-server`, register/authorize/token under `/ext/oauth/`)
 - REST: `https://hindsight-api.pila.vn`
 
-When this session lists NDA Hindsight tools, use them before substantive work. Tool
-availability means the user already authenticated from the plugin detail NDA Hindsight
-row. Do not initiate an OAuth flow, accept credentials, add auth headers, configure
+When this session lists NDA Hindsight tools, use them before substantive work.
+Availability permits use; it does not prove which login UI was used or that future
+refresh will succeed. Do not initiate an OAuth flow, accept credentials, add auth headers, configure
 an identity provider, or proxy requests. The host handles discovery, PKCE, callback,
-credential storage, refresh and logout. If the tools are missing or a call is
-unauthorized, report awaiting authentication and continue without NDA Hindsight.
+credential storage, refresh and logout. If tools are missing, report Hindsight
+unavailable in this session, with authentication unverified. An unauthorized call
+does not by itself prove failed refresh. Continue without NDA Hindsight.
+
+For already available native diagnostic JSON, explicitly run the packaged
+`${PLUGIN_ROOT}/bin/nda-plugin memory-status --client codex` with that JSON on stdin.
+This read-only classifier does not collect diagnostics or start login. Missing
+diagnostics stay pending. Do not send credentials or raw private diagnostics to memory.
+
+Missing tools mean Hindsight is unavailable in this session; authentication is unverified without native evidence. Saved OAuth credentials and a hidden Authenticate button do not prove a working connection. Use the packaged memory-status helper with already available native diagnostic JSON, or leave the diagnostic pending. Existing hooks do not subscribe to MCP lifecycle events. Never initiate login automatically or read/edit credentials. Only for Codex, a matching mcpServer/startupStatus/updated notification with status failed and failureReason reauthenticationRequired confirms reauthentication is required. Native discovery with authStatus oAuth and tools proves connection/tool discovery only. Inspect the Hindsight native MCP startup or tool-discovery diagnostic in Codex. Manual, user-triggered recovery: Use the native MCP sign-in action. If hidden, the user can run rtk proxy codex -c 'mcp_servers.nda-harness-hindsight.url="https://hindsight-api.pila.vn/mcp/"' mcp login nda-harness-hindsight using the installed executable, then reconnect/restart Codex. The override is invocation-local and uses the same server identity.
 
 Read `.nda-harness/profile.json` and use **exactly** `memory.bank_id` for every
 bank-scoped operation. Reconcile identity through nda-setup if the profile is absent

@@ -274,7 +274,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(set(claude_files) - set(codex_files), {'.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'})
         self.assertEqual(set(codex_files) - set(claude_files), {'.codex-plugin/plugin.json', '.agents/plugins/marketplace.json'})
         bound = {f'skills/{name}/SKILL.md' for name in (
-            'nda-setup', 'nda-verify', 'session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')}
+            'nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')}
         differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json'}
         for name in set(claude_files) & set(codex_files) - differ:
             self.assertEqual(claude_files[name], codex_files[name], name)
@@ -345,7 +345,7 @@ class PluginTests(unittest.TestCase):
         verified = subprocess.run([str(claude / 'bin/nda-plugin'), 'verify', '--client', 'claude', '--project', str(self.project)],
                                   cwd=self.home, env=self.env, capture_output=True, text=True)
         self.assertEqual(json.loads(verified.stdout)['client'], 'claude')
-        self.assertEqual(json.loads(verified.stdout)['memory'], 'disabled')
+        self.assertEqual(json.loads(verified.stdout)['memory'], 'pending_native_diagnostic')
 
     def test_claude_project_shares_bank_with_codex_and_cursor(self):
         claude = self.base / 'claude'
@@ -467,7 +467,7 @@ class PluginTests(unittest.TestCase):
             before = {str(p): p.read_bytes() for p in self.home.rglob('*') if p.is_file()}
             result = verify(self.package, 'codex', self.project, self.home)
             self.assertEqual(result['core'], 'ready')
-            self.assertEqual(result['memory'], 'disabled')
+            self.assertEqual(result['memory'], 'pending_native_diagnostic')
             self.assertEqual(before, {str(p): p.read_bytes() for p in self.home.rglob('*') if p.is_file()})
 
     def test_installing_failed_or_untrusted_bootstrap_never_reports_core_ready(self):
@@ -493,7 +493,7 @@ class PluginTests(unittest.TestCase):
         self.assertIn('--client', missing.stderr)
         run = subprocess.run([*command, '--client', 'codex'], cwd=self.home, env=self.env, capture_output=True, text=True)
         self.assertNotIn('Traceback', run.stderr)
-        self.assertEqual(json.loads(run.stdout)['memory'], 'disabled')
+        self.assertEqual(json.loads(run.stdout)['memory'], 'pending_native_diagnostic')
 
     def test_concurrent_setup_has_one_composed_chain(self):
         with ThreadPoolExecutor(max_workers=2) as pool:

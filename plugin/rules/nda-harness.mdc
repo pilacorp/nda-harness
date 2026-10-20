@@ -44,7 +44,7 @@ NDA Hindsight is the current system and is optional. MCP is
 Do not start login, ask for tokens, or add auth headers.
 The user opts in from the plugin detail NDA Hindsight MCP row. When NDA Hindsight is
 selected and this session already lists its tools such as `list_banks`, `create_bank`, `recall`, and
-`retain`, authentication is done: load `hindsight-memory` and call those tools
+`retain`, load `hindsight-memory` and call those available tools
 before substantive work. Do not wait for the user to mention NDA Hindsight.
 
 Read `.nda-harness/profile.json` and use exactly `memory.bank_id`. Call
@@ -52,6 +52,9 @@ Read `.nda-harness/profile.json` and use exactly `memory.bank_id`. Call
 and a project-scoped mission, then apply the packaged coding-agent template.
 Call `recall` with that `bank_id` and the user request before answering. After
 a meaningful decision, preference, or work note, call `retain` in that same bank.
-Default environment is dev. Never store secrets. If the tools are absent or a
-call is unauthorized, say NDA Hindsight is awaiting authentication and continue with
-the client default memory when that exists.
+Default environment is dev. Never store secrets. Missing tools mean Hindsight is
+unavailable in this session, with authentication unverified. An unauthorized call
+alone does not establish failed refresh. Continue with client default memory when
+it exists; do not fabricate saves or later synchronization.
+
+@AUTH_GUIDANCE@

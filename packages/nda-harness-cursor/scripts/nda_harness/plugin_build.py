@@ -14,7 +14,7 @@ import zipfile
 
 from .files import digest, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
-from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services
+from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
 RELEASE_VERSION = '0.0.3'
@@ -193,15 +193,16 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
             # a second upstream handler would duplicate an existing Superpowers
             # installation; leave its hooks and client configuration untouched.
             rule = (source / 'plugin/rules/nda-harness.mdc').read_text()
-            write(root, 'rules/nda-harness.mdc', rule)
+            write(root, 'rules/nda-harness.mdc', rule.replace('@AUTH_GUIDANCE@', auth_guidance(client)))
         else:
             hooks = {'hooks': {event: [{'hooks': [{'type': 'command', 'command': command(event), 'timeout': 60 if event == 'SessionStart' else 15}]}]
                                for event in ('SessionStart', 'UserPromptSubmit', 'PreCompact')}}
         write(root, 'hooks/hooks.json', json_bytes(hooks))
         # Client-bound wrapper skills never offer a client/scope selection menu.
-        for name in ('nda-setup', 'nda-verify', 'session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume'):
+        for name in ('nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume'):
             path = root / 'skills' / name / 'SKILL.md'
-            path.write_text(path.read_text().replace('@CLIENT@', client).replace('@ROOT@', variable))
+            path.write_text(path.read_text().replace('@CLIENT@', client).replace('@ROOT@', variable)
+                            .replace('@AUTH_GUIDANCE@', auth_guidance(client)))
         if client == 'codex':
             write(root, '.agents/plugins/marketplace.json', json_bytes({
                 'name': 'nda-harness-local', 'interface': {'displayName': 'NDA Harness'},
