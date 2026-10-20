@@ -9,12 +9,20 @@ NDA Hindsight is the memory provider. Use only this host:
 - OAuth: `https://hindsight-api.pila.vn` (discovery `/.well-known/oauth-authorization-server`, register/authorize/token under `/ext/oauth/`)
 - REST: `https://hindsight-api.pila.vn`
 
-When this session lists NDA Hindsight tools, use them before substantive work. Tool
-availability means the user already authenticated from the plugin detail NDA Hindsight
-row. Do not initiate an OAuth flow, accept credentials, add auth headers, configure
+When this session lists NDA Hindsight tools, use them before substantive work.
+Availability permits use; it does not prove which login UI was used or that future
+refresh will succeed. Do not initiate an OAuth flow, accept credentials, add auth headers, configure
 an identity provider, or proxy requests. The host handles discovery, PKCE, callback,
-credential storage, refresh and logout. If the tools are missing or a call is
-unauthorized, report awaiting authentication and continue without NDA Hindsight.
+credential storage, refresh and logout. If tools are missing, report Hindsight
+unavailable in this session, with authentication unverified. An unauthorized call
+does not by itself prove failed refresh. Continue without NDA Hindsight.
+
+For already available native diagnostic JSON, explicitly run the packaged
+`@ROOT@/bin/nda-plugin memory-status --client @CLIENT@` with that JSON on stdin.
+This read-only classifier does not collect diagnostics or start login. Missing
+diagnostics stay pending. Do not send credentials or raw private diagnostics to memory.
+
+@AUTH_GUIDANCE@
 
 Read `.nda-harness/profile.json` and use **exactly** `memory.bank_id` for every
 bank-scoped operation. Reconcile identity through nda-setup if the profile is absent

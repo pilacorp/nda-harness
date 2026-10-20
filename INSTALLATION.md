@@ -232,6 +232,75 @@ connection in that client and using native logout/disconnect when available. If
 client logout is unavailable and revocation is needed, revoke access in Hindsight.
 Do not edit host credential files or affect the other client.
 
+### Authentication reports and manual recovery
+
+Missing Hindsight tools mean the connection is unavailable in this session;
+authentication remains unverified until the client's native diagnostics establish
+more. Saved OAuth credentials or a hidden Authenticate button are not connection
+proof. Devices authenticate independently. A login created before the server
+started supplying expiry metadata may need one refresh or reauthentication.
+
+The packaged **memory-status** operation interprets already available native JSON.
+It does not fetch diagnostics, access credentials, run memory calls or start
+login. Existing hooks do not subscribe to MCP lifecycle events. For example,
+given an actual Codex startup notification:
+
+```sh
+rtk proxy /absolute/package/path/bin/nda-plugin memory-status --client codex <<'JSON'
+{"method":"mcpServer/startupStatus/updated","params":{"name":"nda-harness-hindsight","status":"failed","failureReason":"reauthenticationRequired"}}
+JSON
+```
+
+This reports `awaiting_authentication`. Only Codex interprets that event. A native
+Codex inventory entry needs both OAuth status and nonempty discovered tools to
+report connected. Claude accepts matching native MCP status snapshots such as
+`{"name":"nda-harness-hindsight","status":"needs-auth"}`; pending remains
+unresolved and failed means unavailable. Cursor's equivalent is a matching
+catalog entry whose `namespaceStatus` is `needsAuth`:
+
+```sh
+rtk proxy /absolute/package/path/bin/nda-plugin memory-status --client cursor <<'JSON'
+{"namespace":"plugin-nda-harness-nda-harness-hindsight","namespaceStatus":"needsAuth"}
+JSON
+```
+
+The mcp.json key `nda-harness-hindsight` with `serverStatus` or `status`
+`needsAuth` is the same verdict. `error` means unavailable, `loading` stays
+pending, and `ready` or `connected` reports discovery only. These observations
+do not test memory operations or future renewal. Codex and Claude do not
+interpret `needsAuth`.
+
+Without native JSON, run with empty stdin for a pending report; terminal stdin
+returns immediately. Disabled packages report disabled. Reports do not change
+core readiness. Invalid/non-object JSON or input over 1 MB returns a sanitized
+pending report with exit 2; valid reports, including unavailable, return exit 0.
+Use the helper path from the installed package; hosted Claude packages relocate
+the launcher to `scripts/nda-plugin`.
+
+Manual sign-in remains the user's action:
+
+- **Codex:** use the native MCP sign-in control. If hidden, use the installed
+  Codex executable with the invocation-local override below, then reconnect or
+  restart the client. The name matches the plugin's stored server identity.
+- **Cursor:** use the Hindsight authentication control in MCP settings. If Cursor
+  Agent CLI is installed and the server is registered there, inspect
+  `rtk proxy agent mcp list` and run `rtk proxy agent mcp login <identifier>` with
+  its actual identifier. Do not assume credentials are shared across surfaces.
+- **Claude Code:** inspect/authenticate through `/mcp`. Shell
+  `rtk proxy claude mcp login <name>` is an alternative only when the installed
+  version exposes it; verify the name in native inventory. SDK status APIs do not
+  launch browser OAuth or supply a Desktop plugin SDK bridge.
+
+```sh
+rtk proxy codex \
+  -c 'mcp_servers.nda-harness-hindsight.url="https://hindsight-api.pila.vn/mcp/"' \
+  mcp login nda-harness-hindsight
+```
+
+No credential deletion or plugin uninstall is required. See the
+[diagnostic compatibility evidence](docs/compatibility/hindsight-auth-recovery.md)
+for source references and live-test limits.
+
 ## Verification and recovery
 
 Run **nda-verify**, or its client-bound helper:

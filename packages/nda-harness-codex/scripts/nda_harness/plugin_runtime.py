@@ -14,10 +14,26 @@ from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
-from nda_harness.memory import declared_endpoints, packaged, session_instruction, SYSTEMS
+from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
 
 
 OPERATIONS = ('session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')
+
+
+def read_memory_diagnostic(stream):
+    """Bound input and never echo invalid JSON or private diagnostic content."""
+    if stream.isatty():
+        return None, False
+    try:
+        raw = stream.read(1_000_001)
+        if len(raw.encode('utf-8')) > 1_000_000:
+            return None, True
+        if not raw.strip():
+            return None, False
+        native = json.loads(raw)
+        return (native, False) if isinstance(native, dict) else (None, True)
+    except (ValueError, UnicodeError, RecursionError):
+        return None, True
 
 
 def package_config(package, client):
@@ -97,7 +113,8 @@ def verify(package, client, project, home):
             'project': project_status,
             'bootstrap': bootstrap_state,
             'native_hooks': 'pending_trusted_session_observation',
-            'memory': 'disabled', 'memory_systems': sorted(packaged(config)),
+            'memory': 'pending_native_diagnostic' if packaged(config) else 'disabled',
+            'memory_systems': sorted(packaged(config)),
             'memory_state_source': 'native_client_required' if packaged(config) else 'endpoint_not_packaged',
             'memory_verification': 'pending_native_authenticated_diagnostic' if packaged(config) else 'endpoint_not_packaged',
             'implementation_authorized': False}
@@ -221,7 +238,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -239,7 +256,11 @@ def main(argv=None):
     package = Path(__file__).resolve().parents[2]
     home = Path.home().resolve()
     try:
-        package_config(package, args.client)
+        config = package_config(package, args.client)
+        if args.command == 'memory-status':
+            native, invalid = read_memory_diagnostic(sys.stdin)
+            print(json.dumps(memory_status(config, args.client, native, invalid=invalid), indent=2))
+            return 2 if invalid else 0
         project = args.project or str(Path.cwd())
         if args.command == 'unit-check':
             return unit_check(project)

@@ -14,10 +14,9 @@ different reason, or may still be starting. The proposed change reports what
 the client's own diagnostic actually proves and gives the correct recovery
 steps for that client.
 
-Codex and Claude expose different authentication signals. Cursor's local plugin
-interface has no equivalent callback established by this research, so its check
-stays pending until the user or agent can inspect native status. The harness
-will not manage tokens or start login automatically.
+Codex, Claude, and Cursor expose different authentication signals. Cursor's
+agent catalog reports `namespaceStatus: needsAuth` when that server requires
+authentication. The harness will not manage tokens or start login automatically.
 
 ## Setup and daily use
 
@@ -67,13 +66,14 @@ dependencies, a custom settings UI, and server-side Hindsight changes.
 | Codex | Native `mcpServerStatus/list` entry for the matching server with `authStatus: oAuth` and nonempty discovered `tools` | Connected for discovery only. No assertion that memory operations or later refresh succeeded. |
 | Claude Code | Matching server snapshot from documented MCP status with `status: needs-auth` | Awaiting authentication; use `/mcp` to authenticate. |
 | Claude Code | `status: connected`, `pending`, or `failed` in a matching native status snapshot | Connected, pending native diagnostic, or unavailable respectively. An initial pending status must not become an authentication verdict. |
-| Cursor local | Native MCP settings/status and its authentication controls; CLI `agent mcp list`, `agent mcp list-tools`, and `agent mcp login` where installed | Inspect the client's actual diagnostic. With no supported machine-readable diagnostic, leave the classifier pending and tell the user where to check. |
+| Cursor local | Matching Hindsight catalog entry `namespace` / `namespaceStatus: needsAuth`, or the same server's `serverStatus` or `status` of `needsAuth`. Identifiers are the mcp.json key `nda-harness-hindsight` and the plugin catalog id `plugin-nda-harness-nda-harness-hindsight`. | Awaiting authentication. `error` is unavailable, `loading` stays pending, and `ready` or `connected` is discovery only. |
 
 Codex's event and `failureReason` are not interpreted by Claude or Cursor.
-Claude's `needs-auth` spelling is not interpreted by Codex or Cursor. Cursor
-Cloud's `cursor.cloud_agent.mcp_auth_error` telemetry is not a local-plugin
-callback and is excluded. Documentation research did not establish an equivalent
-local Cursor callback; do not invent one or parse unstable human-facing text.
+Claude's `needs-auth` spelling is not interpreted by Codex or Cursor. Cursor's
+`needsAuth` spelling is not interpreted by Codex or Claude. A Claude-shaped
+`{name, status}` snapshot stays pending on Cursor unless `status` is `needsAuth`.
+Cursor Cloud's `cursor.cloud_agent.mcp_auth_error` telemetry is not a local-plugin
+callback and is excluded. Do not parse unstable human-facing MCP settings text.
 
 ### Read-only diagnostic classifier
 
@@ -87,11 +87,13 @@ new event subscription or client hook. Agents invoke it only when native
 diagnostic data is available; otherwise they report the pending state.
 
 Accepted input shapes are a complete Codex notification with `method` and
-`params`, a Codex native inventory entry, or a Claude native server-status
-snapshot. The configured target is `SYSTEMS['hindsight']['server']`, currently
-`nda-harness-hindsight`. Exact server-name matching is required. No user-defined
-server override or arbitrary endpoint is added. Cursor has no structured parser
-in this change; absent or unsupported diagnostics remain pending.
+`params`, a Codex native inventory entry, a Claude native server-status
+snapshot, or a Cursor catalog/server status object. The configured target is
+`SYSTEMS['hindsight']['server']`, currently `nda-harness-hindsight`. Cursor also
+accepts the plugin catalog id `plugin-nda-harness-nda-harness-hindsight`, which
+is `plugin-<plugin name>-<server key>` in the installed Cursor agent host.
+Exact identifier matching is required. No user-defined server override or
+arbitrary endpoint is added. Absent or unsupported diagnostics remain pending.
 
 Return only reviewed static fields: `schema_version`, `client`, `server`,
 `memory_state`, `diagnostic`, and `next_action`. Never copy error text, URLs,
@@ -102,7 +104,7 @@ instructions or persistent state.
 | Input/result | `memory_state` | `diagnostic` |
 | --- | --- | --- |
 | Package has no Hindsight endpoint | `disabled` | `endpoint_not_packaged` |
-| Targeted Codex reauthentication failure or Claude `needs-auth` | `awaiting_authentication` | `reauthentication_required` or `authentication_required` |
+| Targeted Codex reauthentication failure, Claude `needs-auth`, or Cursor `needsAuth` | `awaiting_authentication` | `reauthentication_required` for Codex; `authentication_required` for Claude and Cursor |
 | Supported successful discovery/status | `connected` | `native_connection_observed` |
 | Targeted generic startup/status failure | `unavailable` | `native_connection_failed` |
 | No diagnostic, unsupported client signal, unknown/mismatched server or pending status | `pending_native_diagnostic` | `native_diagnostic_pending` |
@@ -194,6 +196,7 @@ These are planned tests, not executed implementation evidence.
 | TC-01 | Targeted Codex failed startup with reauthentication reason | Classify complete notification | Awaiting authentication with Codex recovery | unit; AC-02, AC-04 |
 | TC-02 | Codex event supplied to Claude/Cursor; unrelated server supplied to Codex | Classify | Pending; no borrowed signal or unrelated-server verdict | unit; AC-02, AC-03 |
 | TC-03 | Claude snapshots `needs-auth`, `pending`, `failed`, `connected` | Classify each; supply `needs-auth` to other clients | Correct Claude states; other clients remain pending | unit; AC-02, AC-03 |
+| TC-10 | Cursor catalog `namespaceStatus: needsAuth`, the same server's `serverStatus`/`status`, and a Claude `{name, status: connected}` snapshot | Classify; supply `needsAuth` to Codex and Claude | Awaiting authentication only for the matching Cursor server; Claude `connected` stays pending on Cursor; other clients stay pending | unit; AC-02, AC-03 |
 | TC-04 | Missing tools; OAuth status without tools; unknown or empty diagnostic | Classify | Pending; never falsely connected or awaiting authentication | unit; AC-01, AC-03 |
 | TC-05 | Matching Codex native discovery with OAuth and tools; generic failure | Classify; include misleading tools in failed event | Connected only for successful discovery; failed remains unavailable | unit; AC-01, AC-03 |
 | TC-06 | Malformed JSON, non-object JSON, input above limit, and private-looking fields/error text | Run packaged helper | Static pending report, exit 2 for invalid input, no raw/private content in stdout or stderr | CLI integration; AC-03, AC-05 |
@@ -226,8 +229,11 @@ database, or profile migration must be reversed.
 - A startup hook is not a subscriber to Codex app-server notifications. This
   spec deliberately supplies an explicit classifier rather than claiming an
   automatic bridge that does not exist.
-- No Cursor local callback was established. A future supported interface needs
-  separate source verification and review before parsing it.
+- Cursor's equivalent of Codex `reauthenticationRequired` is the agent catalog
+  status `needsAuth` (host kind `requires_authentication`). It means this server
+  requires authentication; it does not by itself prove that a refresh failed.
+  `error` and `loading` stay unavailable and pending. Verified in the installed
+  Cursor agent host on 2026-10-20, not from Cursor Cloud telemetry.
 - Claude SDK status documentation establishes status semantics, not automatic
   availability of SDK objects inside a Desktop plugin.
 - Client command availability and plugin server identifiers vary by version;

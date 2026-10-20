@@ -15,13 +15,18 @@ Hindsight. An unauthenticated request is not proof that the client's OAuth works
 Do not retrieve credentials to probe HTTP. If the client has no supported diagnostic,
 report pending. Record only sanitized outcomes, counts and tool names in evidence.
 
-Memory states: disabled (not opted in/no endpoint), awaiting authorization (user opted
-in but native authentication incomplete), connected (native authenticated tool
-discovery succeeds), unavailable (previously enabled but connection fails). The helper
-cannot observe credential state and reports authorization/diagnostic pending rather
-than guessing. Never verify by recalling, retaining or creating a bank.
+Memory states: disabled (no endpoint), awaiting authentication (confirmed native
+auth evidence), connected (native authenticated discovery/status succeeds),
+unavailable (connection fails), or pending native diagnostic (missing/unsupported
+evidence). `verify` cannot observe credential state and leaves native checks pending.
+Interpret already available native diagnostic JSON with the explicit read-only
+`@ROOT@/bin/nda-plugin memory-status --client @CLIENT@` operation. It neither
+collects diagnostics nor initiates login. Never verify by recalling, retaining or
+creating a bank.
 
-Use the native Hindsight detail row to authenticate/re-authenticate. For disconnect,
+@AUTH_GUIDANCE@
+
+Offer the invoking client's manual authentication action only when appropriate. For disconnect,
 disable its MCP connection in the client, use native logout/disconnect when available,
 and revoke access in Hindsight if client logout is unavailable. Do not delete or read
 host credential files. Core remains usable with memory disconnected.
