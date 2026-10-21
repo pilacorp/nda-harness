@@ -21,7 +21,8 @@ provider and deployment configuration stays in the Hindsight server repository.
 Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 supplies relevant public library/framework documentation; the Skills hub adds selectively loaded specialist instructions.
 
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
-- [Installation](INSTALLATION.md): developer prerequisites, project setup, Context7 and optional Hindsight connections, verification and recovery.
+- [Installation](INSTALLATION.md): add the GitHub marketplace and install NDA Harness in Codex, Cursor or Claude.
+- [Plugin operations](docs/plugin-operations.md): migration, project setup, optional memory, recovery and contributor builds.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
 - [Skills hub](skills/catalog.md): UI/UX Pro Max, official Vietnamese document wording, and Diagram Design. The local Jev helper selects them; load only the returned bodies.
 - [Skill selection](docs/skill-selection.md): personal OpenRouter key, Jev `typesafe/jev-1.14`, and the select/load commands.
@@ -35,7 +36,7 @@ Memory storage stays internal; processing sends relevant memory content through 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.4**, tracked from `dev`. The
+version **0.0.5**, tracked from `dev`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).

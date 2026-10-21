@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -17,15 +18,17 @@ from nda_harness.files import Conflict
 
 class InstalledTests(unittest.TestCase):
     def setUp(self):
+        self.contexts = ExitStack()
+        self.addCleanup(self.contexts.close)
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name).resolve()
         self.home = self.base / "home"
         self.project = self.base / "project with spaces"
         self.home.mkdir()
-        self.enterContext(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
-        self.enterContext(patch("nda_harness.engine.locate_rtk", return_value=Path("/test/rtk")))
-        self.enterContext(patch("nda_harness.engine.rtk_identity", return_value=True))
+        self.contexts.enter_context(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
+        self.contexts.enter_context(patch("nda_harness.engine.locate_rtk", return_value=Path("/test/rtk")))
+        self.contexts.enter_context(patch("nda_harness.engine.rtk_identity", return_value=True))
         self.project.mkdir()
         self.env = {"HOME": str(self.home), "PATH": os.environ["PATH"], "GIT_AUTHOR_NAME": "Trial", "GIT_AUTHOR_EMAIL": "trial@example.test", "GIT_COMMITTER_NAME": "Trial", "GIT_COMMITTER_EMAIL": "trial@example.test"}
         self.git("init", "-q")
@@ -113,7 +116,7 @@ class InstalledTests(unittest.TestCase):
         env = {**self.env, "PATH": str(isolated_bin) + ":" + self.env["PATH"]}
         result = subprocess.run([str(self.project / ".nda-harness/scripts/prepare-context"), "session-bootstrap", "--project", str(self.project)], env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
-        self.assertIn("Python 3.11+", result.stderr)
+        self.assertIn("Python 3.9+", result.stderr)
 
     def test_dirty_context_and_cross_session_resume(self):
         self.install()

@@ -61,7 +61,7 @@ def package_config(package, client):
 def bootstrap(package, client, home):
     package_config(package, client)
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise Conflict('This phase supports Apple Silicon macOS; Python 3.11+ and Git must be on the client PATH.')
+        raise Conflict('This phase supports Apple Silicon macOS; Python 3.9+ and Git must be on the client PATH.')
     state = home / '.nda-harness/plugin-bootstrap'
     with locked(state):
         receipt = load_json(state / 'receipt.json', {'owned': {}})
@@ -233,7 +233,7 @@ def diagnose(error):
         ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
         ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),
         ('Multiple worktrees', 'worktree_configuration_required', 'Enable Git worktree-local configuration before activating this checkout; sibling configuration was preserved.'),
-        ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.11+ and Git on the client PATH.'),
+        ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.9+ and Git on the client PATH.'),
     )
     return next(((name, guidance) for match, name, guidance in diagnostics if match in text),
                  ('configuration_conflict', 'Reconcile plugin integrity, project configuration or private recovery ownership, then use nda-setup.'))

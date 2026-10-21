@@ -25,7 +25,7 @@ assets or private state into the project. Local activation must run on each clon
 Test command configuration is owner-controlled and executes at Git commit from
 the repository root. Both existing hooks and the configured command must pass.
 
-Python 3.11+, Git and the supported Apple Silicon macOS host are prerequisites.
+Python 3.9+, Git and the supported Apple Silicon macOS host are prerequisites.
 Bootstrap installs the checksum-pinned RTK if absent. Superpowers skills and full
 support assets are bundled. Context7 is a native packaged MCP registration; inspect
 its connection in the invoking client. Do not modify other clients or shell startup

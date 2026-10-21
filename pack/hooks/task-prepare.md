@@ -23,7 +23,7 @@ plugin files or unrelated lifecycle handlers are rewritten.
 H-01 reads `profile.json` and executes only its explicit unit-test command;
 the original executable runs first with original arguments from the Git root.
 Other Git events pass through to their original executables. Unit command timeout
-is 300 seconds; Python 3.11+ is required on the actual client PATH. Failure blocks
+is 300 seconds; Python 3.9+ is required on the actual client PATH. Failure blocks
 the commit; neither staging nor stash is changed.
 
 Context operations accept the actual project root, explicit role/task/stage when

@@ -17,7 +17,7 @@ this phase. Full client compatibility validation is still pending; see the
 You need:
 
 - Access to this private GitHub repository and your team's target repository.
-- Python **3.11 or newer**, available as `python3`, and Git on PATH.
+- Python **3.9 or newer**, available as `python3`, and Git on PATH.
 - At least one installed surface for every agent family you select. Install and
   sign in to the agent separately; setup does not install coding agents.
 - Your project's approved, non-watch **unit-test command**, or choose to skip unit tests during project setup.
@@ -32,7 +32,7 @@ git --version
 uname -m
 ```
 
-Expect Python 3.11+, a Git version and `arm64`. Your selected CLI must also be
+Expect Python 3.9+, a Git version and `arm64`. Your selected CLI must also be
 available on PATH: `codex`, Cursor's `agent`, or `claude`. A desktop-only
 installation does not require its CLI sibling; desktop detection currently looks
 in `/Applications`.
@@ -312,7 +312,7 @@ If the client cannot identify or pin it, keep that check pending and consult the
 maintainer. Setup does not install the plugin or edit upstream plugin hooks.
 
 Start a fresh client session and confirm policy/template/skill discovery, RTK
-usage and Superpowers activation. Python 3.11+ must also be visible to GUI-launched
+usage and Superpowers activation. Python 3.9+ must also be visible to GUI-launched
 clients and Git hooks. Native context lifecycle hooks are deferred; follow the
 installed `.nda-harness/context-preparation.md` and its explicit helper commands.
 
@@ -361,7 +361,7 @@ green result. Failure takes precedence over pending status.
 | No project folders were created | Read the setup error first. Prerequisite and conflict checks run before project writes. Also confirm you selected project scope and the correct root. If the project installation is already gone, setup removes the stale private receipt and installs again. A different Git hook manager, or any remaining owned project file, still has to be reconciled. |
 | `Existing RTK executable is incompatible or unrecognized` | Ask the harness maintainer to review the binary identity. The version number alone is insufficient; do not overwrite or downgrade the shared binary to bypass setup. |
 | `nda-harness: command not found` | Use `~/.local/bin/nda-harness`, or add its bin directory to PATH. |
-| Python is missing/too old | Install the organization-approved Python 3.11+ and ensure `python3` resolves correctly in the terminal, GUI client and Git environment. |
+| Python is missing/too old | Install the organization-approved Python 3.9+ and ensure `python3` resolves correctly in the terminal, GUI client and Git environment. |
 | Verification reports a missing pack | Complete a successful setup application for that same scope/project first. Verify cannot install a missing pack. |
 | Existing settings, skill shadowing or symlinks conflict | Preserve the files and ask the maintainer to reconcile them. Repeated setup will not overwrite user-owned content. |
 | Context7 fails | Check network access, client approval and authentication. Follow the printed connection guidance or the private verification report. |

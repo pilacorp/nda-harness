@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 import io
 import json
 from contextlib import redirect_stdout
@@ -22,12 +23,14 @@ from nda_harness.files import Conflict
 
 class CliTests(unittest.TestCase):
     def setUp(self):
+        self.contexts = ExitStack()
+        self.addCleanup(self.contexts.close)
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name).resolve()
         self.home = self.base / "home"
         self.home.mkdir()
-        self.enterContext(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
+        self.contexts.enter_context(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
         self.project = self.base / "project with spaces"
         self.project.mkdir()
         subprocess.run(["git", "init", "-q", str(self.project)], check=True)
@@ -140,6 +143,14 @@ class CliTests(unittest.TestCase):
     def test_intel_host_is_deferred(self):
         with patch("platform.system", return_value="Darwin"), patch("platform.machine", return_value="x86_64"):
             with self.assertRaisesRegex(ValueError, "Apple Silicon"):
+                check_host()
+
+    def test_python_minimum_is_39(self):
+        with patch("platform.system", return_value="Darwin"), patch("platform.machine", return_value="arm64"), patch("shutil.which", return_value="/usr/bin/git"):
+            for version in ((3, 9), (3, 10), (3, 11)):
+                with self.subTest(version=version), patch("sys.version_info", version):
+                    check_host()
+            with patch("sys.version_info", (3, 8)), self.assertRaisesRegex(ValueError, "Python 3.9"):
                 check_host()
 
     def test_install_preserves_and_reruns(self):

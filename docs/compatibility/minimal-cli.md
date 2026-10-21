@@ -106,7 +106,7 @@ remain manual/pending; see the phase report for the implemented behavior.
 
 ## Reproduction and next steps
 
-From the repository root, with Python 3.11+:
+From the repository root, with Python 3.9+:
 
 ```sh
 python3 -m unittest discover -s tests -v

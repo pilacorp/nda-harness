@@ -75,7 +75,7 @@ invocation configures only that client and preserves unrelated settings.
 Run helpers from packaged paths, independent of the working directory. Do not
 require a prior global CLI installation. If the implementation also installs a
 global helper, it is optional and cannot determine the active client by guessing
-which applications are installed. Python helpers require Python 3.11+ with the
+which applications are installed. Python helpers require Python 3.9+ with the
 pinned dependency bundle; setup reports a missing prerequisite without installing
 Python or changing shell startup files.
 

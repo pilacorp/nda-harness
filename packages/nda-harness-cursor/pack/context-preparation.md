@@ -31,7 +31,7 @@ Codex SessionStart/UserPromptSubmit and Cursor sessionStart provide startup and
 freshness reminders; pre-compaction events are observational checkpoint reminders.
 Cursor's startup event is asynchronous. Trust controls, missing hooks and startup
 races require the explicit skill fallback; never claim ready from installation.
-The helper needs Python 3.11+ on the actual client PATH,
+The helper needs Python 3.9+ on the actual client PATH,
 not the installer's virtual environment. Pass `--session` with a non-secret local
 session identity when available. Private locked state is keyed by worktree and
 session; explicit task switches replace selection. No transcript, credentials,

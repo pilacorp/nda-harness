@@ -8,7 +8,7 @@ report pending or failed rather than claiming success from configuration writes.
 
 ## Install and use
 
-Requirements: Apple Silicon macOS, Python 3.11+, Git, and at least one installed
+Requirements: Apple Silicon macOS, Python 3.9+, Git, and at least one installed
 surface for each selected family. The installer does not install coding agents or
 Python, require admin access, launch agents, change client trust or edit shell
 startup files. The pinned Python dependency is bundled: no pip, virtual environment
@@ -181,7 +181,7 @@ checkpoint fields and JSON meanings. Native lifecycle hooks are explicitly
 deferred; entrypoint instructions require the helper/procedure before dependent
 work. No helper contacts GitHub, infers approval or writes semantic task records.
 Dirty source/spec, task or checkout changes invalidate context; resume requires
-live checks by the agent. Python 3.11+ must be available in the actual GUI/client
+live checks by the agent. Python 3.9+ must be available in the actual GUI/client
 PATH; installed helpers never import tomlkit or the source checkout.
 
 Private receipts/backups live under `~/.nda-harness/state/<worktree-hash>/` (user

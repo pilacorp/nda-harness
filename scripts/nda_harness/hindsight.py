@@ -69,8 +69,8 @@ def entry(path):
     raw = read(path)
     try:
         if path.suffix == ".toml":
-            import tomllib
-            doc = tomllib.loads(raw.decode()) if raw else {}
+            import tomlkit
+            doc = tomlkit.parse(raw.decode()).unwrap() if raw else {}
             servers = doc.get("mcp_servers", {})
         else:
             doc = json.loads(raw) if raw else {}

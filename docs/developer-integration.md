@@ -6,7 +6,7 @@ phase-0 delivery contract. No released CLI migration is required.
 
 Each plugin includes the same engine, workflow and full skill assets. Superpowers
 is pinned and bundled; RTK bootstraps under native trust controls; Context7 is a
-native MCP registration. Python 3.11+ and Git must be on the GUI client's PATH.
+native MCP registration. Python 3.9+ and Git must be on the GUI client's PATH.
 Initial support is Apple Silicon macOS.
 
 On project entry run session-bootstrap. Missing `.nda-harness/profile.json` means

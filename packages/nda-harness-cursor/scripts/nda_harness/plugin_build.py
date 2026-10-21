@@ -18,7 +18,7 @@ from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.4'
+RELEASE_VERSION = '0.0.5'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'

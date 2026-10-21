@@ -86,8 +86,8 @@ def main():
     parser = argparse.ArgumentParser(description="Install the bundled CLI, with no pip, virtual environment, admin access or downloads.")
     parser.add_argument("--prefix", type=Path, default=Path.home() / ".local", help="Install prefix (default: ~/.local)")
     args = parser.parse_args()
-    if sys.version_info < (3, 11):
-        print("Python 3.11+ is required.", file=sys.stderr)
+    if sys.version_info < (3, 9):
+        print("Python 3.9+ is required.", file=sys.stderr)
         return 2
     try:
         install(Path(__file__).resolve().parents[1], args.prefix)

@@ -20,8 +20,8 @@ from . import hindsight
 def check_host():
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise ValueError("This phase supports Apple Silicon macOS only. Intel support is deferred.")
-    if sys.version_info < (3, 11):
-        raise ValueError("Python 3.11+ is required.")
+    if sys.version_info < (3, 9):
+        raise ValueError("Python 3.9+ is required.")
     if not shutil.which("git"):
         raise ValueError("Install Git before setup.")
 
@@ -259,8 +259,8 @@ def verify(options, home, live_mcp=True):
                 content = text[text.index(begin):text.index(end) + len(end)].encode()
             elif tag == "mcp":
                 if path.suffix == ".toml":
-                    import tomllib
-                    doc = tomllib.loads(content.decode())
+                    import tomlkit
+                    doc = tomlkit.parse(content.decode()).unwrap()
                     servers = doc["mcp_servers"]
                 else:
                     servers = json.loads(content)["mcpServers"]

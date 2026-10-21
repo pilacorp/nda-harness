@@ -111,7 +111,7 @@ Current implementation:
 | `pack/templates/task-record.md` | Has free-form skill notes. Add concise versioned selection references. |
 | `docs/architecture.md` | Assigns selection to the coordinating coding model. Update this decision to the shared local Jev helper. |
 
-Initial platforms remain Apple Silicon macOS, Python 3.11+, Codex Desktop,
+Initial platforms remain Apple Silicon macOS, Python 3.9+, Codex Desktop,
 Cursor IDE, and Claude Code Desktop, as in `specs/harness-plugins.md`.
 No hosted hub, new MCP server, Hindsight change, credential issuance API,
 billing dashboard, Windows/Linux support, or general-purpose model gateway.

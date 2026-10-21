@@ -45,7 +45,7 @@
     "limitation": "Connected documentation tool success does not verify any target agent MCP registration."
   },
   "installer_python": {
-    "minimum_version": "3.11",
+    "minimum_version": "3.9",
     "tomlkit": "0.13.3",
     "status": "pinned_and_tested",
     "distribution": "bundled_pure_python_wheel",

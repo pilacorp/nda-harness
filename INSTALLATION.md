@@ -1,513 +1,139 @@
-# Install NDA Harness from the internal marketplace
+# Add the marketplace and install NDA Harness
 
-Targets: **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple Silicon
-macOS**. Install/sign in to the client separately. Python 3.11+
-(`python3`) and Git must be on the GUI client's PATH. No pip, virtual environment,
-global harness CLI, Python installer or shell startup changes are required.
-
-The repository stays **private**. An administrator grants company users read
-access. Adding a marketplace does not change repository visibility or submit a
-public listing. You do not need to clone the repository or build a ZIP to install.
+Add the private GitHub repository as a marketplace in your client, then install
+**NDA Harness**. The client downloads the plugin for you.
 
 | Setting | Value |
 | --- | --- |
-| GitHub repository | [pilacorp/nda-harness](https://github.com/pilacorp/nda-harness) |
-| Git clone URL for Codex / Claude | `https://github.com/pilacorp/nda-harness.git` |
+| Repository URL | `https://github.com/pilacorp/nda-harness` |
 | Marketplace name | `nda-harness-internal` |
 | Plugin name | `nda-harness` |
-| Current preview branch | `implementation/client-marketplace` |
-| Distribution branch after reviewed merge | `dev` |
+| Preview branch | `implementation/client-marketplace` |
 
-**Before the implementation is merged, use `implementation/client-marketplace`.**
-The commands below use that preview branch because the catalogs are not yet on
-`dev`. After merge, replace the ref with `dev` for new registrations. Existing
-registrations keep tracking their selected branch; an update command does not
-switch them to `dev` automatically.
+Use the preview branch until the implementation is merged into `dev`. After
+merge, use `dev` for new registrations. Updating a marketplace keeps its selected
+branch; it does not switch branches automatically.
 
-For the HTTPS commands below, Git must already have access through your normal
-credential helper. Plugin commands may suppress interactive authentication, so
-verify access first in your terminal:
+You need access to the private repository and an installed client. Codex and
+Claude use your existing GitHub/Git authentication; Cursor asks you to connect
+its GitHub provider. Do not put credentials in the repository URL.
 
-```sh
-git ls-remote https://github.com/pilacorp/nda-harness.git refs/heads/implementation/client-marketplace
-```
+If an older uploaded or local copy is active, disable it before enabling the new
+one. See [one-time migration](docs/plugin-operations.md#one-time-migration-from-an-upload-or-local-plugin)
+to preserve project configuration and avoid duplicate hooks or MCP servers.
 
-Expect a commit SHA and the requested branch. An empty result means that ref was
-not found; an access error must be resolved through your normal GitHub/Git setup.
-Never embed a token or password in the URL. If your company uses SSH, substitute
-`git@github.com:pilacorp/nda-harness.git`; the key agent and trusted GitHub host
-must already work without interactive prompts. Cursor uses its own provider
-connection, described below.
+## Codex
 
-The first marketplace package version is **0.0.4** in all three clients.
-Commands below are the installation procedure; see
-[compatibility evidence](docs/compatibility/internal-client-marketplaces.md)
-for executed checks and pending real-account rollout checks.
+Use the Codex executable supplied with your Desktop installation.
 
-## Install from GitHub
+1. **Add the marketplace** in a terminal:
 
-Complete [one-time migration](#one-time-migration-from-an-upload-or-local-plugin)
-first if NDA Harness is already active in this client.
+   ```sh
+   codex plugin marketplace add https://github.com/pilacorp/nda-harness.git --ref implementation/client-marketplace
+   ```
 
-### Codex
+2. **Install the plugin**:
 
-Use the Codex executable shipped with your installed Desktop
-distribution. A separate CLI may differ; the commands require native plugin
-marketplace support. With that executable on PATH:
+   ```sh
+   codex plugin add nda-harness@nda-harness-internal
+   ```
 
-```sh
-codex plugin marketplace add https://github.com/pilacorp/nda-harness.git --ref implementation/client-marketplace
-codex plugin add nda-harness@nda-harness-internal
-codex plugin list --marketplace nda-harness-internal
-```
+3. **Check installation**, then start a new Codex chat and trust the reviewed
+   plugin hooks if prompted:
 
-Confirm the entry is installed/enabled at **0.0.4**. If you previously registered
-the same marketplace from a different URL or ref, list its current registration
-with `codex plugin marketplace list`. To deliberately replace that registration,
-run `codex plugin marketplace remove nda-harness-internal`, then repeat add/install
-with the desired ref. Removal can remove marketplace files: preserve project
-configuration and verify/recover Git protection as described under migration.
+   ```sh
+   codex plugin list --marketplace nda-harness-internal
+   ```
 
-Later releases:
+For later updates:
 
 ```sh
 codex plugin marketplace upgrade nda-harness-internal
-codex plugin list --marketplace nda-harness-internal
 ```
 
-Native Git refresh updates installed non-curated plugins. Start a new Desktop
-chat and check its loaded version and hook trust; immediate activation in an
-existing chat is not verified.
+If Codex reports the marketplace is already registered from another source,
+inspect `codex plugin marketplace list`. To deliberately replace its URL or ref,
+run `codex plugin marketplace remove nda-harness-internal`, then repeat add/install.
+Removal can remove marketplace files; follow the
+[recovery guidance](docs/plugin-operations.md#verification-and-recovery) for project
+hooks bound to the previous installation.
 
-### Claude Code and the Desktop Code tab
+## Claude Code and the Desktop Code tab
 
-Register the private Git marketplace in the
-shared Claude plugin store, then install its entry:
+1. **Add the marketplace** in a terminal:
 
-```sh
-claude plugin marketplace add 'https://github.com/pilacorp/nda-harness.git#implementation/client-marketplace'
-claude plugin install nda-harness@nda-harness-internal
-claude plugin list --json
-```
+   ```sh
+   claude plugin marketplace add 'https://github.com/pilacorp/nda-harness.git#implementation/client-marketplace'
+   ```
 
-The quoted `#implementation/client-marketplace` selects the preview branch.
-After merge, new registrations use `#dev`. Confirm the installed version is
-**0.0.4**. These commands run in a terminal; inside Claude Code the native command
-forms begin with `/plugin` instead of `claude plugin`.
+2. **Install the plugin**:
 
-For later releases refresh the catalog, then update the installed plugin:
+   ```sh
+   claude plugin install nda-harness@nda-harness-internal
+   ```
+
+3. **Check installation**, then restart the Claude Code session or Desktop Code
+   tab and trust the reviewed plugin hooks if prompted:
+
+   ```sh
+   claude plugin list --json
+   ```
+
+The quoted `#implementation/client-marketplace` selects the preview branch;
+use `#dev` after merge. Inside Claude Code, equivalent commands begin with
+`/plugin` instead of `claude plugin`. Desktop's Code tab shares that plugin store.
+
+For later updates:
 
 ```sh
 claude plugin marketplace update nda-harness-internal
 claude plugin update nda-harness@nda-harness-internal
-claude plugin list --json
 ```
 
-Restart the session to apply changes, or use `/reload-plugins` when that client
-supports it. These are user installs; do not commit project-wide installation
-settings for colleagues implicitly.
+Restart the session to apply the update, or use `/reload-plugins` when supported.
 
-### Cursor IDE
+## Cursor IDE
 
-Private team marketplaces require **Teams or Enterprise** and a team administrator.
-Use Cursor's dashboard import; Codex and Claude terminal commands do not configure
-Cursor.
+Private team marketplaces require **Teams or Enterprise**. A team administrator
+adds the marketplace; team members then install the plugin in Cursor.
 
-1. Open **Cursor Dashboard → Plugins & MCPs**.
-2. Under **Team Marketplaces**, select **Add Marketplace → Import from Repo**.
-3. Paste `https://github.com/pilacorp/nda-harness` and connect the GitHub provider
-   when prompted. Give that connection access to this private repository.
-4. Select/confirm `implementation/client-marketplace` as the tracked branch where
-   the account supports it. After the reviewed merge, use `dev`. Do not assume
-   a GitHub `/tree/...` URL or a Claude-style `#ref` selects a branch in Cursor.
-5. Review the indexed **NDA Harness** entry and use **Add to Marketplace**.
-   Confirm the source is `packages/nda-harness-cursor` and the version is **0.0.4**.
-6. Under **Marketplace Settings**, set **Marketplace Access** to the intended
-   team or group, then save.
-7. In Cursor, open **Customize → Plugins**, find NDA Harness in the team
-   marketplace and install/enable it. Reload the window if prompted and verify
-   its installed version and hook trust.
+1. **Add the marketplace:** open **Cursor Dashboard → Plugins & MCPs → Team
+   Marketplaces → Add Marketplace → Import from Repo**.
+2. Paste `https://github.com/pilacorp/nda-harness`. Connect the GitHub provider
+   and grant access to the private repository when prompted.
+3. Select/confirm `implementation/client-marketplace` as the tracked branch where
+   supported. After merge, use `dev`. If your account cannot select the preview
+   branch, wait until the catalogs are merged into a ref it can import. Do not
+   assume a GitHub `/tree/...` URL or a Claude-style `#ref` selects a Cursor branch.
+4. Review **NDA Harness** and select **Add to Marketplace**. Confirm its source is
+   `packages/nda-harness-cursor`. Under **Marketplace Settings**, set
+   **Marketplace Access** for your team or group and save.
+5. **Install the plugin:** in Cursor, open **Customize → Plugins**, find **NDA
+   Harness** in the team marketplace and install/enable it.
+6. Reload the window if prompted, then check the installed version and hook trust.
 
-If the actual account cannot select the preview branch, wait until the catalogs
-are merged into an importable ref. If private import is unavailable, record that
-rollout check as pending; keep the repo private. These account/provider and UI
-steps still require observation with your team's Cursor account.
+For later updates, the administrator clicks **Refresh** in the dashboard. GitHub
+**Auto Refresh** additionally requires the Cursor GitHub App authorized for the
+repository; indexing occurs at most once every ten minutes. Check the installed
+version afterward; dashboard refresh alone does not prove open chats reloaded.
 
-For updates, the administrator's **Refresh**
-re-indexes the repository. **Enable Auto Refresh** on GitHub additionally requires
-the Cursor GitHub App installed for this repository; pushes to the tracked branch
-are indexed at most once per ten minutes. Re-indexing does not prove installed
-plugins or open chats reloaded. Check the installed version, reload the window
-when required and record actual behavior. There is no assumed Cursor CLI parity.
+Private import, branch selection and installed refresh still require verification
+with your team's Cursor account. Keep the repository private if a provider or
+plan limitation blocks import.
+
+## After installation
+
+Open your project in a new client session and ask the agent to set up NDA Harness.
+It will ask for the project's test command or explicit Skip. Hindsight is optional;
+authenticate it through the client's native MCP control only if you want memory.
+
+For project setup, migration, optional memory and recovery, see
+[plugin operations](docs/plugin-operations.md). Build, ZIP upload and local
+development instructions are in that separate reference.
+
+See [compatibility evidence](docs/compatibility/internal-client-marketplaces.md)
+for executed checks and pending real-client validation.
 
 Official references: [Codex plugins](https://developers.openai.com/plugins/),
 [Cursor team marketplaces](https://cursor.com/docs/plugins), and
-[Claude private marketplace hosting](https://code.claude.com/docs/en/plugins/host-marketplace).
-
-## One-time migration from an upload or local plugin
-
-1. Inventory NDA Harness in this client's native plugin and MCP lists. Record the
-   old source/identity, version and active hooks. An uploaded/account-synced plugin,
-   `nda-harness@nda-harness-local` and `nda-harness@nda-harness-internal` can be
-   different identities even when their display names match.
-2. Disable the old identity in that client before enabling the new one. Prefer
-   reversible native Disable. Claude supports `claude plugin disable <old-id>`.
-   Codex CLI 0.133.0 has no plugin-disable command: use the Desktop control when
-   available, or its native `codex plugin remove <old-id>` for a local identity
-   when removal is required. Uploaded/account-synced entries use their native
-   management surface. Cursor local installs use Customize → Plugins controls;
-   if removal is required, preserve the old local directory outside plugin
-   discovery for recovery. Never leave both copies active or disable other clients.
-3. Follow the matching marketplace installation above. Start a new session and
-   trust reviewed hooks. Confirm one NDA Harness activation and one set of its
-   MCP servers. Do not hand-edit caches or copy OAuth credentials. A new identity
-   can require the user's native authentication action; continuity is not promised.
-4. Preserve every project's `.nda-harness/profile.json`, test command and bank
-   identity. Run **nda-verify** in each active clone after an upgrade. If an old
-   package cache was removed, protection is pending and commits must stay blocked.
-   Run **nda-setup** from the newly installed package to rebind the existing hook
-   wrapper; it reuses the project configuration and preserves prior hooks. Verify
-   again and exercise the configured tests before claiming protection restored.
-
-This is a one-time identity migration. Later marketplace version upgrades use the
-native update commands without routine uninstall/reinstall.
-
-If fetch/import/validation fails, keep the current working installation and
-report the error. Do not remove it just to retry. Native failure recovery varies;
-only local Git fetch-failure behavior has been tested. For a bad release, an
-administrator prepares a reviewed revert on `dev`, regenerates packages at a new
-verified version and merges it. Users refresh/update normally and verify the
-loaded version and project protection. Do not force-reset a shared branch or
-manually patch client caches.
-
-## Generate the stored packages and catalogs
-
-The checkout stores `packages/nda-harness-codex`, `packages/nda-harness-cursor`
-and `packages/nda-harness-claude`. The root catalogs are
-`.agents/plugins/marketplace.json`, `.cursor-plugin/marketplace.json` and
-`.claude-plugin/marketplace.json`. Each exposes only its corresponding package.
-The shared version is `RELEASE_VERSION` in `scripts/nda_harness/plugin_build.py`.
-For each release, change it once, regenerate and review/commit all three packages
-and catalogs together before merging into `dev`:
-
-```sh
-rtk proxy env PYTHONPATH=scripts python3 -m nda_harness.plugin_build --publish-committed
-rtk proxy python3 -m unittest discover -s tests
-```
-
-Generation validates routing and package identity/version before replacing
-stored outputs. Publishing twice produces identical content and executable modes.
-A one-off directory package still uses `--client` and a **new** `--output`
-directory; existing output files are preserved:
-
-```sh
-rtk proxy env PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client claude --output /tmp/nda-harness-claude
-```
-
-Packages include the same canonical engine/assets, complete specialist and pinned Superpowers
-skills, licenses and provenance. Builds fetch nothing. A release hash manifest
-covers packaged files. Runtime needs neither the source checkout nor a global CLI.
-
-NDA Hindsight is the packaged memory provider. A package built without an override
-uses this host:
-
-- MCP: `https://hindsight-api.pila.vn/mcp/`
-- OAuth: `https://hindsight-api.pila.vn`
-- REST: `https://hindsight-api.pila.vn`
-
-The client connects to the MCP URL and discovers OAuth on that host. No token or
-auth header is packaged. `--hindsight-mcp-url` still overrides the MCP URL for a
-one-off package. It must be HTTPS with exact `/mcp/`, no userinfo/query/fragment.
-
-Local development Hindsight only:
-
-```sh
-PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client cursor \
-  --output /tmp/nda-harness-cursor-local \
-  --hindsight-mcp-url http://127.0.0.1:8891/mcp/ --local-test
-```
-
-This exception permits HTTP loopback only. No provider settings, tokens or static
-auth headers enter the package.
-
-## Build a ZIP for Codex Upload plugin archive
-
-Run from the repository root, choosing a new semantic version for each release:
-
-```sh
-PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
-  --archive --version 0.0.4 --output dist/nda-harness-codex-0.0.4.zip
-```
-
-Select the ZIP in **Upload plugin archive**. The command preserves existing
-output files; move an earlier ZIP aside before rebuilding to the same path.
-Use `--version` with directory builds too when releasing another client.
-
-This builds fresh sources rather than zipping a potentially edited package.
-It includes hidden manifest directories, all runtime dependencies and licenses,
-and explicit Unix file types and executable permissions. ZIP timestamps and
-entry ordering are fixed. The original Superpowers source stays in its pinned
-tarball alongside its license, provenance, and startup handlers, so its own
-plugin manifests do not become additional plugin roots. Active skills remain
-under `skills/`. `release.json` is generated after packaging and checked against
-every archived file; never edit the manifest or delete dependencies afterward.
-The Codex ZIP excludes `.agents/plugins/marketplace.json`: hosted upload expects
-one plugin, while the directory build keeps the catalog for local installation.
-The manifest explicitly supplies `interface.category`, `capabilities`, and
-`defaultPrompt` for the hosted importer.
-
-The previously rejected ZIP omitted 241 hashed vendor files (including the
-tomlkit wheel), changed the manifest without updating its hash, and omitted Unix
-file type bits. Extracting that ZIP fails the harness integrity check. The builder
-also now emits the required Codex author and long description itself.
-
-The hosted upload dialog hides server rejection details behind “Couldn't add
-plugin. Try again.” On 2026-10-19, browser Network inspection of
-`POST /backend-api/public/plugins/workspace` exposed successive HTTP 400 errors:
-
-- Missing category: `interface.category` must not be empty when provided.
-- Missing capabilities: `interface.capabilities` must be a list of strings.
-- Included marketplace catalog: `Expected a single plugin archive`.
-
-An inert probe with explicit listing metadata uploaded successfully. The full
-0.0.2 archive then uploaded successfully after excluding the marketplace catalog;
-its cloud plugin page showed all 26 skills and both MCP servers. The tested
-archive is `dist/nda-harness-codex.zip`. This verifies hosted import, not installation
-or hook execution. For future generic errors, inspect the failing request's status
-and Response body without sharing request headers, cookies, tokens, or signed URLs.
-This archive retains the full Desktop hooks and remote MCP configuration.
-Public-directory **Skills only** submissions have separate restrictions; see
-[OpenAI's submission rules](https://developers.openai.com/plugins/deploy/submission-errors).
-Use the local marketplace installation below if hosted upload is unavailable.
-
-## Local development installation
-
-These standalone development directories use `nda-harness-local`; the repository
-marketplaces above use `nda-harness-internal`. Choose one active identity per client.
-
-**Codex Desktop:** use `packages/nda-harness-codex`. Its
-`.agents/plugins/marketplace.json` declares AVAILABLE installation and **ON_USE**
-authentication; installation does not require Hindsight login. The manifest is
-`.codex-plugin/plugin.json`, MCP is `.mcp.json`, and hooks are `hooks/hooks.json`.
-Trust reviewed hooks using native client controls; changed commands may require
-trust again. Package installation does not prove Desktop hook execution.
-
-The tested Desktop distribution exposes this native registration helper:
-
-```sh
-"/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex" plugin marketplace add /absolute/package/path --json
-"/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex" plugin add nda-harness@nda-harness-local --json
-```
-
-The path depends on the distribution. Use the installed Desktop runtime; do not
-assume parity with an unrelated CLI. Exact Desktop detail UI/trust checks remain
-separate from runtime registration evidence.
-
-**Cursor IDE:** for development, copy `packages/nda-harness-cursor` to
-`~/.cursor/plugins/local/nda-harness`, then **Developer: Reload Window**.
-Use a real directory, not an external symlink. Preserve existing plugins; reconcile
-an existing target instead of replacing it blindly. Organization policy may disable
-local plugin imports. Confirm discovery under Customize → Plugins. Native paths:
-`.cursor-plugin/plugin.json`, `mcp.json`, `hooks/hooks.json`, and the always-applied
-`rules/nda-harness.mdc`.
-
-**Claude Code Desktop:** `packages/nda-harness-claude` is both the plugin and a local
-marketplace. `.claude-plugin/plugin.json` names the plugin and does not repeat
-`hooks` or `mcpServers`, because Claude Code also loads `hooks/hooks.json` and
-`.mcp.json`. `.claude-plugin/marketplace.json` lists source `.`. Hooks are
-`SessionStart`, `UserPromptSubmit`, and `PreCompact`, and commands expand
-`${CLAUDE_PLUGIN_ROOT}`. There is no always-applied rule file and no plugin-root
-`CLAUDE.md`; those events carry the readiness instructions.
-
-Register it with the Claude Code plugin store shared by the Desktop Code tab:
-
-```sh
-claude plugin marketplace add /absolute/release/nda-harness-claude
-claude plugin install nda-harness@nda-harness-local
-```
-
-In a local Desktop Code session, open the same plugins with `+` → Plugins.
-Trust reviewed hooks in the client. Package installation does not prove Desktop
-hook execution. Hindsight authentication is the native MCP action in `/mcp` or
-the Desktop plugin/MCP row. Record the label that client shows. Do not invent an
-Authenticate button. Installation does not open a login browser.
-
-## Skill selection key
-
-After the plugin is loaded, run `selection-setup` in a local terminal and enter the personal OpenRouter key. The terminal prints `OpenRouter key saved.` It does not print JSON. That key is only for Jev skill selection and stays in the macOS Keychain. See [skill selection](docs/skill-selection.md).
-
-## First trusted session and project setup
-
-The plugin is available in every project with no client or scope menu. Trusted
-Codex or Claude Code SessionStart, or Cursor sessionStart, attempts bootstrap
-automatically. It installs checksum-pinned RTK if absent, exposes bundled Superpowers and registers
-Context7 natively. It does not open a login browser. Unrecognized existing RTK
-is preserved and reported as a failed prerequisite. Concurrent bootstrap is locked;
-states are awaiting-trust, installing, ready and failed.
-
-Cursor startup is asynchronous. Its always-applied rule and explicit context
-skills check readiness before dependent work. Claude Code waits for SessionStart
-before the first response and repeats that context on UserPromptSubmit. Its
-PreCompact hook writes the local checkpoint without blocking compaction; Claude
-Code does not show that event's `systemMessage`, so the following compact
-SessionStart, UserPromptSubmit, and the context-checkpoint skill carry the
-reminder. If hooks are delayed, untrusted,
-missing or failed, use **nda-setup** for recovery. Never infer ready from install.
-
-The agent checks `.nda-harness/profile.json` at the project directory and asks for a
-non-watch test command in chat. Explicit **Skip** stores `true`, passing without
-tests. No answer means pending. Hooks exchange JSON, not terminal wizard input.
-A folder that is not a Git checkout, and a repository with no remote, requires a
-shared project name. Distinct remotes require explicit selection. Git commit
-hooks are installed only for a repository. Existing project configuration is reused.
-
-After answering, the plugin invokes its fixed-client packaged helper, for example:
-
-```sh
-/absolute/package/path/bin/nda-plugin setup --client codex \
-  --project /absolute/project --test-command 'npm run test:unit'
-```
-
-Use `--skip-tests` only for explicit Skip. `--project-name example-app` identifies
-a project without a remote. `--remote origin` selects an explicitly chosen remote.
-Existing identity conflicts need reconciliation; never delete a profile to guess
-a new bank. Helpers always require --client; plugin skills supply it automatically.
-
-Commit `.nda-harness/profile.json` and sanitized `.nda-harness/tasks/` records.
-Do not ignore this directory. No shared plugin assets, machine paths or credentials
-belong there. Every clone activates its local composed Git pre-commit hook. Existing
-checks run before configured tests, from the project root; either failure blocks
-commit. A missing profile or removed runtime also blocks the installed check.
-
-A project uses one memory system, stored as `memory.system`. NDA Hindsight is the
-only system a package includes today. When a later package offers more than
-one, ask which system and pass `--memory-system`. Setup selects the only packaged
-system automatically.
-
-## Optional NDA Hindsight
-
-The MCP server identifier is **`nda-harness-hindsight`**; NDA Hindsight is its
-human-readable label. Version 0.0.2 incorrectly used the label as the identifier.
-Codex rejected its spaces before connecting, even after OAuth completed. Version
-0.0.3 fixes the identifier and rejects invalid server names during package builds.
-Update the plugin, then authenticate the new `nda-harness-hindsight` entry in
-native plugin details if requested. The client may require authorization again
-because the MCP identifier changed; never copy or edit stored credentials.
-
-Use the NDA Hindsight entry's native **Authenticate/Authorize** action to opt in.
-Setup never starts login. Each client signs in separately and connects directly to
-`/mcp/`; the client owns discovery, PKCE, callback, credentials, renewal and logout.
-Never provide tokens or provider settings to the harness. No auth proxy exists.
-
-After authentication the agent uses hindsight-memory automatically. Codex, Cursor,
-and Claude Code on the same account use the project's configured bank ID. Equivalent SSH/HTTPS
-clones share it. Default environment is dev; staging/prod are explicitly selected
-labels within the same bank. Store credential-location references, never key values.
-
-Use native authenticated MCP diagnostics for discovery without memory read/write
-side effects. If unavailable, verification stays pending. Cancellation, revocation,
-expiry or outage does not block core work. Use default client memory if available;
-never fabricate saves or auto-sync fallback content into Hindsight later.
-
-Reauthenticate using the native Hindsight action. Disconnect by disabling its MCP
-connection in that client and using native logout/disconnect when available. If
-client logout is unavailable and revocation is needed, revoke access in Hindsight.
-Do not edit host credential files or affect the other client.
-
-### Authentication reports and manual recovery
-
-Missing Hindsight tools mean the connection is unavailable in this session;
-authentication remains unverified until the client's native diagnostics establish
-more. Saved OAuth credentials or a hidden Authenticate button are not connection
-proof. Devices authenticate independently. A login created before the server
-started supplying expiry metadata may need one refresh or reauthentication.
-
-The packaged **memory-status** operation interprets already available native JSON.
-It does not fetch diagnostics, access credentials, run memory calls or start
-login. Existing hooks do not subscribe to MCP lifecycle events. For example,
-given an actual Codex startup notification:
-
-```sh
-rtk proxy /absolute/package/path/bin/nda-plugin memory-status --client codex <<'JSON'
-{"method":"mcpServer/startupStatus/updated","params":{"name":"nda-harness-hindsight","status":"failed","failureReason":"reauthenticationRequired"}}
-JSON
-```
-
-This reports `awaiting_authentication`. Only Codex interprets that event. A native
-Codex inventory entry needs both OAuth status and nonempty discovered tools to
-report connected. Claude accepts matching native MCP status snapshots such as
-`{"name":"nda-harness-hindsight","status":"needs-auth"}`; pending remains
-unresolved and failed means unavailable. Cursor's equivalent is a matching
-catalog entry whose `namespaceStatus` is `needsAuth`:
-
-```sh
-rtk proxy /absolute/package/path/bin/nda-plugin memory-status --client cursor <<'JSON'
-{"namespace":"plugin-nda-harness-nda-harness-hindsight","namespaceStatus":"needsAuth"}
-JSON
-```
-
-The mcp.json key `nda-harness-hindsight` with `serverStatus` or `status`
-`needsAuth` is the same verdict. `error` means unavailable, `loading` stays
-pending, and `ready` or `connected` reports discovery only. These observations
-do not test memory operations or future renewal. Codex and Claude do not
-interpret `needsAuth`.
-
-Without native JSON, run with empty stdin for a pending report; terminal stdin
-returns immediately. Disabled packages report disabled. Reports do not change
-core readiness. Invalid/non-object JSON or input over 1 MB returns a sanitized
-pending report with exit 2; valid reports, including unavailable, return exit 0.
-Use the helper path from the installed package; hosted Claude packages relocate
-the launcher to `scripts/nda-plugin`.
-
-Manual sign-in remains the user's action:
-
-- **Codex:** use the native MCP sign-in control. If hidden, use the installed
-  Codex executable with the invocation-local override below, then reconnect or
-  restart the client. The name matches the plugin's stored server identity.
-- **Cursor:** use the Hindsight authentication control in MCP settings. If Cursor
-  Agent CLI is installed and the server is registered there, inspect
-  `rtk proxy agent mcp list` and run `rtk proxy agent mcp login <identifier>` with
-  its actual identifier. Do not assume credentials are shared across surfaces.
-- **Claude Code:** inspect/authenticate through `/mcp`. Shell
-  `rtk proxy claude mcp login <name>` is an alternative only when the installed
-  version exposes it; verify the name in native inventory. SDK status APIs do not
-  launch browser OAuth or supply a Desktop plugin SDK bridge.
-
-```sh
-rtk proxy codex \
-  -c 'mcp_servers.nda-harness-hindsight.url="https://hindsight-api.pila.vn/mcp/"' \
-  mcp login nda-harness-hindsight
-```
-
-No credential deletion or plugin uninstall is required. See the
-[diagnostic compatibility evidence](docs/compatibility/hindsight-auth-recovery.md)
-for source references and live-test limits.
-
-## Verification and recovery
-
-Run **nda-verify**, or its client-bound helper:
-
-```sh
-/absolute/package/path/bin/nda-plugin verify --client codex --project /absolute/project
-```
-
-Verification is read-only: no tests, repairs, login, credential extraction or memory
-reads/writes. It separates local core readiness, bootstrap, native hooks, Context7
-and optional memory. Native checks remain pending until independently observed.
-Exit `3` means pending client checks, not complete onboarding. Exit `2` indicates
-invalid prerequisites/configuration/integrity or ownership conflict. Unit-check
-exits `1` on failure. Context operations exit `2` when prerequisites are blocked.
-
-Private receipts, locks and backups live under `~/.nda-harness/plugin-bootstrap/`
-and `~/.nda-harness/plugin-projects/`. They are not committed or shared as evidence.
-Setup rolls back owned writes on failure and recovers interrupted transactions
-before another setup. If later edits conflict, preserve files/backups for owner
-reconciliation. Never reset hooksPath or delete another manager to bypass conflict.
-Multiple worktrees require Git worktree-local configuration before activation.
-
-Use all five context skills across tasks, changes, compaction and handoff. Sanitized
-repository task records, current revisions and live approval evidence establish
-context; fingerprints cannot authenticate approvals or detect remote issue edits.
-
-The [old CLI walkthrough](docs/compatibility/cli-installation-historical.md) is
-historical evidence, not a plugin installation or migration path.
+[Claude marketplace hosting](https://code.claude.com/docs/en/plugins/host-marketplace).
