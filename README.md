@@ -44,8 +44,9 @@ version **0.0.5**, tracked from `dev`. The
 The shared package builder produces native plugins with full specialist and pinned
 Superpowers skills, Context7 MCP, trusted startup bootstrap, five context operations,
 and project Git test protection. On entry, the agent asks for a project's test command
-or explicit Skip; `.nda-harness/` contains committed project configuration and task
-records, with shared assets remaining in the plugin.
+or explicit Skip; `.nda-harness/profile.json` is committed project configuration.
+Task records stay local in Git-ignored `.nda-harness/tasks/`, with shared assets
+remaining in the plugin.
 
 Install from GitHub using the [Codex](INSTALLATION.md#codex),
 [Cursor](INSTALLATION.md#cursor-ide), or

@@ -134,11 +134,12 @@ literal command `true`; explain that this passes the check without running tests
 If interaction is unavailable, report configuration as pending rather than
 silently choosing Skip. Reuse existing configuration without repeated prompts.
 
-The project commits `.nda-harness/` to Git. It contains the project-specific
-configuration, including the test command, project memory-bank identity, and
-sanitized task records. Shared plugin skills and rules need not be copied into
-each project. Credentials, private diagnostics, and machine-specific paths stay
-outside the committed directory.
+The project commits `.nda-harness/profile.json` to Git. It contains the
+project-specific test command and memory-bank identity. Task records remain
+local under Git-ignored `.nda-harness/tasks/` and must never be staged or
+force-added, per the owner's task-record privacy instruction. Shared plugin skills
+and rules need not be copied into each project. Credentials, private diagnostics,
+and machine-specific paths stay outside committed project configuration.
 
 Install a local Git pre-commit check that executes the configured test command
 from the project root. A failing test command blocks the commit; `true` succeeds

@@ -233,8 +233,9 @@ a project without a remote. `--remote origin` selects an explicitly chosen remot
 Existing identity conflicts need reconciliation; never delete a profile to guess
 a new bank. Helpers always require --client; plugin skills supply it automatically.
 
-Commit `.nda-harness/profile.json` and sanitized `.nda-harness/tasks/` records.
-Do not ignore this directory. No shared plugin assets, machine paths or credentials
+Commit `.nda-harness/profile.json`. Add `.nda-harness/tasks/` to `.gitignore` and
+keep task records local; never stage or force-add them. Do not ignore the profile.
+No shared plugin assets, machine paths or credentials
 belong there. Every clone activates its local composed Git pre-commit hook. Existing
 checks run before configured tests, from the project root; either failure blocks
 commit. A missing profile or removed runtime also blocks the installed check.
@@ -366,7 +367,7 @@ reconciliation. Never reset hooksPath or delete another manager to bypass confli
 Multiple worktrees require Git worktree-local configuration before activation.
 
 Use all five context skills across tasks, changes, compaction and handoff. Sanitized
-repository task records, current revisions and live approval evidence establish
+local ignored task records, current revisions and live approval evidence establish
 context; fingerprints cannot authenticate approvals or detect remote issue edits.
 
 The [old CLI walkthrough](compatibility/cli-installation-historical.md) is
