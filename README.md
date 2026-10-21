@@ -21,6 +21,7 @@ provider and deployment configuration stays in the Hindsight server repository.
 Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 supplies relevant public library/framework documentation; the Skills hub adds selectively loaded specialist instructions.
 
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
+- [Setup guide](docs/setup-guide.md): initial project setup, Hindsight authentication, and the skill selection flow.
 - [Installation](INSTALLATION.md): add the GitHub marketplace and install NDA Harness in Codex, Cursor or Claude.
 - [Plugin operations](docs/plugin-operations.md): migration, project setup, optional memory, recovery and contributor builds.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.

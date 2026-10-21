@@ -122,6 +122,9 @@ plan limitation blocks import.
 
 ## After installation
 
+Follow the [setup guide](docs/setup-guide.md) for initial project setup,
+Hindsight authentication, and skill selection.
+
 Open your project in a new client session and ask the agent to set up NDA Harness.
 It will ask for the project's test command or explicit Skip. Hindsight is optional;
 authenticate it through the client's native MCP control only if you want memory.
