@@ -6,30 +6,67 @@ macOS**. Install/sign in to the client separately. Python 3.11+
 global harness CLI, Python installer or shell startup changes are required.
 
 The repository stays **private**. An administrator grants company users read
-access and merges reviewed release changes into the tracked **dev** branch.
-Adding a marketplace does not change repository visibility or submit a public
-listing. Use existing Git/SSH authentication without secrets in repository URLs.
-SSH must work without an interactive passphrase/host-key prompt; connect your
-normal key agent and trust the GitHub host through your usual Git setup first.
+access. Adding a marketplace does not change repository visibility or submit a
+public listing. You do not need to clone the repository or build a ZIP to install.
+
+| Setting | Value |
+| --- | --- |
+| GitHub repository | [pilacorp/nda-harness](https://github.com/pilacorp/nda-harness) |
+| Git clone URL for Codex / Claude | `https://github.com/pilacorp/nda-harness.git` |
+| Marketplace name | `nda-harness-internal` |
+| Plugin name | `nda-harness` |
+| Current preview branch | `implementation/client-marketplace` |
+| Distribution branch after reviewed merge | `dev` |
+
+**Before the implementation is merged, use `implementation/client-marketplace`.**
+The commands below use that preview branch because the catalogs are not yet on
+`dev`. After merge, replace the ref with `dev` for new registrations. Existing
+registrations keep tracking their selected branch; an update command does not
+switch them to `dev` automatically.
+
+For the HTTPS commands below, Git must already have access through your normal
+credential helper. Plugin commands may suppress interactive authentication, so
+verify access first in your terminal:
+
+```sh
+git ls-remote https://github.com/pilacorp/nda-harness.git refs/heads/implementation/client-marketplace
+```
+
+Expect a commit SHA and the requested branch. An empty result means that ref was
+not found; an access error must be resolved through your normal GitHub/Git setup.
+Never embed a token or password in the URL. If your company uses SSH, substitute
+`git@github.com:pilacorp/nda-harness.git`; the key agent and trusted GitHub host
+must already work without interactive prompts. Cursor uses its own provider
+connection, described below.
 
 The first marketplace package version is **0.0.4** in all three clients.
 Commands below are the installation procedure; see
 [compatibility evidence](docs/compatibility/internal-client-marketplaces.md)
 for executed checks and pending real-account rollout checks.
 
-## Native installation and updates
+## Install from GitHub
 
 Complete [one-time migration](#one-time-migration-from-an-upload-or-local-plugin)
 first if NDA Harness is already active in this client.
 
-**Codex Desktop:** use the Codex executable shipped with your installed Desktop
+### Codex
+
+Use the Codex executable shipped with your installed Desktop
 distribution. A separate CLI may differ; the commands require native plugin
 marketplace support. With that executable on PATH:
 
 ```sh
-codex plugin marketplace add git@github.com:pilacorp/nda-harness.git --ref dev
+codex plugin marketplace add https://github.com/pilacorp/nda-harness.git --ref implementation/client-marketplace
 codex plugin add nda-harness@nda-harness-internal
+codex plugin list --marketplace nda-harness-internal
 ```
+
+Confirm the entry is installed/enabled at **0.0.4**. If you previously registered
+the same marketplace from a different URL or ref, list its current registration
+with `codex plugin marketplace list`. To deliberately replace that registration,
+run `codex plugin marketplace remove nda-harness-internal`, then repeat add/install
+with the desired ref. Removal can remove marketplace files: preserve project
+configuration and verify/recover Git protection as described under migration.
 
 Later releases:
 
@@ -42,13 +79,21 @@ Native Git refresh updates installed non-curated plugins. Start a new Desktop
 chat and check its loaded version and hook trust; immediate activation in an
 existing chat is not verified.
 
-**Claude Code / Desktop Code tab:** register the private Git marketplace in the
+### Claude Code and the Desktop Code tab
+
+Register the private Git marketplace in the
 shared Claude plugin store, then install its entry:
 
 ```sh
-claude plugin marketplace add 'git@github.com:pilacorp/nda-harness.git#dev'
+claude plugin marketplace add 'https://github.com/pilacorp/nda-harness.git#implementation/client-marketplace'
 claude plugin install nda-harness@nda-harness-internal
+claude plugin list --json
 ```
+
+The quoted `#implementation/client-marketplace` selects the preview branch.
+After merge, new registrations use `#dev`. Confirm the installed version is
+**0.0.4**. These commands run in a terminal; inside Claude Code the native command
+forms begin with `/plugin` instead of `claude plugin`.
 
 For later releases refresh the catalog, then update the installed plugin:
 
@@ -62,21 +107,42 @@ Restart the session to apply changes, or use `/reload-plugins` when that client
 supports it. These are user installs; do not commit project-wide installation
 settings for colleagues implicitly.
 
-**Cursor IDE:** private team marketplaces require **Teams or Enterprise**. In
-**Dashboard → Plugins & MCPs → Team Marketplaces → Add Marketplace**, choose
-**Import from Repo**, paste the private repository URL and connect its provider.
-Review/add the indexed NDA Harness plugin, set **Marketplace Access** to the
-intended company team and save. Confirm it resolves only
-`packages/nda-harness-cursor`, then enable/install that entry in Cursor.
+### Cursor IDE
 
-Select/confirm the tracked **dev** ref where supported. If the actual account
-cannot select that ref or import the private repository, stop that rollout and
-record it as pending; keep the repo private. The administrator's **Refresh**
+Private team marketplaces require **Teams or Enterprise** and a team administrator.
+Use Cursor's dashboard import; Codex and Claude terminal commands do not configure
+Cursor.
+
+1. Open **Cursor Dashboard → Plugins & MCPs**.
+2. Under **Team Marketplaces**, select **Add Marketplace → Import from Repo**.
+3. Paste `https://github.com/pilacorp/nda-harness` and connect the GitHub provider
+   when prompted. Give that connection access to this private repository.
+4. Select/confirm `implementation/client-marketplace` as the tracked branch where
+   the account supports it. After the reviewed merge, use `dev`. Do not assume
+   a GitHub `/tree/...` URL or a Claude-style `#ref` selects a branch in Cursor.
+5. Review the indexed **NDA Harness** entry and use **Add to Marketplace**.
+   Confirm the source is `packages/nda-harness-cursor` and the version is **0.0.4**.
+6. Under **Marketplace Settings**, set **Marketplace Access** to the intended
+   team or group, then save.
+7. In Cursor, open **Customize → Plugins**, find NDA Harness in the team
+   marketplace and install/enable it. Reload the window if prompted and verify
+   its installed version and hook trust.
+
+If the actual account cannot select the preview branch, wait until the catalogs
+are merged into an importable ref. If private import is unavailable, record that
+rollout check as pending; keep the repo private. These account/provider and UI
+steps still require observation with your team's Cursor account.
+
+For updates, the administrator's **Refresh**
 re-indexes the repository. **Enable Auto Refresh** on GitHub additionally requires
 the Cursor GitHub App installed for this repository; pushes to the tracked branch
 are indexed at most once per ten minutes. Re-indexing does not prove installed
 plugins or open chats reloaded. Check the installed version, reload the window
 when required and record actual behavior. There is no assumed Cursor CLI parity.
+
+Official references: [Codex plugins](https://developers.openai.com/plugins/),
+[Cursor team marketplaces](https://cursor.com/docs/plugins), and
+[Claude private marketplace hosting](https://code.claude.com/docs/en/plugins/host-marketplace).
 
 ## One-time migration from an upload or local plugin
 

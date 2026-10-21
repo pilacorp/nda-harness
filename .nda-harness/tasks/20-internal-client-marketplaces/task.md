@@ -3,7 +3,7 @@
 Issue: https://github.com/pilacorp/nda-harness/issues/20
 Role: developer
 Stage: implementation
-Revision: c4f763fcb60a0a4c1573473c135eded50d5bb368
+Revision: 55d33f5863cbf33aace42ec4acccf9a4dfe3f659
 Spec PR: https://github.com/pilacorp/nda-harness/pull/21
 Spec: specs/internal-client-marketplaces.md
 Input fingerprint: 2e668a937664fd7e7b6c52d80027118ca0ccf8c3d5b4032b0dd6cdc7de66daa2
@@ -23,3 +23,7 @@ Push preparation: user corrected the branch name to implementation/client-market
 ## Implementation prerequisites (2026-10-21)
 
 User confirmed review/merge and requested implementation. GitHub independently reports PR #21 merged at 2026-10-21T06:06:50Z, merge c4f763fcb60a0a4c1573473c135eded50d5bb368. The local spec has no diff from that merge. Issue #20 is unchanged since 2026-10-20T08:39:11Z. Branch created from origin/dev at that merge. Core verification reports ready and Git protection active; configured tests remain explicitly skipped, so run the actual unittest suite separately. Hindsight tools are unavailable; no memory reads or saves. No specialist skills selected: packaging and documentation only. Use canonical plugin_build and existing project hook recovery.
+
+## GitHub guide follow-up (2026-10-21)
+
+User requested GitHub installation guidance for all three clients. Documentation-only lighter path: INSTALLATION and README now show the exact private URLs, HTTPS/SSH access prerequisites, working implementation/client-marketplace refs before merge, the eventual dev transition, native install/update/version checks, Codex source replacement and numbered Cursor team/provider import steps. Official public documentation was rechecked through Context7. origin/dev still lacks the root catalogs; no implementation PR exists yet. README section anchors, current refs and whitespace were checked. No runtime/package changes or live installations; no full test rerun for prose. Existing Git protection was needs_activation after cache removal; normal setup recovery using the repository package restored active protection without changing the saved project settings. Next: push this guide update, then human implementation review and pending native rollout checks.

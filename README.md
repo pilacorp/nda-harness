@@ -46,8 +46,12 @@ and project Git test protection. On entry, the agent asks for a project's test c
 or explicit Skip; `.nda-harness/` contains committed project configuration and task
 records, with shared assets remaining in the plugin.
 
-See [installation](INSTALLATION.md) for private access, native installation and
-updates, one-time migration from uploads/local plugins, and release generation.
+Install from GitHub using the [Codex](INSTALLATION.md#codex),
+[Cursor](INSTALLATION.md#cursor-ide), or
+[Claude Code](INSTALLATION.md#claude-code-and-the-desktop-code-tab) guide.
+Before the implementation merges into `dev`, use its
+`implementation/client-marketplace` preview ref. The guide also covers private
+access, updates, one-time migration from uploads/local plugins, and release generation.
 All three `packages/nda-harness-<client>` directories and root catalogs are
 generated from canonical sources. [Marketplace evidence](docs/compatibility/internal-client-marketplaces.md)
 separates tested native CLI behavior from pending Desktop, Cursor provider and
