@@ -8,10 +8,10 @@ Add the private GitHub repository as a marketplace in your client, then install
 | Repository URL | `https://github.com/pilacorp/nda-harness` |
 | Marketplace name | `nda-harness-internal` |
 | Plugin name | `nda-harness` |
-| Preview branch | `implementation/client-marketplace` |
+| Distribution branch | `dev` |
 
-Use the preview branch until the implementation is merged into `dev`. After
-merge, use `dev` for new registrations. Updating a marketplace keeps its selected
+These instructions target `dev` and become usable after the marketplace
+implementation is merged there. Updating a marketplace keeps its selected
 branch; it does not switch branches automatically.
 
 You need access to the private repository and an installed client. Codex and
@@ -29,7 +29,7 @@ Use the Codex executable supplied with your Desktop installation.
 1. **Add the marketplace** in a terminal:
 
    ```sh
-   codex plugin marketplace add https://github.com/pilacorp/nda-harness.git --ref implementation/client-marketplace
+   codex plugin marketplace add https://github.com/pilacorp/nda-harness.git --ref dev
    ```
 
 2. **Install the plugin**:
@@ -63,7 +63,7 @@ hooks bound to the previous installation.
 1. **Add the marketplace** in a terminal:
 
    ```sh
-   claude plugin marketplace add 'https://github.com/pilacorp/nda-harness.git#implementation/client-marketplace'
+   claude plugin marketplace add 'https://github.com/pilacorp/nda-harness.git#dev'
    ```
 
 2. **Install the plugin**:
@@ -79,8 +79,8 @@ hooks bound to the previous installation.
    claude plugin list --json
    ```
 
-The quoted `#implementation/client-marketplace` selects the preview branch;
-use `#dev` after merge. Inside Claude Code, equivalent commands begin with
+The quoted `#dev` selects the distribution branch. Inside Claude Code,
+equivalent commands begin with
 `/plugin` instead of `claude plugin`. Desktop's Code tab shares that plugin store.
 
 For later updates:
@@ -101,9 +101,8 @@ adds the marketplace; team members then install the plugin in Cursor.
    Marketplaces → Add Marketplace → Import from Repo**.
 2. Paste `https://github.com/pilacorp/nda-harness`. Connect the GitHub provider
    and grant access to the private repository when prompted.
-3. Select/confirm `implementation/client-marketplace` as the tracked branch where
-   supported. After merge, use `dev`. If your account cannot select the preview
-   branch, wait until the catalogs are merged into a ref it can import. Do not
+3. Select/confirm `dev` as the tracked branch where supported. If your account
+   cannot select that branch, record the rollout as pending. Do not
    assume a GitHub `/tree/...` URL or a Claude-style `#ref` selects a Cursor branch.
 4. Review **NDA Harness** and select **Add to Marketplace**. Confirm its source is
    `packages/nda-harness-cursor`. Under **Marketplace Settings**, set

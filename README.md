@@ -50,8 +50,8 @@ records, with shared assets remaining in the plugin.
 Install from GitHub using the [Codex](INSTALLATION.md#codex),
 [Cursor](INSTALLATION.md#cursor-ide), or
 [Claude Code](INSTALLATION.md#claude-code-and-the-desktop-code-tab) guide.
-Before the implementation merges into `dev`, use its
-`implementation/client-marketplace` preview ref. The guide also covers private
+The installation guide targets `dev`, ready for use after the implementation
+is merged there. The guide also covers private
 access, updates, one-time migration from uploads/local plugins, and release generation.
 All three `packages/nda-harness-<client>` directories and root catalogs are
 generated from canonical sources. [Marketplace evidence](docs/compatibility/internal-client-marketplaces.md)
