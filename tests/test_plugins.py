@@ -274,7 +274,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(set(claude_files) - set(codex_files), {'.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'})
         self.assertEqual(set(codex_files) - set(claude_files), {'.codex-plugin/plugin.json', '.agents/plugins/marketplace.json'})
         bound = {f'skills/{name}/SKILL.md' for name in (
-            'nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')}
+            'nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume', 'skill-selection')}
         differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json'}
         for name in set(claude_files) & set(codex_files) - differ:
             self.assertEqual(claude_files[name], codex_files[name], name)

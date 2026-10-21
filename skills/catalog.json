@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "skills": [
+    {
+      "entrypoint": "diagram-design/SKILL.md",
+      "exclude_when": "Only read or discuss an existing diagram without producing, changing, or reviewing one.",
+      "id": "diagram-design",
+      "output": "An explanatory diagram artifact",
+      "required_context": [
+        "verified relationships",
+        "audience"
+      ],
+      "select_when": "Creating or updating architecture, workflow, sequence, or other explanatory diagrams"
+    },
+    {
+      "entrypoint": "ui-ux-pro-max/SKILL.md",
+      "exclude_when": "Pure backend logic, API or database work, or non-visual scripts, unless the assignment changes how something looks, feels, moves, or is interacted with.",
+      "id": "ui-ux-pro-max",
+      "output": "UI/UX recommendations or scoped interface changes",
+      "required_context": [
+        "approved UI scope",
+        "existing design system",
+        "detected stack"
+      ],
+      "select_when": "Designing, implementing, or reviewing interfaces"
+    },
+    {
+      "entrypoint": "vietnamese-official-wording/SKILL.md",
+      "exclude_when": "Ordinary Vietnamese chat, or technical project documentation that stays in English.",
+      "id": "vietnamese-official-wording",
+      "output": "A Vietnamese draft or revision and any unresolved factual fields",
+      "required_context": [
+        "document purpose and audience",
+        "approved template or glossary",
+        "source facts"
+      ],
+      "select_when": "Drafting or revising formal Vietnamese organizational documents"
+    }
+  ]
+}

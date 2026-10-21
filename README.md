@@ -23,11 +23,12 @@ Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 s
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
 - [Installation](INSTALLATION.md): developer prerequisites, project setup, Context7 and optional Hindsight connections, verification and recovery.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
-- [Skills hub](skills/catalog.md): select UI/UX Pro Max, official Vietnamese document wording, or Diagram Design for a scoped sub-agent; load selected instructions only.
+- [Skills hub](skills/catalog.md): UI/UX Pro Max, official Vietnamese document wording, and Diagram Design. The local Jev helper selects them; load only the returned bodies.
+- [Skill selection](docs/skill-selection.md): personal OpenRouter key, Jev `typesafe/jev-1.14`, and the select/load commands.
 
 Code stays in the developer's local repository for agent inspection. The existing Markdown/pgvector RAG supplies feature and architecture knowledge. Self-hosted Hindsight, using OpenRouter for LLM processing, provides each developer's personal memory, such as preferences and individual working notes; it is not an organization-wide source of facts.
 
-Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. OpenRouter credentials stay on the Hindsight server.
+Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. That OpenRouter credential stays on the Hindsight server. A developer's separate OpenRouter key, used only for Jev skill selection, stays in the macOS Keychain.
 
 ## Current phase
 
