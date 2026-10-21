@@ -35,6 +35,21 @@ Staged authored changes pass whitespace checks. The newly stored Claude package
 preserves whitespace in 22 upstream skill/vendor files byte for byte with their
 already committed Codex counterparts; those generated assets were not reformatted.
 
+### Current 0.0.5 PR verification
+
+The initial 0.0.4 marketplace release is preserved in commit `55d33f5`. The
+successor 0.0.5 release includes Python 3.9 compatibility. At branch revision
+`61cafbf`, the complete suite passed **203 tests on Python 3.12.12** (99.804s)
+and **203 tests on Python 3.9.6** (99.472s). These runs include fresh canonical
+package comparisons, catalog routing, deterministic generation, rollback and
+removed-cache Git hook recovery. All 2181 packaged asset hashes match their
+release manifests, and the installation guide's local links/anchors pass.
+
+An independent read-only review found no code blockers. Its stale release-version
+statement in the native experiment record below was corrected to distinguish
+the historical experiment from the current compatibility release. The manual
+client rollout checks remain pending as listed below.
+
 `PluginTests.test_repository_packages_match_all_three_canonical_builds` compares
 every stored package byte against a fresh canonical build. Existing ZIP tests
 exercise single-plugin hosted Codex uploads and the Claude hosted-launcher
@@ -71,9 +86,13 @@ it does **not** establish access to the real private GitHub repository.
 | Claude | `plugin marketplace update nda-harness-internal`, then `plugin update nda-harness@nda-harness-internal` | Native inventory reports enabled 0.0.5; client explicitly says restart to apply. No uninstall/reinstall. |
 | Both | Move fixture remote out of reach, then refresh | Both exit 1. All 0.0.5 installed-cache files remain byte-identical, and native lists still report installed/enabled. |
 
-Only the isolated test fixture was raised to 0.0.5; repository release artifacts
-remain **0.0.4**. The failed-fetch test checks installed-cache preservation, not
-transactional guarantees for every native validation or import failure.
+During that experiment, only the isolated test fixture was raised to 0.0.5;
+repository artifacts were still **0.0.4**. The branch subsequently added the
+**0.0.5** compatibility release for Python 3.9+. The native experiment above
+records the earlier 0.0.4 installation and fixture update; it does not claim a
+separate native installation test of the current 0.0.5 compatibility package.
+The failed-fetch test checks installed-cache preservation, not transactional
+guarantees for every native validation or import failure.
 
 ## Pending real-client rollout checks
 

@@ -3,7 +3,7 @@
 Issue: https://github.com/pilacorp/nda-harness/issues/20
 Role: developer
 Stage: implementation
-Revision: 55d33f5863cbf33aace42ec4acccf9a4dfe3f659
+Revision: 61cafbf2b915b72282e5a4ade7b73356bf52d510
 Spec PR: https://github.com/pilacorp/nda-harness/pull/21
 Spec: specs/internal-client-marketplaces.md
 Input fingerprint: 2e668a937664fd7e7b6c52d80027118ca0ccf8c3d5b4032b0dd6cdc7de66daa2
@@ -16,7 +16,9 @@ Completed: merged spec verified; requested branch created from latest dev. Exist
 
 Open checks: human implementation review; real private Git access; Cursor Teams/Enterprise dashboard import/dev ref and installed refresh; Desktop activation/trust; real initial identity migration and optional native authentication; invalid native import and reviewed release recovery.
 
-Next action: finish the authorized commit/push on implementation/client-marketplace, then human implementation review. No PR creation or merge requested.
+Next action: create the user-requested implementation PR against dev after pushing the reviewed verification note; human review and pending native rollout checks follow.
+
+PR review (2026-10-21): user requested spec-compliance review and PR creation if OK. Issue #20 and merged PR #21 were independently revalidated; local marketplace spec is unchanged. Initial 0.0.4 is present at 55d33f5; current successor 0.0.5 includes Python 3.9 compatibility. Full suite passed 203 tests on Python 3.12.12 and 203 on Python 3.9.6. Independent review found no code blockers and verified all 2181 asset hashes. One stale evidence-doc statement about the current version was corrected. Guide links/anchors and authored whitespace checks pass. All eight acceptance criteria are covered by implementation, documentation and tests; spec-permitted native provider/Desktop/auth checks remain explicitly pending. No new runtime edits made during this review. PR creation authorized; merge is not authorized.
 
 Push preparation: user corrected the branch name to implementation/client-marketplace and authorized a fresh 0.0.4 build and GitHub push. Branch renamed, dev/spec/issue revalidated, all three 0.0.4 packages rebuilt. Fresh full suite passed 201 tests in 93.473 seconds. Authored staged whitespace checks pass; 22 generated upstream files retain the same whitespace as committed Codex counterparts to preserve source hashes. Only the issue #20 sanitized task record is selected; unrelated task records are excluded.
 
