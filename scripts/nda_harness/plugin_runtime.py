@@ -61,7 +61,7 @@ def package_config(package, client):
 def bootstrap(package, client, home):
     package_config(package, client)
     if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        raise Conflict('This phase supports Apple Silicon macOS; Python 3.11+ and Git must be on the client PATH.')
+        raise Conflict('This phase supports Apple Silicon macOS; Python 3.9+ and Git must be on the client PATH.')
     state = home / '.nda-harness/plugin-bootstrap'
     with locked(state):
         receipt = load_json(state / 'receipt.json', {'owned': {}})
@@ -187,7 +187,7 @@ def hook(package, client, event, home, payload):
         'Client startup can still be running, including Cursor sessionStart: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
         'Repository instructions, issue linkage, approved merged spec checks, TDD Red/Green/Refactor and human review remain mandatory. Hooks cannot grant approvals. '
         'Use the five context operation skills; after resume or compaction reconstruct from durable sanitized task records and current revisions. '
-        'Project .nda-harness contains committed project configuration and sanitized task records only. No shared rules copies, credentials, memory text or machine paths. '
+        'Commit .nda-harness/profile.json only. Keep sanitized task records local in .nda-harness/tasks/; add that directory to .gitignore and never stage, commit or force-add its files, including task.md. No shared rules copies, credentials, memory text or machine paths belong in committed project configuration. '
     )
     if before_compact:
         instruction = ('NDA Harness checkpoint: run context-checkpoint using the selected durable project task record before handoff. '
@@ -230,10 +230,10 @@ def diagnose(error):
         ('Unknown memory system', 'memory_system_unknown', 'Use a memory system registered by this package.'),
         ('not packaged', 'memory_system_unavailable', 'Choose a memory system whose endpoint is packaged, or continue without memory.'),
         ('bank identity conflicts', 'project_identity_conflict', 'Reconcile current Git identity with the committed project bank; do not silently replace it.'),
-        ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json and sanitized task records can be committed.'),
+        ('ignored by Git', 'project_config_ignored', 'Reconcile ignore rules so .nda-harness/profile.json can be committed while .nda-harness/tasks/ remains ignored.'),
         ('Git hook manager/configuration changed', 'hook_manager_conflict', 'Preserve the current hook manager and reconcile its composition using private receipts; protection is incomplete.'),
         ('Multiple worktrees', 'worktree_configuration_required', 'Enable Git worktree-local configuration before activating this checkout; sibling configuration was preserved.'),
-        ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.11+ and Git on the client PATH.'),
+        ('Apple Silicon', 'unsupported_host', 'This phase requires Apple Silicon macOS, Python 3.9+ and Git on the client PATH.'),
     )
     return next(((name, guidance) for match, name, guidance in diagnostics if match in text),
                  ('configuration_conflict', 'Reconcile plugin integrity, project configuration or private recovery ownership, then use nda-setup.'))

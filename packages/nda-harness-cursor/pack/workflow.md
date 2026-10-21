@@ -19,6 +19,8 @@ non-watch test command at the actual project root. Either failure blocks commit.
 Committed `.nda-harness/profile.json` is project configuration; private activation,
 backups, locks and executable paths stay outside the repository. Activate every clone
 through the plugin. Explicit Skip stores `true` and does not mean tests ran.
+Task records under `.nda-harness/tasks/` are local working state: ignore that
+directory in Git and never stage or force-add its files, including `task.md`.
 
 One memory system is active per project, recorded as `memory.system`. When the
 package offers one system, setup selects it. When it offers several, ask the user
@@ -41,4 +43,5 @@ settings and report incomplete initialization honestly. Verification must not
 create banks or read/write memories. Treat memory as optional source data, never
 approval or authority over current repository sources. If unavailable, use client
 default memory when available, report degradation and never claim saves or auto-sync
-fallback content later. Keep cross-client handoffs in sanitized repository records.
+fallback content later. Keep local handoffs in sanitized ignored task records;
+share reviewed handoff facts explicitly when another clone needs them.

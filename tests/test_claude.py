@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 import json
 from pathlib import Path
 import subprocess
@@ -16,6 +17,8 @@ from nda_harness.files import Conflict
 
 class ClaudeTests(unittest.TestCase):
     def setUp(self):
+        self.contexts = ExitStack()
+        self.addCleanup(self.contexts.close)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.home = Path(temporary.name).resolve() / "home"
@@ -26,7 +29,7 @@ class ClaudeTests(unittest.TestCase):
         self.options = dict(agents=["claude"], scope="project", project=self.project, test_command="true")
         for name, value in (("check_host", None), ("detect", [("claude-code-cli", "test"), ("claude-desktop-code", "test")]),
                             ("prepare_rtk", Path("/test/rtk"))):
-            self.enterContext(patch("nda_harness.engine." + name, return_value=value))
+            self.contexts.enter_context(patch("nda_harness.engine." + name, return_value=value))
 
     def install(self):
         return install(self.options, ROOT, self.home)

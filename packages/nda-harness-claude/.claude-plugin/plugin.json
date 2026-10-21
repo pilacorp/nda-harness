@@ -1,0 +1,10 @@
+{
+  "author": {
+    "name": "NDA Harness"
+  },
+  "description": "NDA development workflow, project test gates and one optional memory system.",
+  "displayName": "NDA Harness",
+  "logo": "./assets/logo.jpg",
+  "name": "nda-harness",
+  "version": "0.0.5"
+}

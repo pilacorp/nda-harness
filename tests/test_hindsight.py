@@ -1,3 +1,5 @@
+from contextlib import ExitStack
+import fcntl
 import io
 import json
 import os
@@ -5,6 +7,7 @@ from pathlib import Path
 import pty
 import select
 import signal
+import struct
 import subprocess
 import sys
 import tempfile
@@ -69,6 +72,8 @@ class TemplateTests(unittest.TestCase):
 
 class MemoryTests(unittest.TestCase):
     def setUp(self):
+        self.contexts = ExitStack()
+        self.addCleanup(self.contexts.close)
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.base = Path(temp.name).resolve()
@@ -78,10 +83,10 @@ class MemoryTests(unittest.TestCase):
         self.project.mkdir()
         subprocess.run(["git", "init", "-q", str(self.project)], check=True)
         self.options = dict(agents=["codex", "cursor", "claude"], scope="project", project=self.project, test_command="true")
-        self.enterContext(patch.dict(os.environ, {"CODEX_HOME": str(self.home / ".codex")}))
-        self.enterContext(patch("nda_harness.engine.check_host"))
-        self.enterContext(patch("nda_harness.engine.detect", return_value=[("test-desktop", "fixture")]))
-        self.enterContext(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
+        self.contexts.enter_context(patch.dict(os.environ, {"CODEX_HOME": str(self.home / ".codex")}))
+        self.contexts.enter_context(patch("nda_harness.engine.check_host"))
+        self.contexts.enter_context(patch("nda_harness.engine.detect", return_value=[("test-desktop", "fixture")]))
+        self.contexts.enter_context(patch("nda_harness.engine.prepare_rtk", return_value=Path("/test/rtk")))
 
     def setup_memory(self, agents=None, **changes):
         options = {**self.options, **changes}
@@ -140,6 +145,19 @@ class MemoryTests(unittest.TestCase):
                 self.assertEqual(main(["setup", "--agents", "codex", "--scope", "user"]), 130)
             installer.assert_not_called()
             self.assertFalse((self.home / ".nda-harness").exists())
+
+    def test_toml_entry_returns_native_values_and_rejects_malformed_config(self):
+        path = self.base / "config.toml"
+        path.write_text('[mcp_servers.nda-harness-hindsight]\nurl = "' + URL + '"\n')
+        value = memory.entry(path)
+        self.assertIs(type(value), dict)
+        self.assertIs(type(value["url"]), str)
+        self.assertEqual(value, {"url": URL})
+        for content in ('[invalid', 'mcp_servers = "invalid"', '[mcp_servers]\nnda-harness-hindsight = 1'):
+            with self.subTest(content=content):
+                path.write_text(content)
+                with self.assertRaisesRegex(Conflict, "Malformed Hindsight"):
+                    memory.entry(path)
 
     def test_all_clients_private_configs_scoped_instructions_and_skip_rerun(self):
         applied = self.setup_memory()
@@ -364,7 +382,7 @@ print("STATUS=" + str(status), flush=True)
                 master, slave = pty.openpty()
                 process = None
                 try:
-                    termios.tcsetwinsize(slave, (24, 100))
+                    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
                     env = dict(PATH=os.environ["PATH"], HOME=temporary, TERM="xterm-256color")
                     process = subprocess.Popen([sys.executable, "-c", code, str(ROOT / "scripts")], stdin=slave, stdout=slave, stderr=slave, env=env)
                     output = b""

@@ -21,7 +21,8 @@ provider and deployment configuration stays in the Hindsight server repository.
 Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 supplies relevant public library/framework documentation; the Skills hub adds selectively loaded specialist instructions.
 
 - [Architecture](docs/architecture.md): workflow, responsibilities, knowledge boundaries, evidence, enforcement, and pilot validation.
-- [Installation](INSTALLATION.md): developer prerequisites, project setup, Context7 and optional Hindsight connections, verification and recovery.
+- [Installation](INSTALLATION.md): add the GitHub marketplace and install NDA Harness in Codex, Cursor or Claude.
+- [Plugin operations](docs/plugin-operations.md): migration, project setup, optional memory, recovery and contributor builds.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
 - [Skills hub](skills/catalog.md): UI/UX Pro Max, official Vietnamese document wording, and Diagram Design. The local Jev helper selects them; load only the returned bodies.
 - [Skill selection](docs/skill-selection.md): personal OpenRouter key, Jev `typesafe/jev-1.14`, and the select/load commands.
@@ -33,21 +34,31 @@ Memory storage stays internal; processing sends relevant memory content through 
 ## Current phase
 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
-Silicon macOS**. No release or migration exists. The approved
-[plugin specification](specs/harness-plugins.md) was merged in
-[PR #14](https://github.com/pilacorp/nda-harness/pull/14).
+Silicon macOS**. This private repository supplies native marketplaces named
+`nda-harness-internal`, each exposing the matching NDA Harness package at
+version **0.0.5**, tracked from `dev`. The
+[marketplace spec](specs/internal-client-marketplaces.md), merged in
+[PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
+[plugin specification](specs/harness-plugins.md).
 
 The shared package builder produces native plugins with full specialist and pinned
 Superpowers skills, Context7 MCP, trusted startup bootstrap, five context operations,
 and project Git test protection. On entry, the agent asks for a project's test command
-or explicit Skip; `.nda-harness/` contains committed project configuration and task
-records, with shared assets remaining in the plugin.
+or explicit Skip; `.nda-harness/profile.json` is committed project configuration.
+Task records stay local in Git-ignored `.nda-harness/tasks/`, with shared assets
+remaining in the plugin.
 
-See [installation](INSTALLATION.md) to build and load a development plugin, and
-[implementation evidence](docs/compatibility/harness-plugin-implementation.md) for
-executed checks and remaining native-client validation. The production Hindsight
-HTTPS hostname is still required for a deployed memory-enabled build. Core packages
-work without it. Local OAuth testing uses an explicit loopback-only exception.
+Install from GitHub using the [Codex](INSTALLATION.md#codex),
+[Cursor](INSTALLATION.md#cursor-ide), or
+[Claude Code](INSTALLATION.md#claude-code-and-the-desktop-code-tab) guide.
+The installation guide targets `dev`, ready for use after the implementation
+is merged there. The guide also covers private
+access, updates, one-time migration from uploads/local plugins, and release generation.
+All three `packages/nda-harness-<client>` directories and root catalogs are
+generated from canonical sources. [Marketplace evidence](docs/compatibility/internal-client-marketplaces.md)
+separates tested native CLI behavior from pending Desktop, Cursor provider and
+authentication checks. Hindsight is optional; its HTTPS endpoint is packaged.
+Local OAuth testing uses an explicit loopback-only exception.
 
 Earlier `bin/nda-harness`, installer and CLI trial reports remain development
 history; they are excluded from generated plugin runtimes and are not the plugin

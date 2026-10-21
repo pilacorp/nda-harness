@@ -1,10 +1,12 @@
 import curses
+import fcntl
 import io
 import os
 from pathlib import Path
 import pty
 import select
 import signal
+import struct
 import subprocess
 import sys
 import tempfile
@@ -125,7 +127,7 @@ finally:
                 self.addCleanup(os.close, master)
                 self.addCleanup(os.close, slave)
                 # Give curses a known screen size independently of the test runner.
-                termios.tcsetwinsize(slave, (4 if action == "small" else 24, 100))
+                fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 4 if action == "small" else 24, 100, 0, 0))
                 env = {"PATH": os.environ["PATH"], "HOME": temporary, "TERM": "xterm-256color"}
                 process = subprocess.Popen([sys.executable, "-c", code, str(ROOT / "scripts")], stdin=slave, stdout=slave, stderr=slave, env=env)
                 self.addCleanup(lambda process=process: process.poll() is None and process.kill())

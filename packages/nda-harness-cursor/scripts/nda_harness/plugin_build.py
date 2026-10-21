@@ -12,13 +12,13 @@ import tempfile
 from urllib.parse import urlsplit
 import zipfile
 
-from .files import digest, json_bytes
+from .files import digest, guard_path, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
 from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.3'
+RELEASE_VERSION = '0.0.5'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
@@ -220,7 +220,50 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
     return destination
 
 
-COMMITTED_CLIENTS = ('codex', 'cursor')
+CATALOGS = {'codex': '.agents/plugins/marketplace.json',
+            'cursor': '.cursor-plugin/marketplace.json',
+            'claude': '.claude-plugin/marketplace.json'}
+
+
+def repository_catalog(client):
+    path = f'./packages/nda-harness-{client}'
+    entry = {'name': 'nda-harness', 'source': path}
+    catalog = {'name': 'nda-harness-internal', 'plugins': [entry]}
+    if client == 'codex':
+        entry.update({'source': {'source': 'local', 'path': path}, 'category': 'Productivity',
+                      'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_USE'}})
+        catalog['interface'] = {'displayName': 'NDA Harness'}
+    else:
+        catalog['owner'] = {'name': 'NDA Harness'}
+    return catalog
+
+
+def validate_marketplaces(source):
+    """Validate our generated repository catalogs, routes and fixed-client packages."""
+    source = Path(source).resolve()
+    for client, relative in CATALOGS.items():
+        try:
+            catalog = json.loads((source / relative).read_text())
+        except (OSError, ValueError) as error:
+            raise ValueError(f'Invalid {client} catalog: {relative}') from error
+        if catalog != repository_catalog(client):
+            raise ValueError(f'Invalid {client} catalog metadata or source route.')
+        entry = catalog['plugins'][0]
+        route = entry['source']['path'] if client == 'codex' else entry['source']
+        package = source / route
+        if any(p.is_symlink() for p in (package, *package.parents)) or not package.resolve().is_relative_to(source):
+            raise ValueError(f'Invalid {client} catalog source: symlinks and escaping paths are forbidden.')
+        try:
+            manifest = json.loads((package / f'.{client}-plugin/plugin.json').read_text())
+            config = json.loads((package / 'nda-plugin.json').read_text())
+        except (OSError, ValueError) as error:
+            raise ValueError(f'Invalid {client} catalog source package.') from error
+        if not isinstance(config, dict) or not isinstance(manifest, dict):
+            raise ValueError(f'Invalid {client} package metadata; expected JSON objects.')
+        if config.get('client') != client or manifest.get('name') != 'nda-harness':
+            raise ValueError(f'Invalid {client} package client or plugin identity.')
+        if manifest.get('version') != RELEASE_VERSION:
+            raise ValueError(f'Invalid {client} package version; expected {RELEASE_VERSION}.')
 
 
 def validate_archive(path, client):
@@ -320,26 +363,49 @@ def build_archive(source, destination, client, **options):
 
 
 def publish_committed(source):
-    """Replace the stored Codex and Cursor packages. Claude is a release output only."""
+    """Build and validate all packages/catalogs before replacing stored outputs."""
     source = Path(source).resolve()
-    packages = source / 'packages'
-    packages.mkdir(parents=True, exist_ok=True)
-    claude = packages / 'nda-harness-claude'
-    if claude.exists() or claude.is_symlink():
-        shutil.rmtree(claude)
-    built = []
-    for client in COMMITTED_CLIENTS:
-        destination = packages / f'nda-harness-{client}'
-        if destination.exists() or destination.is_symlink():
-            shutil.rmtree(destination)
-        built.append(build(source, destination, client, version=RELEASE_VERSION))
-    return built
+    destinations = [source / 'packages' / f'nda-harness-{client}' for client in CLIENTS]
+    for destination in destinations:
+        if any(p.is_symlink() for p in (destination, *destination.parents)):
+            raise ValueError('Package destinations cannot contain symlinks.')
+        if destination.exists() and not destination.is_dir():
+            raise ValueError('Package destination must be a directory.')
+    for relative in CATALOGS.values():
+        guard_path(source / relative)
+    with tempfile.TemporaryDirectory(prefix='.nda-publish-', dir=source) as temporary:
+        staged = Path(temporary)
+        for client in CLIENTS:
+            build(source, staged / 'packages' / f'nda-harness-{client}', client, version=RELEASE_VERSION)
+            write(staged, CATALOGS[client], json_bytes(repository_catalog(client)))
+        validate_marketplaces(staged)
+        replaced = []
+        try:
+            for destination in [*destinations, *(source / p for p in CATALOGS.values())]:
+                relative = destination.relative_to(source)
+                backup = staged / 'previous' / relative
+                backup.parent.mkdir(parents=True, exist_ok=True)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                if destination.exists():
+                    os.replace(destination, backup)
+                replaced.append((destination, backup))
+                os.replace(staged / relative, destination)
+        except BaseException:
+            for destination, backup in reversed(replaced):
+                if destination.is_dir():
+                    shutil.rmtree(destination)
+                elif destination.exists():
+                    destination.unlink()
+                if backup.exists():
+                    os.replace(backup, destination)
+            raise
+    return destinations
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--publish-committed', action='store_true',
-                        help='Replace packages/nda-harness-codex and packages/nda-harness-cursor. Does not write a Claude package.')
+                        help='Generate all three packages/nda-harness-<client> directories and native repository catalogs.')
     parser.add_argument('--client', choices=CLIENTS)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--archive', action='store_true', help='Build a validated ZIP from fresh sources; --output must be a new .zip path.')

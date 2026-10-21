@@ -240,9 +240,8 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(chosen['memory']['system'], 'example-memory')
         self.assertIn('bank_id', chosen['memory'])
 
-    def test_repository_packages_are_built_codex_and_cursor_only(self):
+    def test_repository_packages_match_all_three_canonical_builds(self):
         packages = ROOT / 'packages'
-        self.assertFalse((packages / 'nda-harness-claude').exists())
 
         def tree(root):
             return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob('*') if p.is_file()}
@@ -251,8 +250,11 @@ class PluginTests(unittest.TestCase):
         cursor = self.base / 'cursor-committed'
         build(ROOT, cursor, 'cursor')
         self.assertEqual(tree(packages / 'nda-harness-cursor'), tree(cursor))
-        self.assertEqual(RELEASE_VERSION, '0.0.3')
-        for client, manifest_path in (('codex', '.codex-plugin/plugin.json'), ('cursor', '.cursor-plugin/plugin.json')):
+        claude = self.base / 'claude-committed'
+        build(ROOT, claude, 'claude')
+        self.assertEqual(tree(packages / 'nda-harness-claude'), tree(claude))
+        for client, manifest_path in (('codex', '.codex-plugin/plugin.json'), ('cursor', '.cursor-plugin/plugin.json'),
+                                      ('claude', '.claude-plugin/plugin.json')):
             manifest = json.loads((packages / f'nda-harness-{client}' / manifest_path).read_text())
             self.assertEqual(manifest['version'], RELEASE_VERSION)
         for client, manifest in (('codex', '.mcp.json'), ('cursor', 'mcp.json')):
@@ -404,6 +406,34 @@ class PluginTests(unittest.TestCase):
         with self.assertRaises(Conflict):
             self.setup()
         self.assertEqual(self.git('config', '--get', 'core.hooksPath').stdout.strip(), '.foreign/hooks')
+
+    def test_upgrade_recovers_removed_cache_without_duplicate_hooks_or_profile_changes(self):
+        prior = self.project / '.git/hooks/pre-commit'
+        prior.write_text('#!/bin/sh\nprintf prior >> checks\ntest ! -f fail-prior\n')
+        prior.chmod(0o755)
+        self.setup('printf tests >> checks; test ! -f fail-tests')
+        profile = (self.project / '.nda-harness/profile.json').read_bytes()
+        self.package.rename(self.base / 'expired-cache')
+        self.assertEqual(inspect_project(self.project, self.package, self.home)['status'], 'needs_activation')
+        self.assertNotEqual(self.commit().returncode, 0)
+        upgraded = self.base / 'new-cache'
+        build(ROOT, upgraded, 'codex', version='0.0.5')
+        for _ in range(2):
+            configure(self.project, upgraded, self.home)
+        self.assertEqual((self.project / '.nda-harness/profile.json').read_bytes(), profile)
+        self.assertEqual(inspect_project(self.project, upgraded, self.home)['protection'], 'active')
+        wrapper = Path(self.git('config', '--get', 'core.hooksPath').stdout.strip()) / 'pre-commit'
+        self.assertEqual(wrapper.read_text().count('unit-check'), 1)
+        (self.project / 'checks').unlink()
+        self.assertEqual(self.commit().returncode, 0)
+        self.assertEqual((self.project / 'checks').read_text(), 'priortests')
+        (self.project / 'fail-tests').touch()
+        self.assertNotEqual(self.commit().returncode, 0)
+        (self.project / 'fail-tests').unlink()
+        (self.project / 'fail-prior').touch()
+        (self.project / 'checks').write_text('')
+        self.assertNotEqual(self.commit().returncode, 0)
+        self.assertEqual((self.project / 'checks').read_text(), 'prior')
 
     def test_remote_canonicalization_shared_bank_and_ambiguity(self):
         first = project_identity(self.project)

@@ -23,3 +23,4 @@ spec PR review/merge references, merged revision and independently verified chec
 
 Keep this record current for checkpoint/resume across agents. No transcripts,
 credentials or fabricated approvals/test results. Native hooks never write it.
+Keep this file local under Git-ignored `.nda-harness/tasks/`; never stage or force-add it.

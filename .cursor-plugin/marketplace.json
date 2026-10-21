@@ -1,0 +1,12 @@
+{
+  "name": "nda-harness-internal",
+  "owner": {
+    "name": "NDA Harness"
+  },
+  "plugins": [
+    {
+      "name": "nda-harness",
+      "source": "./packages/nda-harness-cursor"
+    }
+  ]
+}

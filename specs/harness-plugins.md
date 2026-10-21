@@ -6,10 +6,12 @@ Requirement clarification: owner instructions on 2026-10-18 in this development 
 Consulted source revisions: NDA Harness `93d704f97bf92b87ef4eee7649466412b755a01f`; Hindsight branch `nda/10-supabase-tenant` at `14be9a293`.
 
 This document replaces `specs/minimal-cli.md` and `specs/hindsight-supabase-auth.md`.
-The repository is in development phase 0. No release exists. This is a new plugin
-delivery contract; it requires no migration, backward compatibility, legacy
-credential conversion, or released-version upgrade procedure. Historical trial
-reports describe earlier experiments and do not define the plugin requirements.
+The repository began in development phase 0. The merged follow-up
+[internal marketplace specification](internal-client-marketplaces.md) supersedes
+this document's exclusions for stored Claude packages, released-installation
+updates, one-time identity migration and release recovery. Legacy credential
+conversion remains excluded. Historical trial reports describe earlier experiments
+and do not define the plugin requirements.
 The issue has not been revalidated in this edit; reconcile it with the owner's
 clarifications before implementation review.
 
@@ -33,8 +35,8 @@ the OAuth service. Identity-provider implementation details belong to Hindsight.
 In scope:
 
 - Initial packages: `nda-harness-codex`, `nda-harness-cursor`, and `nda-harness-claude`.
-  The repository stores built Codex and Cursor packages. The Claude Code package
-  is created when cutting a release and is not stored in the repository.
+  The repository stores all three generated packages and matching root catalogs,
+  as required by the follow-up internal marketplace specification.
 - One shared engine and asset source, with thin client adapters and reproducible
   packaging of the same engine revision for the initial clients.
 - Harness workflow/rules, specialist skills, context operations, project adoption,
@@ -44,8 +46,8 @@ In scope:
 
 Out of scope:
 
-- Released-installation migration, compatibility with old CLI flags or credentials,
-  version downgrade/repair policies, and preservation of old development installs.
+- Compatibility with old CLI flags or credentials and credential conversion.
+  Marketplace identity migration and release recovery are governed by the follow-up spec.
 - Hindsight or identity-provider deployment, login pages, user management, token
   issuance, and database/schema management. These belong to the `hindsight` repo.
 - A harness OAuth client implementation, token store, refresh service, local HTTP
@@ -73,7 +75,7 @@ invocation configures only that client and preserves unrelated settings.
 Run helpers from packaged paths, independent of the working directory. Do not
 require a prior global CLI installation. If the implementation also installs a
 global helper, it is optional and cannot determine the active client by guessing
-which applications are installed. Python helpers require Python 3.11+ with the
+which applications are installed. Python helpers require Python 3.9+ with the
 pinned dependency bundle; setup reports a missing prerequisite without installing
 Python or changing shell startup files.
 
@@ -132,11 +134,12 @@ literal command `true`; explain that this passes the check without running tests
 If interaction is unavailable, report configuration as pending rather than
 silently choosing Skip. Reuse existing configuration without repeated prompts.
 
-The project commits `.nda-harness/` to Git. It contains the project-specific
-configuration, including the test command, project memory-bank identity, and
-sanitized task records. Shared plugin skills and rules need not be copied into
-each project. Credentials, private diagnostics, and machine-specific paths stay
-outside the committed directory.
+The project commits `.nda-harness/profile.json` to Git. It contains the
+project-specific test command and memory-bank identity. Task records remain
+local under Git-ignored `.nda-harness/tasks/` and must never be staged or
+force-added, per the owner's task-record privacy instruction. Shared plugin skills
+and rules need not be copied into each project. Credentials, private diagnostics,
+and machine-specific paths stay outside committed project configuration.
 
 Install a local Git pre-commit check that executes the configured test command
 from the project root. A failing test command blocks the commit; `true` succeeds
@@ -284,7 +287,7 @@ connections still require HTTPS.
 | AC-05 | Service boundary | Harness packages and state contain no identity-provider configuration or harness-managed OAuth credentials/forwarder. |
 | AC-06 | Memory lifecycle | Cancel, disconnect, expiry, renewal, and outage have explicit memory states without blocking core work. |
 | AC-07 | Engine coverage | All five context operations are available in every project with documented hook fallbacks. |
-| AC-08 | Phase 0 | No legacy migration or released-installation upgrade work is required. |
+| AC-08 | Original phase 0 boundary | Superseded for marketplace migration/update/recovery by the follow-up internal marketplace spec; no credential conversion is required. |
 | AC-09 | Project configuration | Hooks initialize a missing committed `.nda-harness/`, ask for a test command, and allow Skip storing `true`. |
 | AC-10 | Commit protection | Failed tests or existing hooks block commits; existing hooks are preserved and repeated initialization is idempotent. |
 | AC-11 | Project memory | Same-account clients share a Git-remote-identified project bank; no remote prompts for a project name; environments are labels within the bank. |
@@ -323,8 +326,9 @@ CLI trial reports remain historical evidence. Server deployment changes are made
 in `hindsight`; the old `hindsight-deploy.md` is historical server planning, not
 the auth contract for these plugins.
 
-There is no release rollout, old-version rollback, or migration matrix in phase 0.
-Development setup still needs safe failure recovery for its own file writes.
+Release rollout, recovery and one-time migration now follow
+`internal-client-marketplaces.md`. Development setup still needs safe failure
+recovery for its own file writes.
 
 Spec PR: unset
 Review reference: unset until reviewed

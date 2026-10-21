@@ -9,8 +9,10 @@ Git worktree root, an explicit selected task record and a local session identity
 On entry check `.nda-harness/profile.json`. Ask for a non-watch test command in
 agent chat when missing. Only explicit Skip stores `true`; absent input stays
 pending. Local Git protection must also be activated in every clone. Commit only
-project configuration and sanitized task records there; shared policy/skills stay
-in this plugin. Run nda-setup for recovery and nda-verify for read-only checks.
+project configuration there. Keep sanitized task records local under
+`.nda-harness/tasks/`, add that directory to `.gitignore`, and never stage or
+force-add it. Shared policy/skills stay in this plugin. Run nda-setup for recovery
+and nda-verify for read-only checks.
 
 The older `pack/scripts/prepare-context` helper remains an internal metadata
 collector. Plugin context skills add clone-local protection checks around it.
@@ -31,7 +33,7 @@ Codex SessionStart/UserPromptSubmit and Cursor sessionStart provide startup and
 freshness reminders; pre-compaction events are observational checkpoint reminders.
 Cursor's startup event is asynchronous. Trust controls, missing hooks and startup
 races require the explicit skill fallback; never claim ready from installation.
-The helper needs Python 3.11+ on the actual client PATH,
+The helper needs Python 3.9+ on the actual client PATH,
 not the installer's virtual environment. Pass `--session` with a non-secret local
 session identity when available. Private locked state is keyed by worktree and
 session; explicit task switches replace selection. No transcript, credentials,
