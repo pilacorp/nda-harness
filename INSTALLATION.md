@@ -1,35 +1,144 @@
-# Install the phase-0 NDA Harness plugin
+# Install NDA Harness from the internal marketplace
 
 Targets: **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple Silicon
 macOS**. Install/sign in to the client separately. Python 3.11+
 (`python3`) and Git must be on the GUI client's PATH. No pip, virtual environment,
 global harness CLI, Python installer or shell startup changes are required.
 
-This is development installation, not a published release. The
-[implementation report](docs/compatibility/harness-plugin-implementation.md)
-separates automated checks from native-client observations still pending.
+The repository stays **private**. An administrator grants company users read
+access and merges reviewed release changes into the tracked **dev** branch.
+Adding a marketplace does not change repository visibility or submit a public
+listing. Use existing Git/SSH authentication without secrets in repository URLs.
+SSH must work without an interactive passphrase/host-key prompt; connect your
+normal key agent and trust the GitHub host through your usual Git setup first.
 
-## Install the stored Codex and Cursor packages
+The first marketplace package version is **0.0.4** in all three clients.
+Commands below are the installation procedure; see
+[compatibility evidence](docs/compatibility/internal-client-marketplaces.md)
+for executed checks and pending real-account rollout checks.
 
-The checkout stores built packages at `packages/nda-harness-codex` and
-`packages/nda-harness-cursor`. Install those directories. They include the
-NDA Hindsight endpoint listed below. The Claude Code package is not stored here; create it when
-cutting a release, into a directory outside the repository:
+## Native installation and updates
+
+Complete [one-time migration](#one-time-migration-from-an-upload-or-local-plugin)
+first if NDA Harness is already active in this client.
+
+**Codex Desktop:** use the Codex executable shipped with your installed Desktop
+distribution. A separate CLI may differ; the commands require native plugin
+marketplace support. With that executable on PATH:
 
 ```sh
-PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client claude --output /tmp/nda-harness-claude
+codex plugin marketplace add git@github.com:pilacorp/nda-harness.git --ref dev
+codex plugin add nda-harness@nda-harness-internal
 ```
 
-After engine or skill changes, refresh only the stored Codex and Cursor packages:
+Later releases:
 
 ```sh
-PYTHONPATH=scripts python3 -m nda_harness.plugin_build --publish-committed
+codex plugin marketplace upgrade nda-harness-internal
+codex plugin list --marketplace nda-harness-internal
 ```
 
-That command never writes `packages/nda-harness-claude`. A one-off package for
-any client still uses `--client` and a **new** `--output` directory; existing
-files are preserved. Packages
-include the same canonical engine/assets, complete specialist and pinned Superpowers
+Native Git refresh updates installed non-curated plugins. Start a new Desktop
+chat and check its loaded version and hook trust; immediate activation in an
+existing chat is not verified.
+
+**Claude Code / Desktop Code tab:** register the private Git marketplace in the
+shared Claude plugin store, then install its entry:
+
+```sh
+claude plugin marketplace add 'git@github.com:pilacorp/nda-harness.git#dev'
+claude plugin install nda-harness@nda-harness-internal
+```
+
+For later releases refresh the catalog, then update the installed plugin:
+
+```sh
+claude plugin marketplace update nda-harness-internal
+claude plugin update nda-harness@nda-harness-internal
+claude plugin list --json
+```
+
+Restart the session to apply changes, or use `/reload-plugins` when that client
+supports it. These are user installs; do not commit project-wide installation
+settings for colleagues implicitly.
+
+**Cursor IDE:** private team marketplaces require **Teams or Enterprise**. In
+**Dashboard → Plugins & MCPs → Team Marketplaces → Add Marketplace**, choose
+**Import from Repo**, paste the private repository URL and connect its provider.
+Review/add the indexed NDA Harness plugin, set **Marketplace Access** to the
+intended company team and save. Confirm it resolves only
+`packages/nda-harness-cursor`, then enable/install that entry in Cursor.
+
+Select/confirm the tracked **dev** ref where supported. If the actual account
+cannot select that ref or import the private repository, stop that rollout and
+record it as pending; keep the repo private. The administrator's **Refresh**
+re-indexes the repository. **Enable Auto Refresh** on GitHub additionally requires
+the Cursor GitHub App installed for this repository; pushes to the tracked branch
+are indexed at most once per ten minutes. Re-indexing does not prove installed
+plugins or open chats reloaded. Check the installed version, reload the window
+when required and record actual behavior. There is no assumed Cursor CLI parity.
+
+## One-time migration from an upload or local plugin
+
+1. Inventory NDA Harness in this client's native plugin and MCP lists. Record the
+   old source/identity, version and active hooks. An uploaded/account-synced plugin,
+   `nda-harness@nda-harness-local` and `nda-harness@nda-harness-internal` can be
+   different identities even when their display names match.
+2. Disable the old identity in that client before enabling the new one. Prefer
+   reversible native Disable. Claude supports `claude plugin disable <old-id>`.
+   Codex CLI 0.133.0 has no plugin-disable command: use the Desktop control when
+   available, or its native `codex plugin remove <old-id>` for a local identity
+   when removal is required. Uploaded/account-synced entries use their native
+   management surface. Cursor local installs use Customize → Plugins controls;
+   if removal is required, preserve the old local directory outside plugin
+   discovery for recovery. Never leave both copies active or disable other clients.
+3. Follow the matching marketplace installation above. Start a new session and
+   trust reviewed hooks. Confirm one NDA Harness activation and one set of its
+   MCP servers. Do not hand-edit caches or copy OAuth credentials. A new identity
+   can require the user's native authentication action; continuity is not promised.
+4. Preserve every project's `.nda-harness/profile.json`, test command and bank
+   identity. Run **nda-verify** in each active clone after an upgrade. If an old
+   package cache was removed, protection is pending and commits must stay blocked.
+   Run **nda-setup** from the newly installed package to rebind the existing hook
+   wrapper; it reuses the project configuration and preserves prior hooks. Verify
+   again and exercise the configured tests before claiming protection restored.
+
+This is a one-time identity migration. Later marketplace version upgrades use the
+native update commands without routine uninstall/reinstall.
+
+If fetch/import/validation fails, keep the current working installation and
+report the error. Do not remove it just to retry. Native failure recovery varies;
+only local Git fetch-failure behavior has been tested. For a bad release, an
+administrator prepares a reviewed revert on `dev`, regenerates packages at a new
+verified version and merges it. Users refresh/update normally and verify the
+loaded version and project protection. Do not force-reset a shared branch or
+manually patch client caches.
+
+## Generate the stored packages and catalogs
+
+The checkout stores `packages/nda-harness-codex`, `packages/nda-harness-cursor`
+and `packages/nda-harness-claude`. The root catalogs are
+`.agents/plugins/marketplace.json`, `.cursor-plugin/marketplace.json` and
+`.claude-plugin/marketplace.json`. Each exposes only its corresponding package.
+The shared version is `RELEASE_VERSION` in `scripts/nda_harness/plugin_build.py`.
+For each release, change it once, regenerate and review/commit all three packages
+and catalogs together before merging into `dev`:
+
+```sh
+rtk proxy env PYTHONPATH=scripts python3 -m nda_harness.plugin_build --publish-committed
+rtk proxy python3 -m unittest discover -s tests
+```
+
+Generation validates routing and package identity/version before replacing
+stored outputs. Publishing twice produces identical content and executable modes.
+A one-off directory package still uses `--client` and a **new** `--output`
+directory; existing output files are preserved:
+
+```sh
+rtk proxy env PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client claude --output /tmp/nda-harness-claude
+```
+
+Packages include the same canonical engine/assets, complete specialist and pinned Superpowers
 skills, licenses and provenance. Builds fetch nothing. A release hash manifest
 covers packaged files. Runtime needs neither the source checkout nor a global CLI.
 
@@ -61,7 +170,7 @@ Run from the repository root, choosing a new semantic version for each release:
 
 ```sh
 PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
-  --archive --version 0.0.3 --output dist/nda-harness-codex-0.0.3.zip
+  --archive --version 0.0.4 --output dist/nda-harness-codex-0.0.4.zip
 ```
 
 Select the ZIP in **Upload plugin archive**. The command preserves existing
@@ -105,7 +214,10 @@ Public-directory **Skills only** submissions have separate restrictions; see
 [OpenAI's submission rules](https://developers.openai.com/plugins/deploy/submission-errors).
 Use the local marketplace installation below if hosted upload is unavailable.
 
-## Load the plugin
+## Local development installation
+
+These standalone development directories use `nda-harness-local`; the repository
+marketplaces above use `nda-harness-internal`. Choose one active identity per client.
 
 **Codex Desktop:** use `packages/nda-harness-codex`. Its
 `.agents/plugins/marketplace.json` declares AVAILABLE installation and **ON_USE**
@@ -133,7 +245,7 @@ local plugin imports. Confirm discovery under Customize → Plugins. Native path
 `.cursor-plugin/plugin.json`, `mcp.json`, `hooks/hooks.json`, and the always-applied
 `rules/nda-harness.mdc`.
 
-**Claude Code Desktop:** the generated package is both the plugin and a local
+**Claude Code Desktop:** `packages/nda-harness-claude` is both the plugin and a local
 marketplace. `.claude-plugin/plugin.json` names the plugin and does not repeat
 `hooks` or `mcpServers`, because Claude Code also loads `hooks/hooks.json` and
 `.mcp.json`. `.claude-plugin/marketplace.json` lists source `.`. Hooks are

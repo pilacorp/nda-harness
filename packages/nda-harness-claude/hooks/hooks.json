@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin\" hook --client claude --event PreCompact",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin\" hook --client claude --event SessionStart",
+            "timeout": 60,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin\" hook --client claude --event UserPromptSubmit",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}

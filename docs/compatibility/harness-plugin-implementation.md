@@ -1,5 +1,10 @@
 # Phase-0 plugin implementation evidence
 
+Historical evidence below records the original two-stored-package contract.
+The 2026-10-21 [internal marketplace implementation](internal-client-marketplaces.md)
+supersedes that storage/distribution boundary with three stored packages and
+native root catalogs at version 0.0.4.
+
 Checked 2026-10-18 on `implementation/hindsight-supabase-auth`, based on merged
 `dev` revision `f035ccf1dbbb74131834f6673647474299447937` (PR #14).
 
