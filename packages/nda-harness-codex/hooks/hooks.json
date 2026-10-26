@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "\"${PLUGIN_ROOT}/bin/nda-plugin\" hook --client codex --event PreCompact",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "\"${PLUGIN_ROOT}/bin/nda-plugin\" hook --client codex --event SessionStart",
+            "timeout": 60,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "\"${PLUGIN_ROOT}/bin/nda-plugin\" hook --client codex --event UserPromptSubmit",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}

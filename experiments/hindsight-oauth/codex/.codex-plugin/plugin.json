@@ -1,0 +1,10 @@
+{
+  "name": "nda-hindsight-oauth-test",
+  "version": "0.0.1",
+  "description": "Local-only Hindsight native MCP OAuth compatibility test.",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Hindsight OAuth Test",
+    "shortDescription": "Test direct OAuth with local Hindsight"
+  }
+}

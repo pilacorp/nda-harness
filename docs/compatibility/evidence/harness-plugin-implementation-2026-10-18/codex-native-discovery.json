@@ -1,0 +1,55 @@
+{
+  "runtime": "codex-cli 0.163.0-alpha.10.2",
+  "auth_policy": "ON_USE",
+  "plugin_skill_count": 26,
+  "plugin_mcp_servers": [
+    "hindsight",
+    "nda-harness-context7"
+  ],
+  "hook_events": [
+    "preCompact",
+    "sessionStart",
+    "userPromptSubmit"
+  ],
+  "hook_trust": [
+    "untrusted"
+  ],
+  "hook_error_count": 0,
+  "skill_error_count": 0,
+  "discovered_plugin_skills": [
+    "nda-harness-codex:brainstorming",
+    "nda-harness-codex:context-checkpoint",
+    "nda-harness-codex:context-refresh",
+    "nda-harness-codex:context-resume",
+    "nda-harness-codex:diagnosing-superpowers",
+    "nda-harness-codex:diagram-design",
+    "nda-harness-codex:dispatching-parallel-agents",
+    "nda-harness-codex:executing-plans",
+    "nda-harness-codex:finishing-a-development-branch",
+    "nda-harness-codex:hindsight-memory",
+    "nda-harness-codex:nda-setup",
+    "nda-harness-codex:nda-verify",
+    "nda-harness-codex:receiving-code-review",
+    "nda-harness-codex:requesting-code-review",
+    "nda-harness-codex:session-bootstrap",
+    "nda-harness-codex:subagent-driven-development",
+    "nda-harness-codex:systematic-debugging",
+    "nda-harness-codex:task-prepare",
+    "nda-harness-codex:test-driven-development",
+    "nda-harness-codex:ui-ux-pro-max",
+    "nda-harness-codex:using-git-worktrees",
+    "nda-harness-codex:using-superpowers",
+    "nda-harness-codex:verification-before-completion",
+    "nda-harness-codex:vietnamese-official-wording",
+    "nda-harness-codex:writing-plans",
+    "nda-harness-codex:writing-skills"
+  ],
+  "model_invoked": false,
+  "memory_operations": false,
+  "hook_execution": "not_attempted_trust_required",
+  "memory_discovery": {
+    "auth_status": "oAuth",
+    "tool_count": 39
+  },
+  "package_discovery_passed": true
+}

@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "\"${CURSOR_PLUGIN_ROOT}/bin/nda-plugin\" hook --client cursor --event beforeSubmitPrompt",
+        "timeout": 15
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "\"${CURSOR_PLUGIN_ROOT}/bin/nda-plugin\" hook --client cursor --event preCompact",
+        "timeout": 15
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "\"${CURSOR_PLUGIN_ROOT}/bin/nda-plugin\" hook --client cursor --event sessionStart",
+        "timeout": 60
+      }
+    ],
+    "workspaceOpen": [
+      {
+        "command": "\"${CURSOR_PLUGIN_ROOT}/bin/nda-plugin\" hook --client cursor --event workspaceOpen",
+        "timeout": 15
+      }
+    ]
+  },
+  "version": 1
+}

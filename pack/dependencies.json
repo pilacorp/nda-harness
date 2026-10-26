@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "status": "plugin_implementation_native_validation_pending",
+  "installer_ready": false,
+  "rtk": {
+    "upstream": "https://github.com/rtk-ai/rtk",
+    "observed_version": "0.37.2",
+    "observed_installed_binary_sha256": "33f8ba7f298ded5c88b5cc805267f03036fdf15731d3db9fa1f49ae98a6d6f53",
+    "release_pin": "v0.37.2",
+    "official_artifact_hashes": {
+      "rtk-aarch64-apple-darwin.tar.gz": "99e20a59847dedbb64032a3f7985f2fe959fcb9674d8eaf940fc58a189e27eca"
+    },
+    "status": "official_archive_verified",
+    "limitations": [
+      "Installed executable checksum is not an official release archive checksum.",
+      "Codex initialization supplies instructions, not native rewriting hooks, at this version.",
+      "Cursor initialization is global-only and also creates Claude assets."
+    ],
+    "official_binary_sha256": "fb212aaa57018cff146a9053810b310845e477b4a1f789d38b4cf2908bb5c5dd",
+    "compatible_existing_builds": [
+      {
+        "version": "0.40.0",
+        "distribution": "Homebrew source build, Apple Silicon macOS",
+        "binary_sha256": "52b2a4a68e9a1f3c7880ddafea6cd590f0582e67324fe89ea41aaec83e7e9b58",
+        "source": "https://github.com/rtk-ai/rtk/archive/refs/tags/v0.40.0.tar.gz",
+        "source_sha256": "7cee0b80fed546a3c3508b485cef1129b56a14233ee02bd512975c2ad3356643",
+        "evidence": "Observed local Homebrew formula, binary checksum, version and command smoke checks on 2026-10-15; not an official release binary checksum."
+      }
+    ]
+  },
+  "superpowers": {
+    "upstream": "https://github.com/obra/superpowers",
+    "inspected_revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+    "inspected_manifest_version": "7.0.0",
+    "release_pin": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+    "status": "pinned_source_bundled_with_complete_skills",
+    "archive": "superpowers-bb92a777.tar.gz",
+    "archive_sha256": "496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2",
+    "provenance": "vendor/superpowers/SOURCE.json in generated package; original LICENSE and handlers preserved"
+  },
+  "context7": {
+    "endpoint": "https://mcp.context7.com/mcp",
+    "adapter_authentication_bindings": {},
+    "status": "connected_docs_query_passed_target_clients_pending",
+    "limitation": "Connected documentation tool success does not verify any target agent MCP registration."
+  },
+  "installer_python": {
+    "minimum_version": "3.9",
+    "tomlkit": "0.13.3",
+    "status": "pinned_and_tested",
+    "distribution": "bundled_pure_python_wheel",
+    "wheel": "tomlkit-0.13.3-py3-none-any.whl",
+    "wheel_sha256": "c89c649d79ee40629a9fda55f8ace8c6a1b42deb912b2a8fd8d942ddadb606b0"
+  },
+  "supported_phase": {
+    "agents": [
+      "codex",
+      "cursor"
+    ],
+    "os": "macOS",
+    "architecture": "arm64",
+    "lifecycle": "trusted_native_hooks_with_explicit_skill_fallback",
+    "surfaces": [
+      "Codex Desktop",
+      "Cursor IDE"
+    ]
+  }
+}

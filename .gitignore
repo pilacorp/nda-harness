@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+.nda-harness/tasks/
+.nda-harness/profile.json

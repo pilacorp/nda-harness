@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-18",
+  "base_revision": "f035ccf1dbbb74131834f6673647474299447937",
+  "approved_spec_sha256": "7a60b3f78ea8496ce9e76dfe7aa3e0f5a090bdbc45b71074ea81b3a1eb2b2244",
+  "local_spec_matches_merged": true,
+  "shared_engine_and_pack_files": 31,
+  "shared_hashes_match": true,
+  "packages": {
+    "codex": {
+      "file_count": 719,
+      "release_manifest_sha256": "eb5d2c1efdc76ff10077ab7edcc1fef1103bbc86d27464a3bbc32adddb249c34"
+    },
+    "cursor": {
+      "file_count": 719,
+      "release_manifest_sha256": "3e60be76b8fe270b14a3162940e2d820258d29eb855b28b616d31a64c37967a1"
+    }
+  },
+  "production_endpoint_supplied": false,
+  "local_test_endpoint": "http://127.0.0.1:8891/mcp/"
+}

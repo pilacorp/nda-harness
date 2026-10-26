@@ -1,0 +1,13 @@
+{
+  "name": "nda-harness-local",
+  "owner": {
+    "name": "NDA Harness"
+  },
+  "plugins": [
+    {
+      "description": "NDA development workflow, project test gates and one optional memory system.",
+      "name": "nda-harness",
+      "source": "."
+    }
+  ]
+}

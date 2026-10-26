@@ -1,0 +1,21 @@
+Cursor IDE 3.25.9 — observed plugin detail page
+Sanitized accessibility excerpt; unrelated workspace content omitted.
+
+											249 container Breadcrumb
+												250 link Description: Customize, Value: vscode-file://vscode-app/Applications/Cursor.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html#
+												251 text Nda Hindsight Oauth Test
+											252 container
+												253 image Plugin
+												254 heading Nda Hindsight Oauth Test
+													255 text Nda Hindsight Oauth Test
+												256 text Local
+												257 button Uninstall
+												258 pop up button Private
+												259 button Try in Chat
+											260 text 0.0.1
+											261 container
+												262 text MCPs 1
+												263 button Configure hindsight
+													264 text hindsight
+													265 text 39 tools enabled
+								266 container
