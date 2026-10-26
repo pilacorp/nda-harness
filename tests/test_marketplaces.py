@@ -62,7 +62,7 @@ class MarketplaceTests(unittest.TestCase):
                 self.assertTrue(catalog['owner']['name'])
             package = self.root / route
             manifest = json.loads((package / f'.{client}-plugin/plugin.json').read_text())
-            self.assertEqual(manifest['version'], '0.0.5')
+            self.assertEqual(manifest['version'], plugin_build.RELEASE_VERSION)
             self.assertEqual(json.loads((package / 'nda-plugin.json').read_text())['client'], client)
             self.assertTrue(os.access(package / 'bin/nda-plugin', os.X_OK))
             self.assertFalse((package / '.nda-harness').exists())

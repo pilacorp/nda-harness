@@ -22,13 +22,17 @@ verify readiness through `nda-verify`, even if a startup hook is delayed or abse
 Use `nda-setup` to recover incomplete bootstrap or activate this clone's Git hooks.
 An installed plugin does not prove trusted hooks ran or MCP connected.
 
-Inspect `.nda-harness/profile.json` at the actual Git project root. If absent, ask
+Inspect `.nda-harness/profile.json` for memory and `.nda-harness/config.json` for
+the test command at the actual Git project root. When `.nda-harness/config.json` is missing, ask
 the user in chat for a non-watch test command, offering explicit Skip. No answer
-means pending. Only explicit Skip means literal `true`. Keep diagnostic conversation
+means pending. Only explicit Skip means literal `true`. When the config is present
+and the profile is missing, run nda-setup without a new test command so the stored
+command is kept and the personal profile is rebuilt. Keep diagnostic conversation
 available while setup is incomplete; block dependent implementation, not the chat.
 
-Commit `.nda-harness/profile.json`. Keep task records local and add
-`.nda-harness/tasks/` to `.gitignore`; never stage or force-add those files.
+Commit `.nda-harness/config.json`. Keep `.nda-harness/profile.json` and task
+records local, and add `.nda-harness/profile.json` and `.nda-harness/tasks/` to
+`.gitignore`; never stage or force-add those task files.
 Keep shared skills/rules in the plugin, private recovery state outside the project,
 and preserve existing Git hooks. Both prior hooks and configured tests must pass.
 

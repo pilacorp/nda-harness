@@ -38,10 +38,11 @@ Hindsight authentication in each client you use.
    `true` command with no tests. If the project has no Git remote, provide a stable
    shared project name when asked. If it has distinct remotes, choose which one
    identifies the project.
-4. Review the resulting project files. Commit `.nda-harness/profile.json` and
-   the `.gitignore` entry for `.nda-harness/tasks/`. Keep task records local and
+4. Review the resulting project files. Commit `.nda-harness/config.json` and
+   the `.gitignore` entries for `.nda-harness/profile.json` and
+   `.nda-harness/tasks/`. Keep the personal profile and task records local and
    ignored. Each Git clone needs its own local hook activation, even when the
-   profile is already committed.
+   config is already committed.
 5. Ask the agent:
 
    > Run nda-verify and report core readiness, native hook status, and Context7

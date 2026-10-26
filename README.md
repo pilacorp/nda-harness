@@ -37,7 +37,7 @@ Memory storage stays internal; processing sends relevant memory content through 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.5**, tracked from `dev`. The
+version **0.0.6**, tracked from `dev`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).
@@ -45,7 +45,8 @@ version **0.0.5**, tracked from `dev`. The
 The shared package builder produces native plugins with full specialist and pinned
 Superpowers skills, Context7 MCP, trusted startup bootstrap, five context operations,
 and project Git test protection. On entry, the agent asks for a project's test command
-or explicit Skip; `.nda-harness/profile.json` is committed project configuration.
+or explicit Skip; `.nda-harness/config.json` is committed project configuration
+and `.nda-harness/profile.json` is the local memory record.
 Task records stay local in Git-ignored `.nda-harness/tasks/`, with shared assets
 remaining in the plugin.
 

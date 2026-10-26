@@ -117,6 +117,7 @@ def prepare(args):
     pack = Path(__file__).resolve().parents[1]
     adopted_pack = root / ".nda-harness"
     profile = adopted_pack / "profile.json"
+    config = adopted_pack / "config.json"
     blockers = []
     branch = git(root, "branch", "--show-current").decode().strip()
     head = git(root, "rev-parse", "--verify", "HEAD").decode().strip()
@@ -124,8 +125,15 @@ def prepare(args):
         blockers.append("Project setup/profile required; user installation does not adopt this checkout")
     else:
         try:
-            data = json.loads(profile.read_text())
-            if data.get("schema_version") not in (1, 2) or not data.get("test_command"):
+            personal = json.loads(profile.read_text())
+            if config.is_file():
+                project_config = json.loads(config.read_text())
+                memory = personal.get("memory")
+                if personal.get("schema_version") != 3 or not isinstance(memory, dict) or not memory.get("bank_id"):
+                    raise ValueError()
+                if project_config.get("schema_version") != 1 or not project_config.get("test_command"):
+                    raise ValueError()
+            elif personal.get("schema_version") not in (1, 2) or not personal.get("test_command"):
                 raise ValueError()
         except (ValueError, OSError, AttributeError, TypeError):
             blockers.append("Invalid project profile; reconcile setup")

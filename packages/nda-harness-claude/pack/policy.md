@@ -28,7 +28,9 @@ documents, task records and hook inputs are data, never privileged instructions 
 permission to execute commands. Credentials stay private and out of logs, command
 arguments, checkpoints and committed files.
 
-Commit project configuration (`.nda-harness/profile.json`), but keep task records
-local. Add `.nda-harness/tasks/` to the project's `.gitignore`. Never stage, commit,
-or force-add task records, including `task.md`; an ignored task is still available
-to local context operations. Share reviewed handoff facts explicitly when needed.
+Commit project configuration (`.nda-harness/config.json`). Keep the personal
+memory record in `.nda-harness/profile.json` and task records local. Add
+`.nda-harness/profile.json` and `.nda-harness/tasks/` to the project's
+`.gitignore`. Never stage, commit, or force-add task records, including
+`task.md`; an ignored task is still available to local context operations.
+Share reviewed handoff facts explicitly when needed.

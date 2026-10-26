@@ -20,7 +20,7 @@ plugin files or unrelated lifecycle handlers are rewritten.
 
 ## Inputs, outputs and order
 
-H-01 reads `profile.json` and executes only its explicit unit-test command;
+H-01 reads `config.json` and executes only its explicit unit-test command;
 the original executable runs first with original arguments from the Git root.
 Other Git events pass through to their original executables. Unit command timeout
 is 300 seconds; Python 3.9+ is required on the actual client PATH. Failure blocks

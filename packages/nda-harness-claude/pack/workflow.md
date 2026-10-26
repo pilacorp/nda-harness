@@ -16,11 +16,13 @@
 
 The local Git pre-commit wrapper preserves existing hooks and runs the configured
 non-watch test command at the actual project root. Either failure blocks commit.
-Committed `.nda-harness/profile.json` is project configuration; private activation,
-backups, locks and executable paths stay outside the repository. Activate every clone
-through the plugin. Explicit Skip stores `true` and does not mean tests ran.
-Task records under `.nda-harness/tasks/` are local working state: ignore that
-directory in Git and never stage or force-add its files, including `task.md`.
+Committed `.nda-harness/config.json` is project configuration and holds the test
+command. `.nda-harness/profile.json` is the personal memory record and may be
+ignored by Git. Private activation, backups, locks and executable paths stay
+outside the repository. Activate every clone through the plugin. Explicit Skip
+stores `true` and does not mean tests ran. Task records under
+`.nda-harness/tasks/` are local working state: ignore that directory and
+`profile.json` in Git, and never stage or force-add task files, including `task.md`.
 
 One memory system is active per project, recorded as `memory.system`. When the
 package offers one system, setup selects it. When it offers several, ask the user
@@ -31,7 +33,7 @@ The user opts in through the native plugin NDA Hindsight MCP row's Authenticate/
 no provider configuration or credential storage belongs to this harness. When the
 selected system is NDA Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
 hindsight-memory and call them before substantive work. Do not wait for the user
-to mention NDA Hindsight. Use exactly `memory.bank_id` from project configuration:
+to mention NDA Hindsight. Use exactly `memory.bank_id` from `.nda-harness/profile.json`:
 `list_banks` for that id, `create_bank` with that same id when it is missing,
 then `recall` and later `retain`. One bank per project is shared by Codex
 and Cursor and equivalent Git clones. Dev/staging/prod are labels within that bank,

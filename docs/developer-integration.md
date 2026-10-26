@@ -9,10 +9,11 @@ is pinned and bundled; RTK bootstraps under native trust controls; Context7 is a
 native MCP registration. Python 3.9+ and Git must be on the GUI client's PATH.
 Initial support is Apple Silicon macOS.
 
-On project entry run session-bootstrap. Missing `.nda-harness/profile.json` means
+On project entry run session-bootstrap. Missing `.nda-harness/config.json` means
 answering the test-command question in chat or explicitly Skip (`true`, no tests).
 Pending configuration blocks dependent implementation; diagnostic conversation stays
-available. Commit project config and sanitized task records. Every clone activates
+available. Commit `.nda-harness/config.json`. Keep `.nda-harness/profile.json` and
+task records local. Every clone activates
 its local composed pre-commit hook; existing hooks and configured tests must pass.
 Shared policy and skills stay in the plugin.
 

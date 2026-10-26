@@ -11,7 +11,7 @@ Choose the template by the bank's purpose, not the client application:
 
 ## Creating a bank
 
-1. Read the committed project `.nda-harness/profile.json` and use exactly
+1. Read the project `.nda-harness/profile.json` and use exactly
    `memory.bank_id`. Equivalent clones and both clients share this project bank;
    dev/staging/prod are labels within it, never separate banks. Call `list_banks`
    first, following pagination, and reuse that exact bank. Do not apply a template
