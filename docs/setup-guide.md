@@ -21,7 +21,7 @@ Hindsight authentication in each client you use.
    [Codex](../INSTALLATION.md#codex),
    [Cursor](../INSTALLATION.md#cursor-ide), or
    [Claude Code](../INSTALLATION.md#claude-code-and-the-desktop-code-tab).
-   These instructions track `dev`; check the rollout notes there before installing.
+   These instructions track `main`.
    If you already have an uploaded or local copy, follow the
    [migration steps](plugin-operations.md#one-time-migration-from-an-upload-or-local-plugin)
    to avoid duplicate hooks and MCP servers.
