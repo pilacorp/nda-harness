@@ -37,7 +37,7 @@ Memory storage stays internal; processing sends relevant memory content through 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.6**, tracked from `main`. The
+version **0.0.7**, tracked from `main`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).
