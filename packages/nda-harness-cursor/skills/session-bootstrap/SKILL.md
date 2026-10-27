@@ -15,7 +15,7 @@ issue-linked task record. Use `--stage implementation` for the implementation st
 Do not infer task identity, approval or stage from branch names. Pass a stable local
 session ID with `--session` for cheap freshness checks; never use an auth token.
 
-Before shell work, run `rtk --version`. Ready output is `rtk 0.37.2` or `rtk 0.40.0`. Prefix later
+Before shell work, run `rtk --version`. Ready output is `rtk 0.40.0` or any newer release. Prefix later
 shell commands with `rtk`. If it is not on PATH, use `rtk_path` from
 `~/.nda-harness/plugin-bootstrap/<client>.json`. For library or API questions,
 call Context7 `resolve-library-id` and then `query-docs` when those tools are
