@@ -179,7 +179,7 @@ def hook(package, client, event, home, payload):
         local_status = 'blocked'
     instruction = (
         'NDA Harness: read the full packaged pack/policy.md, pack/workflow.md, pack/context-preparation.md and skills/using-superpowers/SKILL.md before dependent work. '
-        'Prefix shell commands with rtk. Confirm rtk --version prints rtk 0.37.2 or rtk 0.40.0. If rtk is absent from PATH, use its absolute rtk_path from private ~/.nda-harness/plugin-bootstrap client state; do not edit shell startup files. '
+        'Prefix shell commands with rtk. Confirm rtk --version reports RTK 0.40.0 or newer. If rtk is absent from PATH, use its absolute rtk_path from private ~/.nda-harness/plugin-bootstrap client state; do not edit shell startup files. '
         'For library, framework, SDK, API, or CLI questions call Context7 resolve-library-id and then query-docs before answering from memory. '
         'Run the plugin session-bootstrap skill and inspect its local readiness output through ordinary tools. '
         'Check the actual project root .nda-harness/profile.json for memory and .nda-harness/config.json for the test command. If .nda-harness/config.json is absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. If the config is present and the profile is absent, run nda-setup without a new test command so the stored command is kept and the personal profile is rebuilt. A folder that is not a Git checkout, like a repository with no remote, needs --project-name. Git commit hooks apply only to a repository. '

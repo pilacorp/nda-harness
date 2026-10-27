@@ -9,7 +9,7 @@ Use the installed NDA Harness plugin in every project. Read its full packaged
 
 Run shell commands through RTK: `rtk <command>`. If `rtk` is not on PATH, use the
 absolute `rtk_path` in `~/.nda-harness/plugin-bootstrap/cursor.json`. Do not edit
-shell startup files. `rtk --version` must print `rtk 0.37.2` or `rtk 0.40.0`
+shell startup files. `rtk --version` must report RTK 0.40.0 or newer
 before treating RTK as ready.
 
 For a library, framework, SDK, API, or CLI, call Context7 `resolve-library-id`,
