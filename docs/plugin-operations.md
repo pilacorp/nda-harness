@@ -22,7 +22,7 @@ The current target is Apple Silicon macOS with Python 3.9+ and Git on the client
    trust reviewed hooks. Confirm one NDA Harness activation and one set of its
    MCP servers. Do not hand-edit caches or copy OAuth credentials. A new identity
    can require the user's native authentication action; continuity is not promised.
-4. Preserve every project's `.nda-harness/profile.json`, test command and bank
+4. Preserve every project's `.nda-harness/config.json`, `.nda-harness/profile.json`, test command and bank
    identity. Run **nda-verify** in each active clone after an upgrade. If an old
    package cache was removed, protection is pending and commits must stay blocked.
    Run **nda-setup** from the newly installed package to rebind the existing hook
@@ -96,7 +96,7 @@ Run from the repository root, choosing a new semantic version for each release:
 
 ```sh
 PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
-  --archive --version 0.0.5 --output dist/nda-harness-codex-0.0.5.zip
+  --archive --version 0.0.6 --output dist/nda-harness-codex-0.0.6.zip
 ```
 
 Select the ZIP in **Upload plugin archive**. The command preserves existing
@@ -214,7 +214,7 @@ SessionStart, UserPromptSubmit, and the context-checkpoint skill carry the
 reminder. If hooks are delayed, untrusted,
 missing or failed, use **nda-setup** for recovery. Never infer ready from install.
 
-The agent checks `.nda-harness/profile.json` at the project directory and asks for a
+The agent checks `.nda-harness/config.json` at the project directory and asks for a
 non-watch test command in chat. Explicit **Skip** stores `true`, passing without
 tests. No answer means pending. Hooks exchange JSON, not terminal wizard input.
 A folder that is not a Git checkout, and a repository with no remote, requires a
@@ -233,12 +233,14 @@ a project without a remote. `--remote origin` selects an explicitly chosen remot
 Existing identity conflicts need reconciliation; never delete a profile to guess
 a new bank. Helpers always require --client; plugin skills supply it automatically.
 
-Commit `.nda-harness/profile.json`. Add `.nda-harness/tasks/` to `.gitignore` and
-keep task records local; never stage or force-add them. Do not ignore the profile.
+Commit `.nda-harness/config.json`. Add `.nda-harness/profile.json` and
+`.nda-harness/tasks/` to `.gitignore` and keep the personal profile and task
+records local; never stage or force-add task records. The profile holds memory
+and uses a different schema from the config, which holds the test command.
 No shared plugin assets, machine paths or credentials
 belong there. Every clone activates its local composed Git pre-commit hook. Existing
 checks run before configured tests, from the project root; either failure blocks
-commit. A missing profile or removed runtime also blocks the installed check.
+commit. A missing config or removed runtime blocks the installed check.
 
 A project uses one memory system, stored as `memory.system`. NDA Hindsight is the
 only system a package includes today. When a later package offers more than

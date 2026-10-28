@@ -17,28 +17,43 @@ from nda_harness.mcp import check_context7, decode_response
 
 
 class SafetyTests(unittest.TestCase):
-    def test_existing_rtk_040_is_reused_without_installing(self):
+    def test_existing_rtk_at_or_above_minimum_is_reused_without_installing(self):
         with tempfile.TemporaryDirectory() as temporary:
             executable = Path(temporary) / "rtk"
-            executable.write_bytes(b"known Homebrew build")
+            executable.write_bytes(b"later installed build")
             plan = Plan({})
-            with patch("nda_harness.dependencies.locate", return_value=executable), patch("nda_harness.dependencies.digest", return_value="52b2a4a68e9a1f3c7880ddafea6cd590f0582e67324fe89ea41aaec83e7e9b58"), patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, "rtk 0.40.0\n")), patch("urllib.request.urlopen", side_effect=AssertionError("unexpected download")):
-                self.assertEqual(prepare(plan, Path(temporary)), executable)
+            for reported in ("0.40.0", "0.41.2", "1.1.0"):
+                with self.subTest(reported=reported), patch("nda_harness.dependencies.locate", return_value=executable), patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, "rtk " + reported + "\n")), patch("urllib.request.urlopen", side_effect=AssertionError("unexpected download")):
+                    self.assertEqual(prepare(plan, Path(temporary)), executable)
             self.assertEqual(plan.writes, {})
-            self.assertEqual(executable.read_bytes(), b"known Homebrew build")
+            self.assertEqual(executable.read_bytes(), b"later installed build")
 
-    def test_rtk_identity_requires_matching_hash_and_version(self):
-        hashes = {"fb212aaa57018cff146a9053810b310845e477b4a1f789d38b4cf2908bb5c5dd": "0.37.2",
-                  "33f8ba7f298ded5c88b5cc805267f03036fdf15731d3db9fa1f49ae98a6d6f53": "0.37.2",
-                  "52b2a4a68e9a1f3c7880ddafea6cd590f0582e67324fe89ea41aaec83e7e9b58": "0.40.0"}
+    def test_existing_rtk_below_minimum_is_left_unchanged(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            executable = Path(temporary) / "rtk"
+            executable.write_bytes(b"old build")
+            plan = Plan({})
+            with patch("nda_harness.dependencies.locate", return_value=executable), patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, "rtk 0.37.2\n")), patch("urllib.request.urlopen", side_effect=AssertionError("unexpected download")):
+                with self.assertRaisesRegex(Conflict, "0.40.0"):
+                    prepare(plan, Path(temporary))
+            self.assertEqual(plan.writes, {})
+            self.assertEqual(executable.read_bytes(), b"old build")
+
+    def test_rtk_identity_accepts_minimum_or_newer(self):
         with tempfile.TemporaryDirectory() as temporary:
             executable = Path(temporary) / "rtk"
             executable.write_bytes(b"fixture")
-            for checksum, version in hashes.items():
-                for reported, code, expected in ((version, 0, True), ("9.9.9", 0, False), (version, 1, False)):
-                    with self.subTest(version=version, reported=reported, code=code), patch("nda_harness.dependencies.digest", return_value=checksum), patch("subprocess.run", return_value=subprocess.CompletedProcess([], code, "rtk " + reported + "\n")):
-                        self.assertEqual(identity(executable), expected)
-            with patch("subprocess.run", side_effect=AssertionError("must not run an unknown binary")):
+            accepted = ("0.40.0", "0.40.1", "1.1.0")
+            rejected = ("0.37.2", "0.39.9", "9.9", "version 0.40.0")
+            for reported in accepted:
+                with self.subTest(reported=reported), patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, "rtk " + reported + "\n")):
+                    self.assertTrue(identity(executable))
+            for reported in rejected:
+                with self.subTest(reported=reported), patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, "rtk " + reported + "\n")):
+                    self.assertFalse(identity(executable))
+            with patch("subprocess.run", return_value=subprocess.CompletedProcess([], 1, "rtk 1.1.0\n")):
+                self.assertFalse(identity(executable))
+            with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("rtk", 10)):
                 self.assertFalse(identity(executable))
 
     def test_read_does_not_require_a_writable_parent(self):

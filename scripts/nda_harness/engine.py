@@ -274,7 +274,7 @@ def verify(options, home, live_mcp=True):
     rtk = locate_rtk(home)
     if rtk:
         passed = rtk_identity(rtk)
-        checks.append(result("rtk-binary", "verified" if passed else "failed", "RTK must match a recorded compatible build checksum and version; unknown builds require reconciliation."))
+        checks.append(result("rtk-binary", "verified" if passed else "failed", "RTK must be version 0.40.0 or newer."))
     else:
         checks.append(result("rtk-binary", "failed", "Pinned RTK is missing; run setup to install it after reconciliation."))
     checks.append(check_context7() if live_mcp else result("context7-server", "awaiting_manual", "Live public MCP diagnostic was not run."))

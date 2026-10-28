@@ -21,7 +21,7 @@ Hindsight authentication in each client you use.
    [Codex](../INSTALLATION.md#codex),
    [Cursor](../INSTALLATION.md#cursor-ide), or
    [Claude Code](../INSTALLATION.md#claude-code-and-the-desktop-code-tab).
-   These instructions track `dev`; check the rollout notes there before installing.
+   These instructions track `main`.
    If you already have an uploaded or local copy, follow the
    [migration steps](plugin-operations.md#one-time-migration-from-an-upload-or-local-plugin)
    to avoid duplicate hooks and MCP servers.
@@ -38,10 +38,11 @@ Hindsight authentication in each client you use.
    `true` command with no tests. If the project has no Git remote, provide a stable
    shared project name when asked. If it has distinct remotes, choose which one
    identifies the project.
-4. Review the resulting project files. Commit `.nda-harness/profile.json` and
-   the `.gitignore` entry for `.nda-harness/tasks/`. Keep task records local and
+4. Review the resulting project files. Commit `.nda-harness/config.json` and
+   the `.gitignore` entries for `.nda-harness/profile.json` and
+   `.nda-harness/tasks/`. Keep the personal profile and task records local and
    ignored. Each Git clone needs its own local hook activation, even when the
-   profile is already committed.
+   config is already committed.
 5. Ask the agent:
 
    > Run nda-verify and report core readiness, native hook status, and Context7
@@ -98,19 +99,16 @@ The plugin uses Jev (`typesafe/jev-1.14`) through OpenRouter to choose optional
 specialists. Your personal OpenRouter key stays in the macOS Keychain. It is
 separate from Hindsight authentication and the server's OpenRouter key.
 
-1. Invoke the plugin's **skill-selection** command in your client. It opens
-   macOS Terminal in your project directory for key entry. If you need to run
-   setup manually, ask the agent for the command using the actual installed
-   package path and its fixed client. The command has this form:
+1. In the project chat, run:
 
-   ```sh
-   rtk proxy "/absolute/installed/plugin/bin/nda-plugin" selection-setup --client codex
+   ```text
+   /skill-selection
    ```
 
-   Replace the example path and use `codex`, `cursor`, or `claude` for the installed
-   client. Hosted Claude upload packages use `scripts/nda-plugin` instead of
-   `bin/nda-plugin`. Use the installed package, not the historical global
-   `nda-harness` CLI or a source checkout.
+   That command opens macOS Terminal in the project directory and starts key
+   setup. Leave the Terminal window focused. The chat cannot show the hidden
+   prompt. The global `nda-harness` command does not set up skill selection; it
+   only runs project `setup` and `verify`.
 2. Enter your personal OpenRouter key at the hidden Terminal prompt. Do not put
    it in chat, a command argument, or a project file. Success prints:
 
@@ -118,17 +116,13 @@ separate from Hindsight authentication and the server's OpenRouter key.
    OpenRouter key saved.
    ```
 
-3. Check the key and package without calling OpenRouter, using the same launcher
-   and client as above:
-
-   ```sh
-   rtk proxy "/absolute/installed/plugin/bin/nda-plugin" selection-verify --client codex
-   ```
-
-   In Terminal, a successful offline check prints `OpenRouter key is present.`
-   This checks local setup, not API authorization or account credit. If you want
-   one synthetic paid API check, add `--live`; success starts with
-   `Live check passed.` and includes the model name.
+   Running `/skill-selection` again asks before replacing a saved key. Cancel
+   leaves the saved key unchanged.
+3. Return to the chat and ask the agent to run `selection-verify`. A successful
+   offline check reports `OpenRouter key is present.` This checks local setup,
+   not API authorization or account credit. For one synthetic paid API check,
+   ask for `selection-verify --live`. Success starts with `Live check passed.`
+   and includes the model name.
 4. Give the agent a concrete assignment with a clear deliverable. The agent runs
    `select-skills` with the project, session, and request file, then
    `load-selected-skills` with the same task JSON. It loads only the returned
@@ -140,11 +134,11 @@ An empty selection is valid; unclear selection requires clarification of the
 deliverable. Mandatory workflow skills remain active, and selection does not
 approve implementation. See [skill selection details](skill-selection.md).
 
-If setup prints `A local terminal is required.`, rerun it in macOS Terminal rather
-than the agent shell. For `authorization_failed`, rerun `selection-setup` to
-replace the key; it asks before replacing an existing key, and cancellation
-preserves it. For `needs_context` or `blocked`, follow the reported diagnostic
-and next action before loading specialist skills.
+If Terminal prints `A local terminal is required.`, run `/skill-selection` again
+and use the Terminal window it opens. For `authorization_failed`, run
+`/skill-selection` again and confirm replacement of the saved key. For
+`needs_context` or `blocked`, follow the reported diagnostic and next action
+before loading specialist skills.
 
 ## Setup checklist
 

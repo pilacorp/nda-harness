@@ -45,8 +45,8 @@ are native packaged components. Failed, installing and awaiting-trust bootstrap
 states cannot report core ready. Cursor's always-applied rule and explicit skills
 handle asynchronous/missing hooks. Setup does not open OAuth or prompt on hook stdin.
 
-Project configuration is schema 2 `.nda-harness/profile.json`: explicit test command
-and project memory-bank identity. No response leaves configuration pending; explicit
+Project test configuration is schema 1 `.nda-harness/config.json`. Personal memory
+identity is schema 3 `.nda-harness/profile.json`. No response leaves configuration pending; explicit
 Skip stores `true`. Shared assets and machine paths stay outside the project.
 Each clone activates private composed Git wrappers; prior hooks and configured
 tests must both pass. Repeated activation is idempotent, foreign manager changes

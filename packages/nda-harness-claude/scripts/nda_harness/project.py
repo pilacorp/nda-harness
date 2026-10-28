@@ -120,25 +120,67 @@ def project_identity(project, *, name=None, remote=None):
     return {'identity_sha256': fingerprint, 'bank_id': 'nda-project-' + fingerprint[:32], **selection}
 
 
-def profile_for(project):
+def _valid_command(command):
+    return isinstance(command, str) and bool(command.strip()) and '\x00' not in command
+
+
+def _valid_memory(memory):
+    if not isinstance(memory, dict) or set(memory) - {'identity_sha256', 'bank_id', 'remote', 'name', 'system'}:
+        raise ValueError()
+    if 'system' in memory and (not isinstance(memory['system'], str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,31}', memory['system'])):
+        raise ValueError()
+    if not re.fullmatch('[0-9a-f]{64}', memory['identity_sha256']) or memory['bank_id'] != 'nda-project-' + memory['identity_sha256'][:32]:
+        raise ValueError()
+    return memory
+
+
+def stored_profile(project):
+    """Return (kind, profile). kind is current, legacy, or None. Invalid files raise Conflict."""
     profile = load_json(project / '.nda-harness/profile.json')
     if profile is None:
-        return None
+        return None, None
     try:
-        memory = profile['memory']
-        if set(profile) != {'schema_version', 'test_command', 'memory'} or profile['schema_version'] != 2:
-            raise ValueError()
-        if not isinstance(profile['test_command'], str) or not profile['test_command'].strip():
-            raise ValueError()
-        if not isinstance(memory, dict) or set(memory) - {'identity_sha256', 'bank_id', 'remote', 'name', 'system'}:
-            raise ValueError()
-        if 'system' in memory and (not isinstance(memory['system'], str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,31}', memory['system'])):
-            raise ValueError()
-        if not re.fullmatch('[0-9a-f]{64}', memory['identity_sha256']) or memory['bank_id'] != 'nda-project-' + memory['identity_sha256'][:32]:
-            raise ValueError()
+        if set(profile) == {'schema_version', 'memory'} and profile['schema_version'] == 3:
+            _valid_memory(profile['memory'])
+            return 'current', profile
+        if set(profile) == {'schema_version', 'test_command', 'memory'} and profile['schema_version'] == 2 and _valid_command(profile['test_command']):
+            _valid_memory(profile['memory'])
+            return 'legacy', profile
+        raise ValueError()
     except (KeyError, TypeError, ValueError):
         raise Conflict('Project profile is invalid; reconcile configuration before dependent work.') from None
-    return profile
+
+
+def profile_for(project):
+    kind, profile = stored_profile(project)
+    return profile if kind == 'current' else None
+
+
+def config_for(project):
+    config = load_json(project / '.nda-harness/config.json')
+    if config is None:
+        return None
+    try:
+        if set(config) != {'schema_version', 'test_command'} or config['schema_version'] != 1 or not _valid_command(config['test_command']):
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Conflict('Project configuration is invalid; reconcile configuration before dependent work.') from None
+    return config
+
+
+def ensure_project_gitignore(plan, project):
+    path = project / '.gitignore'
+    original = read(path)
+    patterns = (b'.nda-harness/tasks/', b'.nda-harness/profile.json')
+    if original is None:
+        plan.write(path, b'\n'.join(patterns) + b'\n')
+        return
+    newline = b'\r\n' if b'\r\n' in original else b'\n'
+    missing = [pattern for pattern in patterns if pattern not in original.splitlines()]
+    if not missing:
+        return
+    separator = newline if original and not original.endswith(b'\n') else b''
+    plan.write(path, original + separator + newline.join(missing) + newline)
 
 
 def recover(state, project, receipt):
@@ -164,12 +206,17 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
     state = state_for(project, home)
     with locked(state):
         receipt = recover(state, project, load_json(state / 'receipt.json', {'owned': {}}))
-        previous = profile_for(project)
-        selection = previous['memory'] if previous else {}
+        kind, stored = stored_profile(project)
+        previous = stored if kind == 'current' else None
+        legacy = stored if kind == 'legacy' else None
+        existing = config_for(project)
+        if legacy and existing and existing['test_command'] != legacy['test_command']:
+            raise Conflict('Project test command conflicts with the saved profile; reconcile the two files before setup.')
+        selection = (previous or legacy or {}).get('memory', {})
         identity = project_identity(project, name=name or selection.get('name'), remote=remote or selection.get('remote'))
-        if previous and identity['identity_sha256'] != previous['memory']['identity_sha256']:
+        if stored and identity['identity_sha256'] != stored['memory']['identity_sha256']:
             raise Conflict('Project bank identity conflicts with current Git identity; reconcile explicitly before changing banks.')
-        command = 'true' if skip else test_command if test_command is not None else previous['test_command'] if previous else None
+        command = 'true' if skip else test_command if test_command is not None else existing['test_command'] if existing else legacy['test_command'] if legacy else None
         if command is None:
             return {'status': 'needs_configuration', 'test_command': 'pending', 'protection': 'incomplete',
                     'next': 'Ask the user for a non-watch test command or explicit Skip in agent chat; never infer Skip.'}
@@ -177,14 +224,16 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
         chosen = select_system(load_json(package / 'nda-plugin.json') or {}, requested=system, previous=selection.get('system'))
         if chosen:
             identity = {**identity, 'system': chosen}
-        profile = {'schema_version': 2, 'test_command': command, 'memory': identity}
+        profile = {'schema_version': 3, 'memory': identity}
+        project_config = {'schema_version': 1, 'test_command': command}
         plan = Plan(receipt)
-        # Project owners may edit committed configuration between sessions.
         plan.write(project / '.nda-harness/profile.json', json_bytes(profile))
+        plan.write(project / '.nda-harness/config.json', json_bytes(project_config))
         config = load_json(package / 'nda-plugin.json')
         repository = is_repository(project)
         registration = None
         if repository:
+            ensure_project_gitignore(plan, project)
             check = shlex.join([str(package / 'bin/nda-plugin'), 'unit-check', '--client', config['client'], '--project', str(project)])
             registration = hook_plan(plan, project, state, receipt, check_command=check)
         def journal(current):
@@ -195,8 +244,8 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
         try:
             plan.apply(state, journal=journal)
             if repository:
-                if git(project, 'check-ignore', '-q', '.nda-harness/profile.json').returncode == 0:
-                    raise Conflict('Project configuration is ignored by Git. Reconcile ignore rules so .nda-harness can be committed.')
+                if git(project, 'check-ignore', '-q', '.nda-harness/config.json').returncode == 0:
+                    raise Conflict('Project configuration is ignored by Git. Reconcile ignore rules so .nda-harness/config.json can be committed.')
                 activate(project, registration)
             saved = {'schema_version': 1, 'owned': plan.owned, 'package': str(package), 'client': config['client']}
             if registration:
@@ -216,14 +265,16 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
 
 def inspect_project(project, package, home):
     project = root_for(project)
-    profile = profile_for(project)
-    if profile is None:
+    kind, profile = stored_profile(project)
+    project_config = config_for(project)
+    if kind != 'current' or project_config is None:
         return {'status': 'needs_configuration', 'protection': 'incomplete'}
+    command = project_config['test_command']
     if not is_repository(project):
         return {'status': 'ready', 'protection': 'not_applicable',
                 'bank_id': profile['memory']['bank_id'], 'environment': 'dev',
-                'test_command': 'skipped' if profile['test_command'] == 'true' else 'configured'}
-    if git(project, 'check-ignore', '-q', '.nda-harness/profile.json').returncode == 0:
+                'test_command': 'skipped' if command == 'true' else 'configured'}
+    if git(project, 'check-ignore', '-q', '.nda-harness/config.json').returncode == 0:
         raise Conflict('Project configuration is ignored by Git; reconcile ignore rules.')
     expected = project_identity(project, name=profile['memory'].get('name'), remote=profile['memory'].get('remote'))
     if expected['identity_sha256'] != profile['memory']['identity_sha256']:
@@ -240,4 +291,4 @@ def inspect_project(project, package, home):
         active = (active_package / 'bin/nda-plugin').is_file() and expected_command in wrapper.read_text() and digest(wrapper.read_bytes()) == receipt.get('owned', {}).get(str(wrapper) + '::file')
     return {'status': 'ready' if active else 'needs_activation', 'protection': 'active' if active else 'incomplete',
             'bank_id': profile['memory']['bank_id'], 'environment': 'dev',
-            'test_command': 'skipped' if profile['test_command'] == 'true' else 'configured'}
+            'test_command': 'skipped' if command == 'true' else 'configured'}

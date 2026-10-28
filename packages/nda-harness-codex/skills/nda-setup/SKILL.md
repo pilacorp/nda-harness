@@ -20,9 +20,10 @@ hooks are installed only for a repository. For distinct remotes ask which remote
 (`--remote`); do not choose based on branch or client. Identity conflicts require
 owner reconciliation, not deleting the profile or silently switching banks.
 
-Commit `.nda-harness/profile.json`. Add `.nda-harness/tasks/` to the project's
-`.gitignore` and keep task records local; never stage or force-add `task.md` or
-other files in that directory. Do not copy plugin assets or private state into
+Commit `.nda-harness/config.json`. Add `.nda-harness/profile.json` and
+`.nda-harness/tasks/` to the project's `.gitignore` and keep the personal profile
+and task records local; never stage or force-add `task.md` or other files in
+that directory. Do not copy plugin assets or private state into
 the project. Local activation must run on each clone.
 Test command configuration is owner-controlled and executes at Git commit from
 the repository root. Both existing hooks and the configured command must pass.

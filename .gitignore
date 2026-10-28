@@ -3,4 +3,5 @@ __pycache__/
 .venv/
 dist/
 .nda-harness/tasks/
+.nda-harness/profile.json
 .serena/

@@ -134,8 +134,9 @@ literal command `true`; explain that this passes the check without running tests
 If interaction is unavailable, report configuration as pending rather than
 silently choosing Skip. Reuse existing configuration without repeated prompts.
 
-The project commits `.nda-harness/profile.json` to Git. It contains the
-project-specific test command and memory-bank identity. Task records remain
+The project commits `.nda-harness/config.json` to Git. That file's schema holds
+only the project test command. `.nda-harness/profile.json` uses a separate schema
+and holds only the personal memory-bank identity; Git may ignore it. Task records remain
 local under Git-ignored `.nda-harness/tasks/` and must never be staged or
 force-added, per the owner's task-record privacy instruction. Shared plugin skills
 and rules need not be copied into each project. Credentials, private diagnostics,
@@ -219,7 +220,7 @@ forms of the same repository must resolve to the same identity. Different clones
 and local folder names must not create separate banks. If no remote exists, or
 the directory is not a Git checkout, ask the developer for the project name
 before using Hindsight memory. A directory that is not a Git checkout still
-receives `.nda-harness/profile.json`; commit hooks are installed only for a
+receives `.nda-harness/profile.json` and `.nda-harness/config.json`; commit hooks are installed only for a
 repository. Persist the
 resolved project identity in `.nda-harness/` and avoid guessing when remotes are
 ambiguous or conflict with existing configuration.

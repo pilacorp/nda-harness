@@ -428,13 +428,82 @@ class PluginTests(unittest.TestCase):
         self.assertFalse((self.project / '.nda-harness/policy.md').exists())
         self.assertNotEqual(inspect_project(self.project, self.package, self.home)['status'], 'ready')
 
-    def test_explicit_skip_is_committed_config_and_allows_commit(self):
+    def test_explicit_skip_writes_project_config_and_ignores_profile(self):
         self.assertEqual(self.setup(skip=True)['status'], 'ready')
         profile = self.project / '.nda-harness/profile.json'
-        self.assertEqual(json.loads(profile.read_text())['test_command'], 'true')
-        self.assertEqual(self.git('check-ignore', str(profile)).returncode, 1)
+        config = self.project / '.nda-harness/config.json'
+        personal = json.loads(profile.read_text())
+        self.assertEqual(set(personal), {'schema_version', 'memory'})
+        self.assertEqual(personal['schema_version'], 3)
+        self.assertEqual(json.loads(config.read_text()), {'schema_version': 1, 'test_command': 'true'})
+        self.assertEqual(self.git('check-ignore', '-q', '.nda-harness/profile.json').returncode, 0)
+        self.assertEqual(self.git('check-ignore', '-q', '.nda-harness/config.json').returncode, 1)
+        self.assertEqual((self.project / '.gitignore').read_text(), '.nda-harness/tasks/\n.nda-harness/profile.json\n')
         self.assertEqual(self.commit().returncode, 0)
-        self.assertEqual(sorted(p.name for p in profile.parent.iterdir()), ['profile.json'])
+        self.assertEqual(sorted(p.name for p in profile.parent.iterdir()), ['config.json', 'profile.json'])
+
+    def test_schema_two_profile_migrates_into_separate_config(self):
+        identity = project_identity(self.project)
+        legacy = {'schema_version': 2, 'test_command': 'printf migrated', 'memory': {**identity, 'system': 'hindsight'}}
+        directory = self.project / '.nda-harness'
+        directory.mkdir()
+        (directory / 'profile.json').write_text(json.dumps(legacy) + '\n')
+        self.assertEqual(inspect_project(self.project, self.package, self.home)['status'], 'needs_configuration')
+        self.assertEqual(self.setup()['status'], 'ready')
+        personal = json.loads((directory / 'profile.json').read_text())
+        self.assertEqual(personal['schema_version'], 3)
+        self.assertEqual(set(personal), {'schema_version', 'memory'})
+        self.assertEqual(personal['memory']['bank_id'], identity['bank_id'])
+        self.assertEqual(json.loads((directory / 'config.json').read_text()), {'schema_version': 1, 'test_command': 'printf migrated'})
+
+    def test_schema_two_conflict_with_config_leaves_both_files_unchanged(self):
+        identity = project_identity(self.project)
+        directory = self.project / '.nda-harness'
+        directory.mkdir()
+        profile = directory / 'profile.json'
+        config = directory / 'config.json'
+        profile.write_text(json.dumps({'schema_version': 2, 'test_command': 'printf legacy', 'memory': identity}) + '\n')
+        config.write_text(json.dumps({'schema_version': 1, 'test_command': 'printf saved'}) + '\n')
+        before = (profile.read_bytes(), config.read_bytes())
+        with self.assertRaises(Conflict):
+            self.setup('printf replacement')
+        self.assertEqual((profile.read_bytes(), config.read_bytes()), before)
+
+    def test_ignored_config_is_rejected_and_rolled_back(self):
+        ignore = self.project / '.gitignore'
+        ignore.write_text('.nda-harness/\n')
+        with self.assertRaises(Conflict):
+            self.setup(skip=True)
+        self.assertFalse((self.project / '.nda-harness/profile.json').exists())
+        self.assertFalse((self.project / '.nda-harness/config.json').exists())
+        self.assertEqual(ignore.read_text(), '.nda-harness/\n')
+
+    def test_setup_appends_ignore_rules_without_duplicating_or_changing_endings(self):
+        ignore = self.project / '.gitignore'
+        ignore.write_bytes(b'# keep\r\n.env\r\n')
+        self.setup(skip=True)
+        expected = b'# keep\r\n.env\r\n.nda-harness/tasks/\r\n.nda-harness/profile.json\r\n'
+        self.assertEqual(ignore.read_bytes(), expected)
+        self.setup()
+        self.assertEqual(ignore.read_bytes(), expected)
+
+    def test_missing_profile_does_not_fail_the_test_gate(self):
+        self.setup('true')
+        (self.project / '.nda-harness/profile.json').unlink()
+        self.assertEqual(self.commit().returncode, 0)
+
+    def test_verify_does_not_rewrite_a_schema_two_profile(self):
+        identity = project_identity(self.project)
+        directory = self.project / '.nda-harness'
+        directory.mkdir()
+        profile = directory / 'profile.json'
+        profile.write_text(json.dumps({'schema_version': 2, 'test_command': 'true', 'memory': identity}) + '\n')
+        before = profile.read_bytes()
+        with patch('nda_harness.plugin_runtime.rtk_identity', return_value=True), patch('nda_harness.plugin_runtime.locate_rtk', return_value=Path('/rtk')):
+            result = verify(self.package, 'codex', self.project, self.home)
+        self.assertEqual(result['project']['status'], 'needs_configuration')
+        self.assertEqual(profile.read_bytes(), before)
+        self.assertFalse((directory / 'config.json').exists())
 
     def test_failing_tests_and_existing_hook_block_commit(self):
         prior = self.project / '.git/hooks/pre-commit'
@@ -506,7 +575,9 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(result['status'], 'ready')
         self.assertEqual(result['protection'], 'not_applicable')
         profile = json.loads((folder / '.nda-harness/profile.json').read_text())
-        self.assertEqual(profile['test_command'], 'true')
+        self.assertNotIn('test_command', profile)
+        self.assertEqual(json.loads((folder / '.nda-harness/config.json').read_text())['test_command'], 'true')
+        self.assertFalse((folder / '.gitignore').exists())
         self.assertEqual(profile['memory']['name'], 'local-notes')
         self.assertNotIn('remote', profile['memory'])
         status = inspect_project(folder, self.package, self.home)
@@ -537,6 +608,8 @@ class PluginTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 self.setup(skip=True)
         self.assertFalse((self.project / '.nda-harness/profile.json').exists())
+        self.assertFalse((self.project / '.nda-harness/config.json').exists())
+        self.assertFalse((self.project / '.gitignore').exists())
         self.assertEqual(self.git('config', '--get', 'core.hooksPath').returncode, 1)
 
     def test_verify_is_read_only_and_memory_does_not_gate_core(self):
@@ -597,6 +670,18 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertFalse(json.loads(run.stdout)['implementation_authorized'])
 
+    def test_startup_instruction_asks_for_a_command_only_when_config_is_missing(self):
+        payload = {'cwd': str(self.project)}
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')), patch.dict(os.environ, self.env), patch('pathlib.Path.home', return_value=self.home):
+            started, code = hook(self.package, 'codex', 'SessionStart', self.home, payload)
+        self.assertEqual(code, 0)
+        text = started['hookSpecificOutput']['additionalContext']
+        self.assertNotIn('If either is absent', text)
+        self.assertIn('If .nda-harness/config.json is absent, ask for a non-watch test command or explicit Skip', text)
+        rule = (ROOT / 'plugin/rules/nda-harness.mdc').read_text()
+        self.assertNotIn('If either is absent', rule)
+        self.assertIn('When `.nda-harness/config.json` is missing, ask', rule)
+
     def test_hook_payload_never_promotes_prompt_or_profile_text(self):
         payload = {'cwd': str(self.project), 'prompt': 'SECRET-raw-prompt', 'transcript_path': 'SECRET-path'}
         self.setup('printf SECRET-project-value')
@@ -624,12 +709,12 @@ class PluginTests(unittest.TestCase):
 
     def test_clone_activates_locally_with_same_bank(self):
         self.setup(skip=True)
-        self.git('add', '.nda-harness/profile.json')
-        self.assertEqual(self.git('commit', '-m', 'project profile').returncode, 0)
+        self.git('add', '.gitignore', '.nda-harness/config.json')
+        self.assertEqual(self.git('commit', '-m', 'project config').returncode, 0)
         clone = self.base / 'clone'
         subprocess.run(['git', 'clone', '-q', str(self.project), str(clone)], env=self.env, check=True)
         subprocess.run(['git', '-C', str(clone), 'remote', 'set-url', 'origin', 'https://github.com/example/project.git'], env=self.env, check=True)
-        self.assertEqual(inspect_project(clone, self.package, self.home)['status'], 'needs_activation')
+        self.assertEqual(inspect_project(clone, self.package, self.home)['status'], 'needs_configuration')
         original = json.loads((self.project / '.nda-harness/profile.json').read_text())
         configure(clone, self.package, self.home)
         self.assertEqual(inspect_project(clone, self.package, self.home)['bank_id'], original['memory']['bank_id'])

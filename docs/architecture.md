@@ -303,7 +303,7 @@ the `hindsight` repository. The harness neither collects provider tokens nor run
 an OAuth client, callback listener or forwarder.
 
 After explicit native authentication, automatic recall/retention uses the project's
-committed bank identity from `.nda-harness/profile.json`. Equivalent Git clones and
+bank identity from `.nda-harness/profile.json`. Equivalent Git clones and
 same-account clients share one project bank; dev/staging/prod are labels within
 that bank. Memory content and credentials remain out of project records. Outages
 permit available client default memory without blocking core development or

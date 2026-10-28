@@ -1,9 +1,0 @@
-{
-  "memory": {
-    "bank_id": "nda-project-7bb46c0b117b621c10d14adf943fff44",
-    "identity_sha256": "7bb46c0b117b621c10d14adf943fff44d52f85300130f4259aab5ec55cd837bf",
-    "system": "hindsight"
-  },
-  "schema_version": 2,
-  "test_command": "true"
-}

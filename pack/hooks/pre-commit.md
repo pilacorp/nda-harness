@@ -20,7 +20,7 @@ plugin files or unrelated lifecycle handlers are rewritten.
 
 ## Inputs, outputs and order
 
-H-01 reads `profile.json` and executes only its explicit unit-test command;
+H-01 reads `config.json` and executes only its explicit unit-test command;
 the original executable runs first with original arguments from the Git root.
 Other Git events pass through to their original executables. Unit command timeout
 is 300 seconds; Python 3.9+ is required on the actual client PATH. Failure blocks
@@ -39,7 +39,7 @@ Context metadata never grants approval or guarantees injected native context.
 git commit in a disposable adopted worktree
 ```
 
-Attempt disposable commits with passing/failing unit commands; inspect unchanged HEAD on failure. Expected result: Missing/invalid profile, missing/old Python, original-hook failure or runner failure blocks the commit.
+Attempt disposable commits with passing/failing unit commands; inspect unchanged HEAD on failure. Expected result: Missing/invalid config, missing/old Python, original-hook failure or runner failure blocks the commit.
 Linked specification cases: TC-09, TC-10, TC-11, TC-12, TC-13. Runtime works independently of the installer
 checkout/virtual environment and from a different working directory.
 
