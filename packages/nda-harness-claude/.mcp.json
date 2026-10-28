@@ -7,6 +7,10 @@
     "nda-harness-hindsight": {
       "type": "http",
       "url": "https://hindsight-api.pila.vn/mcp/"
+    },
+    "nda-harness-nda-rag": {
+      "type": "http",
+      "url": "https://docs-dev.chainhub.vn/api/mcp"
     }
   }
 }
