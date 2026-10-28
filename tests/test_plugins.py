@@ -14,7 +14,10 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from nda_harness.plugin_build import RELEASE_VERSION, build, build_archive, validate_archive, validate_endpoint
+from nda_harness.plugin_build import (
+    NDA_RAG_MCP, RELEASE_VERSION, build, build_archive, main as build_main,
+    validate_archive, validate_endpoint, validate_rag_endpoint,
+)
 from nda_harness.project import configure, inspect_project, project_identity, state_for
 from nda_harness.plugin_runtime import bootstrap, diagnose, hook, main, verify
 from nda_harness.files import Conflict, Plan, atomic, json_bytes
@@ -49,6 +52,53 @@ class PluginTests(unittest.TestCase):
         from nda_harness.memory import SYSTEMS
         with patch.dict(SYSTEMS['hindsight'], {'server': 'NDA Hindsight'}), self.assertRaisesRegex(ValueError, 'MCP server identifiers'):
             build(ROOT, self.base / 'invalid-server-name', 'codex')
+
+    def test_nda_rag_is_packaged_beside_context7_and_hindsight(self):
+        rag = 'https://docs-dev.chainhub.vn/api/mcp'
+        mcp = json.loads((self.package / '.mcp.json').read_text())['mcpServers']
+        self.assertEqual(mcp['nda-harness-nda-rag'], {'type': 'http', 'url': rag})
+        self.assertEqual(mcp['nda-harness-context7'], {'type': 'http', 'url': 'https://mcp.context7.com/mcp'})
+        self.assertEqual(mcp['nda-harness-hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
+        config = json.loads((self.package / 'nda-plugin.json').read_text())
+        self.assertNotIn('nda-rag', config['memory_systems']['endpoints'])
+        self.assertNotIn('nda-harness-nda-rag', config['memory_systems']['endpoints'])
+        self.assertNotIn('Authorization', json.dumps(mcp))
+        self.assertNotIn('chb_', json.dumps(mcp))
+        cursor = self.base / 'cursor-rag'
+        build(ROOT, cursor, 'cursor')
+        cursor_mcp = json.loads((cursor / 'mcp.json').read_text())['mcpServers']
+        self.assertEqual(cursor_mcp['nda-harness-nda-rag'], {'url': rag})
+        self.assertNotIn('type', cursor_mcp['nda-harness-nda-rag'])
+        instruction = (cursor / 'skills/session-bootstrap/SKILL.md').read_text()
+        rule = (cursor / 'rules/nda-harness.mdc').read_text()
+        runtime = (cursor / 'scripts/nda_harness/plugin_runtime.py').read_text()
+        for text in (instruction, rule, runtime):
+            self.assertIn('nda-harness-nda-rag', text)
+            self.assertIn('untrusted', text.lower())
+            self.assertIn('pre-commit', text.lower())
+        payload = {'cwd': str(self.project)}
+        with patch('nda_harness.plugin_runtime.prepare_rtk', return_value=Path('/rtk')), patch.dict(os.environ, self.env), patch('pathlib.Path.home', return_value=self.home):
+            started, code = hook(cursor, 'cursor', 'sessionStart', self.home, payload)
+        self.assertEqual(code, 0)
+        context = started['additional_context']
+        self.assertIn('nda-harness-nda-rag', context)
+        self.assertIn('search_docs', context)
+
+    def test_nda_rag_mcp_url_override_matches_hindsight_flag(self):
+        override = 'https://docs.example.test/api/mcp'
+        custom = self.base / 'rag-override'
+        build(ROOT, custom, 'codex', rag_endpoint=override)
+        mcp = json.loads((custom / '.mcp.json').read_text())['mcpServers']
+        self.assertEqual(mcp['nda-harness-nda-rag']['url'], override)
+        self.assertEqual(mcp['nda-harness-hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
+        self.assertNotIn('nda-rag', json.loads((custom / 'nda-plugin.json').read_text())['memory_systems']['endpoints'])
+        out = self.base / 'rag-cli'
+        self.assertEqual(build_main(['--client', 'codex', '--output', str(out), '--nda-rag-mcp-url', override]), 0)
+        self.assertEqual(json.loads((out / '.mcp.json').read_text())['mcpServers']['nda-harness-nda-rag']['url'], override)
+        with self.assertRaises(ValueError):
+            validate_rag_endpoint('https://docs.example.test/mcp/')
+        self.assertEqual(validate_rag_endpoint('http://127.0.0.1:3000/api/mcp', local_test=True), 'http://127.0.0.1:3000/api/mcp')
+        self.assertEqual(NDA_RAG_MCP, 'https://docs-dev.chainhub.vn/api/mcp')
 
     def commit(self):
         (self.project / 'fixture').write_text('test')
