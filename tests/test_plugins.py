@@ -168,6 +168,33 @@ class PluginTests(unittest.TestCase):
         self.assertIn('resolve-library-id', runtime)
         self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
 
+    def test_sub_agent_skills_ship_identically_and_stay_out_of_the_catalog(self):
+        catalog = json.loads((ROOT / 'skills/catalog.json').read_text())
+        self.assertEqual(
+            [skill['id'] for skill in catalog['skills']],
+            ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording'],
+        )
+        packages = {'codex': self.package, 'cursor': self.base / 'cursor-subagents'}
+        build(ROOT, packages['cursor'], 'cursor')
+        packages['claude'] = self.base / 'claude-subagents'
+        build(ROOT, packages['claude'], 'claude')
+        graph = (self.package / 'skills/sub-agent-graph/SKILL.md').read_text(encoding='utf-8')
+        loop = (self.package / 'skills/sub-agent-loop/SKILL.md').read_text(encoding='utf-8')
+        for phrase in (
+            'goal', 'relevant files', 'constraints', 'expected output', 'stop condition',
+            'Hindsight', 'internal RAG', 'Sub-agents',
+        ):
+            self.assertIn(phrase, graph)
+        for phrase in ('recall', 'retain', 'internal RAG', 'Context7', 'finding'):
+            self.assertIn(phrase, loop)
+        self.assertIn('does not call', loop)
+        for package in packages.values():
+            self.assertEqual((package / 'skills/sub-agent-graph/SKILL.md').read_text(encoding='utf-8'), graph)
+            self.assertEqual((package / 'skills/sub-agent-loop/SKILL.md').read_text(encoding='utf-8'), loop)
+            bootstrap = (package / 'skills/session-bootstrap/SKILL.md').read_text(encoding='utf-8')
+            self.assertIn('sub-agent-graph', bootstrap)
+            self.assertIn('sub-agent-loop', bootstrap)
+
     def test_zip_is_reproducible_complete_and_runs_after_extraction(self):
         first, second = self.base / 'first.zip', self.base / 'second.zip'
         for output in (first, second):

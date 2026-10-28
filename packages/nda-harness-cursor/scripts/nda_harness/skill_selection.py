@@ -188,10 +188,12 @@ def classify_answers(task, catalog, answers, model_returned):
         report['status'] = 'blocked'
         return report
     report['probabilities'] = probabilities
-    if any(0.20 < probability < 0.80 for probability in probabilities.values()):
+    uncertain = [{'id': skill_id, 'probability': probabilities[skill_id]} for skill_id in expected if 0.20 < probabilities[skill_id] < 0.80]
+    if uncertain:
         report['diagnostic'] = 'uncertain_decision'
-        report['next'] = 'Clarify the requested deliverable, then select again.'
+        report['next'] = 'Ask the user whether to load each skill in uncertain, then call record-selection with those decisions so the choice is stored in the local cache.'
         report['status'] = 'needs_context'
+        report['uncertain'] = uncertain
         return report
     selected_ids = [skill_id for skill_id in expected if probabilities[skill_id] >= 0.80]
     report['selected'] = [{'entrypoint': entrypoints[skill_id], 'id': skill_id} for skill_id in selected_ids]
@@ -217,10 +219,12 @@ def selection_guidance(client):
             'Never paste a key into chat, argv, or a project file. '
             f'First setup and re-setup use the packaged nda-plugin selection-setup --client {client} in a local terminal. '
             'Replace the saved OpenRouter key by running that command again and confirming in the terminal. '
+            'Answering no keeps the saved key and finishes setup. '
             'Offline check is selection-verify. A paid check is only selection-verify --live. '
             'On authorization_failed, direct the user to that same re-setup command. '
             'For a new assignment, call select-skills with --project, --session, and --request-file, then load-selected-skills. '
-            'On needs_context or blocked, report diagnostic and next. Do not load every specialist.')
+            'On uncertain_decision, ask the user whether to load each skill in uncertain, then call record-selection with those decisions so the choice is stored in the local cache. '
+            'On blocked, report diagnostic and next. Do not load every specialist.')
 
 
 def read_selection_request(request_file, stream):
@@ -241,6 +245,30 @@ def read_selection_request(request_file, stream):
     return data
 
 
+def read_resolution_request(request_file, stream):
+    """Read task JSON plus boolean decisions for the uncertain skills."""
+    piped = not stream.isatty()
+    if (request_file is not None) == piped:
+        raise SelectionError('invalid_task_input')
+    try:
+        raw = Path(request_file).read_text(encoding='utf-8') if request_file is not None else stream.read(MAX_INPUT + 1)
+    except OSError:
+        raise SelectionError('invalid_task_input') from None
+    if not isinstance(raw, str) or len(raw.encode()) > MAX_INPUT:
+        raise SelectionError('invalid_task_input')
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        raise SelectionError('invalid_task_input') from None
+    if not isinstance(data, dict) or set(data) != {'schema_version', 'request', 'stage', 'project_facts', 'decisions'}:
+        raise SelectionError('invalid_task_input')
+    decisions = data['decisions']
+    if not isinstance(decisions, dict) or not decisions or any(type(value) is not bool for value in decisions.values()):
+        raise SelectionError('invalid_task_input')
+    task = {key: data[key] for key in ('schema_version', 'request', 'stage', 'project_facts')}
+    return validate_task_input(task), decisions
+
+
 def _session_id(session):
     if not isinstance(session, str) or not 1 <= len(session) <= 200 or any(ord(character) < 32 for character in session):
         raise SelectionError('invalid_task_input')
@@ -256,6 +284,10 @@ def _pointer_path(partition, session):
 
 def _cache_path(partition, key):
     return partition / 'cache' / (key + '.json')
+
+
+def _pending_path(partition, key):
+    return partition / 'pending' / (key + '.json')
 
 
 def _write_json(path, payload):
@@ -358,6 +390,57 @@ def _remember(path, payload):
     _write_json(path, payload)
 
 
+def _resolved_probabilities(jev_probabilities, decisions):
+    uncertain = [skill_id for skill_id, probability in jev_probabilities.items() if 0.20 < probability < 0.80]
+    if not isinstance(decisions, dict) or set(decisions) != set(uncertain) or any(type(value) is not bool for value in decisions.values()):
+        raise SelectionError('invalid_decision')
+    resolved = dict(jev_probabilities)
+    for skill_id, include in decisions.items():
+        resolved[skill_id] = 1.0 if include else 0.0
+    return resolved
+
+
+def _pending_usable(record, catalog, release_manifest, generation):
+    if not record or record.get('expires_at', 0) <= time.time():
+        return False
+    if record.get('generation') != generation or record.get('catalog_revision') != catalog_revision(catalog):
+        return False
+    if record.get('release_revision') != _release_revision(release_manifest):
+        return False
+    if record.get('rules_version') != RULES_VERSION or record.get('model_requested') != MODEL:
+        return False
+    probabilities = record.get('jev_probabilities')
+    expected = [skill['id'] for skill in catalog['skills']]
+    if not isinstance(probabilities, dict) or set(probabilities) != set(expected):
+        return False
+    try:
+        return any(0.20 < _probability(value) < 0.80 for value in probabilities.values())
+    except SelectionError:
+        return False
+
+
+def _ready_record(decision, *, key, generation, fingerprint, release_manifest, catalog_root, jev_probabilities=None, user_decisions=None):
+    record = {
+        'body_hashes': _body_hashes(catalog_root, decision['selected']),
+        'cache_key': key,
+        'catalog_revision': decision['catalog_revision'],
+        'expires_at': time.time() + CACHE_TTL,
+        'generation': generation,
+        'input_fingerprint': fingerprint,
+        'model_requested': MODEL,
+        'model_returned': decision['model_returned'],
+        'probabilities': decision['probabilities'],
+        'release_revision': _release_revision(release_manifest),
+        'rules_version': RULES_VERSION,
+        'selected': decision['selected'],
+        'selection_id': decision['selection_id'],
+    }
+    if user_decisions is not None:
+        record['jev_probabilities'] = jev_probabilities
+        record['user_decisions'] = {skill_id: user_decisions[skill_id] for skill_id in sorted(user_decisions)}
+    return record
+
+
 def select_skills(task, *, project, session, home, catalog_root, release_manifest, keychain, transport=None, refresh=False):
     """Select specialists for this session, reusing a validated cache hit when the inputs match."""
     try:
@@ -392,19 +475,34 @@ def select_skills(task, *, project, session, home, catalog_root, release_manifes
             _remember(pointer, {'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint, 'selection_id': None, 'status': 'blocked'})
             return _blocked('credential_missing' if presence == 'missing' else 'credential_unavailable')
         cache = _cache_path(partition, key)
+        pending_path = _pending_path(partition, key)
         if refresh:
             _remove_file(cache)
+            _remove_file(pending_path)
         record = None if refresh else _read_json(cache)
         if _cache_usable(record, catalog, release_manifest, current_generation, catalog_root):
             decision = classify_answers(normalized, catalog, {skill_id: {'noul': probability, 'type': 'noul'} for skill_id, probability in record['probabilities'].items()}, record.get('model_returned') or MODEL)
             decision['provider_request_id'] = None
             decision['source'] = 'cache'
             decision['usage'] = None
+            if isinstance(record.get('user_decisions'), dict):
+                decision['user_decisions'] = record['user_decisions']
             _remember(pointer, {
                 'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint,
                 'selection_id': decision['selection_id'], 'status': 'ready',
             })
             return decision, 0
+        pending = None if refresh else _read_json(pending_path)
+        if _pending_usable(pending, catalog, release_manifest, current_generation):
+            decision = classify_answers(normalized, catalog, {skill_id: {'noul': probability, 'type': 'noul'} for skill_id, probability in pending['jev_probabilities'].items()}, pending.get('model_returned') or MODEL)
+            decision['provider_request_id'] = None
+            decision['source'] = 'pending'
+            decision['usage'] = None
+            _remember(pointer, {
+                'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint,
+                'selection_id': None, 'status': 'needs_context',
+            })
+            return decision, 3
         _remove_file(cache)
         try:
             secret = keychain.read()
@@ -422,27 +520,36 @@ def select_skills(task, *, project, session, home, catalog_root, release_manifes
             _remember(pointer, {'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint, 'selection_id': None, 'status': 'blocked'})
             return _blocked(result['diagnostic'], result.get('next'))
         decision = classify_answers(normalized, catalog, result['answers'], result['model'])
+        if decision.get('diagnostic') == 'uncertain_decision':
+            _write_json(pending_path, {
+                'catalog_revision': decision['catalog_revision'],
+                'expires_at': time.time() + CACHE_TTL,
+                'generation': current_generation,
+                'input_fingerprint': fingerprint,
+                'jev_probabilities': decision['probabilities'],
+                'model_requested': MODEL,
+                'model_returned': decision['model_returned'],
+                'release_revision': _release_revision(release_manifest),
+                'rules_version': RULES_VERSION,
+            })
+            _remember(pointer, {
+                'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint,
+                'selection_id': None, 'status': 'needs_context',
+            })
+            decision['provider_request_id'] = result.get('provider_request_id')
+            decision['source'] = 'openrouter'
+            decision['usage'] = result.get('usage')
+            return decision, 3
         if decision['status'] != 'ready':
             _remember(pointer, {
                 'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint,
                 'selection_id': None, 'status': decision['status'],
             })
-            return decision, 3 if decision['status'] == 'needs_context' else 2
-        stored = {
-            'body_hashes': _body_hashes(catalog_root, decision['selected']),
-            'cache_key': key,
-            'catalog_revision': decision['catalog_revision'],
-            'expires_at': time.time() + CACHE_TTL,
-            'generation': current_generation,
-            'input_fingerprint': fingerprint,
-            'model_requested': MODEL,
-            'model_returned': decision['model_returned'],
-            'probabilities': decision['probabilities'],
-            'release_revision': _release_revision(release_manifest),
-            'rules_version': RULES_VERSION,
-            'selected': decision['selected'],
-            'selection_id': decision['selection_id'],
-        }
+            return decision, 2
+        stored = _ready_record(
+            decision, key=key, generation=current_generation, fingerprint=fingerprint,
+            release_manifest=release_manifest, catalog_root=catalog_root,
+        )
         _write_json(cache, stored)
         _remember(pointer, {
             'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint,
@@ -451,6 +558,72 @@ def select_skills(task, *, project, session, home, catalog_root, release_manifes
         decision['provider_request_id'] = result.get('provider_request_id')
         decision['source'] = 'openrouter'
         decision['usage'] = result.get('usage')
+        return decision, 0
+
+
+def record_selection(task, decisions, *, project, session, home, catalog_root, release_manifest, keychain):
+    """Store the user's yes or no for each uncertain skill in the local Jev cache."""
+    try:
+        _session_id(session)
+        current_generation = generation_id(home)
+        normalized = validate_task_input(task)
+        catalog = load_catalog(catalog_root)
+    except SelectionError as error:
+        return _blocked(error.code)
+    except OSError:
+        return _blocked('credential_missing')
+    partition = _partition(home, project, current_generation)
+    fingerprint = input_fingerprint(normalized)
+    with locked(partition):
+        try:
+            presence = keychain.status()
+        except OSError:
+            presence = 'unavailable'
+        if presence != 'present':
+            return _blocked('credential_missing' if presence == 'missing' else 'credential_unavailable')
+        key = _cache_key(normalized, catalog, release_manifest, current_generation)
+        pending_path = _pending_path(partition, key)
+        cache = _cache_path(partition, key)
+        pending = _read_json(pending_path)
+        source_probabilities = None
+        model_returned = MODEL
+        if _pending_usable(pending, catalog, release_manifest, current_generation):
+            source_probabilities = pending['jev_probabilities']
+            model_returned = pending.get('model_returned') or MODEL
+        else:
+            record = _read_json(cache)
+            if _cache_usable(record, catalog, release_manifest, current_generation, catalog_root) and isinstance(record.get('jev_probabilities'), dict):
+                source_probabilities = record['jev_probabilities']
+                model_returned = record.get('model_returned') or MODEL
+        if source_probabilities is None:
+            return _blocked('selection_required', 'Call select-skills before recording a decision.')
+        try:
+            resolved = _resolved_probabilities(source_probabilities, decisions)
+        except SelectionError as error:
+            return _blocked(error.code)
+        decision = classify_answers(
+            normalized, catalog,
+            {skill_id: {'noul': probability, 'type': 'noul'} for skill_id, probability in resolved.items()},
+            model_returned,
+        )
+        if decision['status'] != 'ready':
+            return _blocked('invalid_decision')
+        ordered = {skill_id: decisions[skill_id] for skill_id in sorted(decisions)}
+        stored = _ready_record(
+            decision, key=key, generation=current_generation, fingerprint=fingerprint,
+            release_manifest=release_manifest, catalog_root=catalog_root,
+            jev_probabilities=source_probabilities, user_decisions=ordered,
+        )
+        _write_json(cache, stored)
+        _remove_file(pending_path)
+        _remember(_pointer_path(partition, session), {
+            'cache_key': key, 'generation': current_generation, 'input_fingerprint': fingerprint,
+            'selection_id': decision['selection_id'], 'status': 'ready',
+        })
+        decision['provider_request_id'] = None
+        decision['source'] = 'user'
+        decision['usage'] = None
+        decision['user_decisions'] = ordered
         return decision, 0
 
 
