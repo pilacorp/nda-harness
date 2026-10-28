@@ -1,6 +1,6 @@
 {
   "asset_hashes": {
-    ".cursor-plugin/plugin.json": "8f3daecbb145d51822079380d326b1874f8d0dd69195cfe88ad3f51cab4a4199",
+    ".cursor-plugin/plugin.json": "7cb38c26398a93c95686adc663c1cbd74151e311fa728de21aca90aafcbb7edd",
     "assets/logo.jpg": "6e7436cdfd743807a6763e8f0ec20895636f24c920f6f4c90db4def7552a116d",
     "bin/nda-plugin": "b7717fea9f2bcdeeb6a074901245664e49983f032c4227e0645a8a29c94cd66e",
     "hooks/hooks.json": "e9a00719665f12a41d7422528932f9402d2df512498cb2b4cc876bb7c06ee7d2",
@@ -38,7 +38,7 @@
     "scripts/nda_harness/hooks.py": "0de7f347a1284fb15998fa96fb7a3bc2fc7108642a0aaf06884d17cf0ca98e21",
     "scripts/nda_harness/memory.py": "e8144b3b75daf6d14a3886af7635ef1f3229ce319795e806680dc998619a856b",
     "scripts/nda_harness/openrouter.py": "ed5334c22b6f34645cd338b190c9579d9e7e13897581cb312146839bc08bde40",
-    "scripts/nda_harness/plugin_build.py": "96c8faf81daf102aa19b76224f45f5416bf8bc730bf3cef9f81fe929653d683d",
+    "scripts/nda_harness/plugin_build.py": "b3891f8a0ec19ee6d35d08355e82017eac1342f737e13f68f67c6cdfc33f7d21",
     "scripts/nda_harness/plugin_runtime.py": "2c97551dd2b4d6e94d1b914ca05a3d7be6db3274f913faa24392f72801b9d385",
     "scripts/nda_harness/project.py": "85cfed0f17e2909caa4bef5786560c8a6480511c9c1777cbdb1a1517a32c8d56",
     "scripts/nda_harness/skill_selection.py": "85eb9f49b4a9b1563e0530ed07bf682f085336ecbc97a57e85d87273aeca43fd",
