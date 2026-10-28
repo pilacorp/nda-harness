@@ -16,7 +16,7 @@ from nda_harness.project import locked, configure, inspect_project, root_for, lo
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
 from nda_harness.credentials import MacKeychain, selection_setup, setup_message
 from nda_harness.openrouter import selection_verify, verify_message
-from nda_harness.skill_selection import SelectionError, load_selected_skills, read_selection_request, select_skills
+from nda_harness.skill_selection import SelectionError, load_selected_skills, read_resolution_request, read_selection_request, record_selection, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
 
 
@@ -242,7 +242,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', 'selection-setup', 'selection-verify', 'select-skills', 'load-selected-skills', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', 'selection-setup', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -281,9 +281,13 @@ def main(argv=None):
             print(setup_message(report))
             return code
         project = args.project or str(Path.cwd())
-        if args.command in ('select-skills', 'load-selected-skills'):
+        if args.command in ('select-skills', 'record-selection', 'load-selected-skills'):
             try:
-                data = read_selection_request(args.request_file, sys.stdin)
+                if args.command == 'record-selection':
+                    data, decisions = read_resolution_request(args.request_file, sys.stdin)
+                else:
+                    data = read_selection_request(args.request_file, sys.stdin)
+                    decisions = None
             except SelectionError:
                 print(json.dumps({'diagnostic': 'invalid_task_input', 'implementation_authorized': False, 'status': 'blocked'}))
                 return 2
@@ -297,6 +301,8 @@ def main(argv=None):
             kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': MacKeychain()}
             if args.command == 'select-skills':
                 report, code = select_skills(data, transport=None, refresh=args.refresh, **kwargs)
+            elif args.command == 'record-selection':
+                report, code = record_selection(data, decisions, **kwargs)
             else:
                 report, code = load_selected_skills(data, **kwargs)
             print(json.dumps(report))

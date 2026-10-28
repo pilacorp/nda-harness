@@ -24,8 +24,9 @@ The main decisions proposed for approval are:
   it cannot remove approval checks, TDD, RTK, or other required instructions.
 - Package specialist bodies outside the native skill registration directory.
   Only the selected bodies should be returned to the coding agent.
-- If selection fails or the answer is uncertain, explain the problem and pause
-  specialist work. Do not load every skill as a fallback.
+- If selection fails, explain the problem and pause specialist work. If a score
+  is uncertain, ask the user whether to load that skill and store the answer in
+  the local cache. Do not load every skill as a fallback.
 
 **Limit:** the harness can control its own loader and package layout. It cannot
 prevent an agent from using other file-reading tools or another installed plugin.
@@ -88,9 +89,11 @@ it does not revoke the key in OpenRouter. There is no automatic paid call on set
 session start, verification without `--live`, or credential replacement.
 
 During normal work, the agent prepares bounded task input, calls `select-skills`,
-and reads only the returned selection through `load-selected-skills`. There is no
-confirmation prompt for each selection. A changed assignment requires a new
-selection; a simple continuation of the same assignment can reuse its result.
+and reads only the returned selection through `load-selected-skills`. A confident
+score needs no confirmation. A score strictly between 0.20 and 0.80 asks the user
+whether to load that skill, then `record-selection` stores the answer in the local
+cache. A changed assignment requires a new selection; a simple continuation of the
+same assignment can reuse its result, including a stored user decision.
 
 ## Sources and scope
 
@@ -247,11 +250,15 @@ Initial reviewed thresholds are:
 | --- | --- |
 | `p >= 0.80` | Select this specialist. |
 | `p <= 0.20` | Exclude it. |
-| `0.20 < p < 0.80` | Return `needs_context`; do not issue a loadable selection. |
+| `0.20 < p < 0.80` | Return `needs_context` with that skill in `uncertain`. Ask the user, then store the decision in the local cache. Do not issue a loadable selection until then. |
 
 These are proposed operating defaults, not measured accuracy claims. If any skill
-is uncertain, report its IDs and ask the agent to clarify the deliverable before
-reselection. Do not invent a reason or send a second automatic model call. If all
+is uncertain, report its id and probability. The agent asks the user whether to
+load each uncertain skill and calls `record-selection` with those booleans. That
+command resolves each included skill to 1.0 and each excluded skill to 0.0, writes
+the normal cache entry, and leaves the original Jev probabilities beside the
+decision so a later change of the same choice can be recorded without another model
+call. Do not invent a reason or send a second automatic model call. If all
 skills are confidently excluded, return a successful empty selection.
 Use catalog-based descriptions for human output; Jev supplies decisions, not prose.
 
@@ -270,7 +277,8 @@ Add these operations to the existing client-bound launcher:
 | --- | --- |
 | `selection-setup` | Human-only terminal prompt; store/replace key. `--remove` deletes only the owned local item. Requires a TTY; no stdin key or key argument. |
 | `selection-verify` | Offline package/catalog/credential-presence check. `--live` explicitly performs a synthetic Jev call. Does not load specialists. |
-| `select-skills` | Requires `--project`, `--session`, and task JSON. Returns structured selection; never body text. `--refresh` explicitly bypasses a cache hit. |
+| `select-skills` | Requires `--project`, `--session`, and task JSON. Returns structured selection; never body text. `--refresh` explicitly bypasses a cache hit. An uncertain result is not loadable. |
+| `record-selection` | Requires the same task JSON plus `decisions`, booleans for exactly the uncertain skill ids. Stores the resolved choice in the local cache. No network call. |
 | `load-selected-skills` | Requires the same project/session/task JSON. Loads an already successful matching selection without a network call. Missing/stale selection requires selection first. |
 
 Existing `--client` remains required and fixed by the wrapper. Resolve project
@@ -363,8 +371,10 @@ a hash of its session ID. It contains the input fingerprint, cache key, selectio
 ID when ready, credential generation, and status; no task text. Under the project
 lock, a `select-skills` invocation first changes that session's pointer to pending,
 before checking cache or calling the provider. Success, including a valid cache
-hit, atomically activates the matching ready result. Failure or uncertainty marks
-the pointer blocked/needs_context and clears its loadable selection ID. Once the
+hit, atomically activates the matching ready result. Failure marks the pointer
+blocked and clears its loadable selection ID. Uncertainty marks it `needs_context`,
+stores the original probabilities in a pending file, and clears the loadable
+selection ID until `record-selection` writes the ready cache. Once the
 project/session is identified, invalid task input also blocks its previous pointer.
 
 A child/new session must explicitly call `select-skills` with the same assignment
@@ -374,9 +384,11 @@ cached. Explicitly selecting A again is a new assignment activation, not a loade
 bypass. Session identity and current assignment remain caller responsibilities;
 this mechanism is not an authorization boundary.
 
-`--refresh` also removes the matching shared ready cache entry before the paid
-request. A failed/uncertain refresh leaves no loadable entry for that cache key;
-an older session pointer cannot revive it. A normal failure for new task B does
+`--refresh` also removes the matching shared ready cache entry and any pending
+uncertain record before the paid request. A failed refresh leaves no loadable
+entry for that cache key. An uncertain refresh leaves a pending record and no
+loadable entry. A stored user decision is a loadable cache entry. An older session
+pointer cannot revive a removed entry. A normal failure for new task B does
 not delete unrelated cached task A, but neither can be loaded in B's blocked
 session until a successful selection activates one. Loading takes the same project
 lock and rechecks pointer, cache entry, generation, and versions together. Credential
@@ -448,7 +460,7 @@ All tests below are planned; no implementation or paid test has run for this spe
 | TC-02 | Inject fake credential and HTTP transport | Bearer goes only to fixed HTTPS origin; task contains metadata and bounded input; no key in result/logs | Unit; AC-01,02 |
 | TC-03 | Place distinctive sentinels in specialist bodies/references; select backend work | No sentinel in provider request/output; integrity hashing is allowed but bodies are not read into request construction | Unit; AC-04 |
 | TC-04 | Return all-low, one-high, and two-high probabilities | Ready empty/single/multiple results, stable order, loader matches exactly | Unit; AC-03,04 |
-| TC-05 | Values at .20/.80, in between, bool/NaN/out of range; missing/extra IDs | Exact threshold behavior; uncertain blocks all loading; invalid values/sets rejected | Unit; AC-03,06 |
+| TC-05 | Values at .20/.80, in between, bool/NaN/out of range; missing/extra IDs | Exact threshold behavior; uncertain asks the user and stores the recorded decision; invalid values/sets rejected | Unit; AC-03,06 |
 | TC-06 | Repeat normalized input, change array order; then change request/stage/facts/catalog/rules/model/release/generation; expire cache | Equivalent inputs hit without network; changed/expired inputs miss; concurrent identical miss calls once | Unit; AC-05 |
 | TC-07 | Traverse/symlink entrypoint, tamper private result, alter body/release; select A then B then load A; use a fresh child/session | Invalid/stale loads fail; A cannot load after B; child activates a shared hit only through selection | Unit; AC-03,04 |
 | TC-08 | Mock redirects, oversized response, HTTP errors, timeout, malformed JSON/model; refresh a ready entry and then fail or return uncertainty | Bounded sanitized error; no retry/background call/full fallback; failed refresh removes the old loadable entry across session pointers | Unit; AC-06 |
