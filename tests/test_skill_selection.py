@@ -19,7 +19,7 @@ from nda_harness.credentials import selection_setup
 from nda_harness.openrouter import DECISIONS_URL, post_decision, selection_verify
 from nda_harness.skill_selection import (
     SelectionError, build_decision_request, classify_answers, input_fingerprint, load_catalog,
-    load_selected_skills, read_selection_request, select_skills, validate_task_input,
+    load_selected_skills, read_resolution_request, read_selection_request, record_selection, select_skills, validate_task_input,
 )
 
 
@@ -228,6 +228,7 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(result['status'], 'needs_context')
             self.assertIsNone(result['selected'])
             self.assertEqual(result['diagnostic'], 'uncertain_decision')
+            self.assertEqual(result['uncertain'], [{'id': 'diagram-design', 'probability': probability}])
             self.assertNotIn('selection_id', result)
         for answers in (
             {'diagram-design': True, 'ui-ux-pro-max': 0.1, 'vietnamese-official-wording': 0.1},
@@ -440,7 +441,33 @@ class SelectionTests(unittest.TestCase):
         uncertain, code = self._select(package, project, home, keychain, transport, task(request='Maybe a diagram.'), session='one', refresh=True)
         self.assertEqual(code, 3)
         self.assertEqual(uncertain['status'], 'needs_context')
+        self.assertEqual(uncertain['uncertain'], [{'id': 'diagram-design', 'probability': 0.5}])
         self.assertEqual(list(home.rglob('cache/*.json')), [])
+        self.assertEqual(len(list(home.rglob('pending/*.json'))), 1)
+        repeated, code = self._select(package, project, home, keychain, transport, task(request='Maybe a diagram.'), session='one')
+        self.assertEqual(code, 3)
+        self.assertEqual(repeated['source'], 'pending')
+        self.assertEqual(len(transport.calls), 3)
+        missing, code = record_selection(task(request='Maybe a diagram.'), {'diagram-design': True, 'extra': False}, project=project, session='one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain)
+        self.assertEqual(missing['diagnostic'], 'invalid_decision')
+        recorded, code = record_selection(task(request='Maybe a diagram.'), {'diagram-design': True}, project=project, session='one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain)
+        self.assertEqual(code, 0)
+        self.assertEqual(recorded['source'], 'user')
+        self.assertEqual(recorded['selected'], [{'entrypoint': 'diagram-design/SKILL.md', 'id': 'diagram-design'}])
+        self.assertEqual(recorded['user_decisions'], {'diagram-design': True})
+        self.assertEqual(list(home.rglob('pending/*.json')), [])
+        loaded, code = load_selected_skills(task(request='Maybe a diagram.'), project=project, session='one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain)
+        self.assertEqual(code, 0)
+        self.assertEqual(loaded['skills'][0]['id'], 'diagram-design')
+        cached, code = self._select(package, project, home, keychain, transport, task(request='Maybe a diagram.'), session='one')
+        self.assertEqual(code, 0)
+        self.assertEqual(cached['source'], 'cache')
+        self.assertEqual(cached['user_decisions'], {'diagram-design': True})
+        self.assertEqual(len(transport.calls), 3)
+        declined, code = record_selection(task(request='Maybe a diagram.'), {'diagram-design': False}, project=project, session='one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain)
+        self.assertEqual(code, 0)
+        self.assertEqual(declined['selected'], [])
+        self.assertEqual(len(transport.calls), 3)
 
     def test_replacement_uses_the_new_key_and_skips_the_old_cache(self):
         package, project, home, keychain = self._selection_env(secret='first-bearer-token')
@@ -503,9 +530,11 @@ class SelectionTests(unittest.TestCase):
             self.assertIn(client, skill)
             self.assertIn(root_variable, skill)
             self.assertNotIn('@CLIENT@', skill)
-            for command in ('selection-setup', 'selection-verify', 'select-skills', 'load-selected-skills'):
+            for command in ('selection-setup', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills'):
                 self.assertIn(command, skill)
             self.assertIn('Replace the saved OpenRouter key', skill)
+            self.assertIn('Answering no keeps the saved key and finishes setup', skill)
+            self.assertIn('The saved OpenRouter key was kept.', skill)
             self.assertIn('open a terminal and run', skill)
             self.assertIn('not JSON', skill)
             self.assertIn('scripts/open-terminal.sh', skill)
@@ -525,6 +554,8 @@ class SelectionTests(unittest.TestCase):
         rule = (cursor / 'rules/nda-harness.mdc').read_text(encoding='utf-8')
         self.assertIn('selection-setup', rule)
         self.assertIn('Replace the saved OpenRouter key', rule)
+        self.assertIn('Answering no keeps the saved key and finishes setup', rule)
+        self.assertIn('record-selection', rule)
 
     def _redirect_handler(self):
         from nda_harness.openrouter import RejectRedirects

@@ -105,12 +105,15 @@ class CredentialTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE((self.home / 'skill-selection' / 'generation').stat().st_mode), 0o600)
 
         report, code, calls, tty = self.setup(keychain, ['n\n'], SECOND)
-        self.assertEqual(code, 130)
+        self.assertEqual(code, 0)
+        self.assertEqual(report['status'], 'ready')
+        self.assertEqual(report['diagnostic'], 'credential_kept')
         self.assertEqual(calls, [])
         self.assertEqual(keychain.writes, 1)
         self.assertEqual(keychain.secret, FIRST)
         self.assertEqual(generation_id(self.home), generation)
         self.assertIn('Replace the saved OpenRouter key?', ''.join(tty.prompts))
+        self.assertEqual(setup_message(report), 'The saved OpenRouter key was kept.')
 
         report, code, calls, _tty = self.setup(keychain, ['y\n'], SECOND)
         self.assertEqual(code, 0)
@@ -141,6 +144,7 @@ class CredentialTests(unittest.TestCase):
         self.assertNotIn('{', saved)
         self.assertEqual(setup_message({'status': 'ready', 'diagnostic': 'credential_removed'}), 'OpenRouter key removed.')
         self.assertEqual(setup_message({'status': 'cancelled'}), 'Cancelled. The saved key was not changed.')
+        self.assertEqual(setup_message({'status': 'ready', 'diagnostic': 'credential_kept'}), 'The saved OpenRouter key was kept.')
         self.assertEqual(setup_message({'status': 'blocked', 'diagnostic': 'invalid_credential'}), 'The key was empty. Nothing was saved.')
         self.assertNotIn('first-openrouter-key', setup_message({'status': 'ready'}))
 

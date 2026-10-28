@@ -66,6 +66,8 @@ def setup_message(report):
     diagnostic = report.get('diagnostic')
     if status == 'ready' and diagnostic == 'credential_removed':
         return 'OpenRouter key removed.'
+    if status == 'ready' and diagnostic == 'credential_kept':
+        return 'The saved OpenRouter key was kept.'
     if status == 'ready':
         return 'OpenRouter key saved.'
     if status == 'cancelled':
@@ -113,7 +115,7 @@ def selection_setup(keychain, tty, home, *, remove=False, read_secret=None):
             return _report('blocked', 2, 'credential_unavailable')
         return _report('ready', 0, 'credential_removed')
     if status == 'present' and not _confirm(tty, 'Replace the saved OpenRouter key?'):
-        return _report('cancelled', 130)
+        return _report('ready', 0, 'credential_kept')
     if read_secret is None:
         import getpass
         secret = getpass.getpass('OpenRouter key: ', stream=_output(tty))

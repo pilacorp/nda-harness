@@ -116,8 +116,9 @@ separate from Hindsight authentication and the server's OpenRouter key.
    OpenRouter key saved.
    ```
 
-   Running `/skill-selection` again asks before replacing a saved key. Cancel
-   leaves the saved key unchanged.
+   Running `/skill-selection` again asks before replacing a saved key. Answering
+   no keeps the saved key, prints `The saved OpenRouter key was kept.`, and
+   finishes setup.
 3. Return to the chat and ask the agent to run `selection-verify`. A successful
    offline check reports `OpenRouter key is present.` This checks local setup,
    not API authorization or account credit. For one synthetic paid API check,
@@ -130,9 +131,10 @@ separate from Hindsight authentication and the server's OpenRouter key.
 
 Selection sends bounded task text and catalog metadata to OpenRouter. The current
 specialists are Diagram Design, UI/UX Pro Max, and Vietnamese official wording.
-An empty selection is valid; unclear selection requires clarification of the
-deliverable. Mandatory workflow skills remain active, and selection does not
-approve implementation. See [skill selection details](skill-selection.md).
+An empty selection is valid. When a score is strictly between 0.20 and 0.80, the agent
+asks whether to load that skill and stores the answer in the local Jev cache.
+Mandatory workflow skills remain active, and selection does not approve
+implementation. See [skill selection details](skill-selection.md).
 
 If Terminal prints `A local terminal is required.`, run `/skill-selection` again
 and use the Terminal window it opens. For `authorization_failed`, run
