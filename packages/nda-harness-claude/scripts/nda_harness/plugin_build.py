@@ -18,7 +18,9 @@ from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.6'
+RELEASE_VERSION = '0.0.7'
+NDA_RAG_SERVER = 'nda-harness-nda-rag'
+NDA_RAG_MCP = 'https://docs-dev.chainhub.vn/api/mcp'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
 SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
@@ -45,6 +47,27 @@ def validate_endpoint(url, local_test=False):
         _ = parsed.port
     except (ValueError, TypeError):
         raise ValueError('HINDSIGHT_MCP_URL must be an HTTPS /mcp/ URL without credentials, query or fragment; HTTP loopback needs --local-test.') from None
+    return url
+
+
+def validate_rag_endpoint(url, local_test=False):
+    if url is None:
+        return None
+    if not isinstance(url, str) or any(c.isspace() or ord(c) < 32 for c in url):
+        raise ValueError('NDA_RAG_MCP_URL must be an HTTPS /api/mcp URL without credentials, query or fragment.')
+    try:
+        parsed = urlsplit(url)
+        local = parsed.hostname == 'localhost'
+        try:
+            local = local or ipaddress.ip_address(parsed.hostname).is_loopback
+        except ValueError:
+            pass
+        valid_scheme = parsed.scheme == 'https' or (local_test and local and parsed.scheme == 'http')
+        if not valid_scheme or not parsed.hostname or parsed.username is not None or parsed.password is not None or parsed.path != '/api/mcp' or parsed.query or parsed.fragment or '?' in url or '#' in url:
+            raise ValueError()
+        _ = parsed.port
+    except (ValueError, TypeError):
+        raise ValueError('NDA_RAG_MCP_URL must be an HTTPS /api/mcp URL without credentials, query or fragment; HTTP loopback needs --local-test.') from None
     return url
 
 
@@ -110,7 +133,7 @@ def memory_endpoints(hindsight_url=None, pairs=(), *, local_test=False):
     return endpoints
 
 
-def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None, version=RELEASE_VERSION):
+def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None, rag_endpoint=None, version=RELEASE_VERSION):
     source, destination = Path(source).resolve(), Path(destination).absolute()
     if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', version) or len(version) > 64:
         raise ValueError('Plugin version must be a semantic version of at most 64 characters.')
@@ -129,6 +152,7 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         if system_id not in SYSTEMS:
             raise ValueError('Unknown memory system.')
         endpoints[system_id] = validate_endpoint(url, local_test)
+    rag_url = NDA_RAG_MCP if rag_endpoint is None else validate_rag_endpoint(rag_endpoint, local_test)
     if destination.exists() or destination.is_symlink():
         raise ValueError('Choose a new package output directory; existing files are preserved.')
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -176,7 +200,10 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
             manifest.update({'author': {'name': 'NDA Harness'}, 'logo': 'assets/logo.jpg', 'rules': './rules/',
                              'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json'})
         write(root, f'.{client}-plugin/plugin.json', json_bytes(manifest))
-        servers = {'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'}}
+        servers = {
+            'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'},
+            NDA_RAG_SERVER: {'url': rag_url},
+        }
         for system_id, url in endpoints.items():
             servers[SYSTEMS[system_id]['server']] = {'url': url}
         if any(not isinstance(name, str) or re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None for name in servers):
@@ -411,27 +438,29 @@ def main(argv=None):
     parser.add_argument('--archive', action='store_true', help='Build a validated ZIP from fresh sources; --output must be a new .zip path.')
     parser.add_argument('--version', default=RELEASE_VERSION, help=f'Semantic plugin version (default: {RELEASE_VERSION}). Use a new version for each release.')
     parser.add_argument('--hindsight-mcp-url', default=None)
+    parser.add_argument('--nda-rag-mcp-url', default=None)
     parser.add_argument('--memory-endpoint', action='append', default=[])
     parser.add_argument('--local-test', action='store_true')
     args = parser.parse_args(argv)
     try:
         source = Path(__file__).resolve().parents[2]
         if args.publish_committed:
-            if args.hindsight_mcp_url or args.memory_endpoint or args.local_test or args.client or args.output or args.archive or args.version != RELEASE_VERSION:
-                raise ValueError('Committed packages use NDA Hindsight at hindsight-api.pila.vn and do not take a custom endpoint.')
+            if args.hindsight_mcp_url or args.nda_rag_mcp_url or args.memory_endpoint or args.local_test or args.client or args.output or args.archive or args.version != RELEASE_VERSION:
+                raise ValueError('Committed packages use production Hindsight and NDA RAG hosts and do not take a custom endpoint.')
             for output in publish_committed(source):
                 print(output)
             return 0
         if not args.client or not args.output:
             parser.error('--client and --output are required unless --publish-committed is set')
+        rag_url = args.nda_rag_mcp_url if args.nda_rag_mcp_url is not None else os.environ.get('NDA_RAG_MCP_URL')
         supplied = args.hindsight_mcp_url is not None or bool(args.memory_endpoint) or args.local_test or os.environ.get('HINDSIGHT_MCP_URL')
         builder = build_archive if args.archive else build
         if supplied:
             endpoint = args.hindsight_mcp_url if args.hindsight_mcp_url is not None else os.environ.get('HINDSIGHT_MCP_URL')
             endpoints = memory_endpoints(endpoint, args.memory_endpoint, local_test=args.local_test)
-            output = builder(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints, version=args.version)
+            output = builder(source, args.output, args.client, local_test=args.local_test, memory_endpoints=endpoints, rag_endpoint=rag_url, version=args.version)
         else:
-            output = builder(source, args.output, args.client, version=args.version)
+            output = builder(source, args.output, args.client, rag_endpoint=rag_url, version=args.version)
         print(output)
         return 0
     except (OSError, ValueError, KeyError, tarfile.TarError, zipfile.BadZipFile) as error:
