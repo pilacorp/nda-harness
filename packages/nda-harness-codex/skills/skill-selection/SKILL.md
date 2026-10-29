@@ -32,4 +32,6 @@ On `authorization_failed`, direct the user to the same re-setup command. Do not 
 
 For a new assignment, call `select-skills` with `--project`, `--session`, and `--request-file`, then `load-selected-skills` with the same task JSON. Do not read specialist bodies before that. On `uncertain_decision`, ask the user whether to load each skill in `uncertain`. Do not choose for them. Then call `record-selection` with the same task JSON plus a `decisions` object mapping each uncertain skill id to true or false. That stores the choice in the local Jev cache. Then call `load-selected-skills`. On `blocked`, report `diagnostic` and `next`. Do not load every specialist.
 
+On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key in the macOS Keychain is shared by Codex, Cursor, and Claude. Do not create a new key. If the result is diagnostic `sandbox_rerun`, rerun that same command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
+
 Mandatory workflow skills stay in force. Jev does not grant approval.

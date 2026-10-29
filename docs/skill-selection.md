@@ -28,6 +28,8 @@ When Jev returns `uncertain_decision`, `select-skills` lists each uncertain skil
 
 Equivalent task text reuses a cached result for seven days. A changed assignment, catalog, package, rules version, model, or key generation calls Jev again. Replacing the key starts a new generation, so the previous cache is not loaded.
 
+On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key in the macOS Keychain is shared by those clients. Do not create a new key. A sandboxed invocation returns diagnostic `sandbox_rerun` and does not call OpenRouter. Rerun that command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
+
 ## Limits
 
 Specialist directories still ship beside workflow skills. A separate hub directory is later work. Paid selection quality and native client checks are not claimed by the unit tests. No live OpenRouter call is part of those tests.

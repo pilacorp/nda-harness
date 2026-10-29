@@ -110,6 +110,8 @@ def verify_message(report):
     status = report.get('status') if isinstance(report, dict) else None
     diagnostic = report.get('diagnostic') if isinstance(report, dict) else None
     model = report.get('model_returned') if isinstance(report, dict) else None
+    if diagnostic == 'sandbox_rerun':
+        return 'Skill selection must run outside the sandbox so it can use the shared macOS Keychain key. Rerun this command outside the sandbox.'
     if status == 'ready' and accept_model(model):
         return 'Live check passed. Model ' + model + '.'
     if status == 'ready':
@@ -126,7 +128,7 @@ def verify_message(report):
     }.get(diagnostic, 'Skill selection check did not finish.')
 
 
-def selection_verify(package, keychain, *, live=False, transport=None):
+def selection_verify(package, keychain, *, live=False, transport=None, client=None, home=None):
     """Offline package and credential check, or one explicit synthetic decision call."""
     package = Path(package)
     try:
@@ -136,6 +138,10 @@ def selection_verify(package, keychain, *, live=False, transport=None):
         load_catalog(package / 'skills')
     except (OSError, UnicodeError, json.JSONDecodeError, SelectionError):
         return {'diagnostic': 'invalid_catalog', 'implementation_authorized': False, 'status': 'blocked'}, 2
+    from nda_harness.skill_selection import sandbox_refusal
+    skipped = sandbox_refusal(client, home=home, kind='verify')
+    if skipped:
+        return skipped
     try:
         presence = keychain.status()
     except OSError:
