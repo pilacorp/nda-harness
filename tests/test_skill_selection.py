@@ -517,6 +517,71 @@ class SelectionTests(unittest.TestCase):
             release_manifest=release or {'schema_version': 1}, keychain=keychain, transport=transport, refresh=refresh,
         )
 
+    def test_sandboxed_skill_selection_reruns_outside_for_every_client(self):
+        from nda_harness.openrouter import verify_message
+        package, project, home, _keychain = self._selection_env()
+        blocked_home = home.parent / 'sandboxed-home'
+        blocked_home.mkdir()
+        usable = _Keychain('bearer-token-value')
+        transport = _Transport({'diagram-design': 0.95})
+        with patch.dict(os.environ, {'CODEX_SANDBOX': 'seatbelt'}):
+            for client in ('codex', 'cursor', 'claude'):
+                selected, code = select_skills(
+                    task(), project=project, session='session-one', home=home, catalog_root=package,
+                    release_manifest={'schema_version': 1}, keychain=usable, transport=transport, client=client,
+                )
+                self.assertEqual(code, 2, client)
+                self.assertEqual(selected['status'], 'blocked', client)
+                self.assertEqual(selected['diagnostic'], 'sandbox_rerun', client)
+                self.assertIsNone(selected['selected'], client)
+                self.assertIn('outside the sandbox', selected['next'])
+                self.assertIn('shared', selected['next'])
+                loaded, load_code = load_selected_skills(
+                    task(), project=project, session='session-one', home=home, catalog_root=package,
+                    release_manifest={'schema_version': 1}, keychain=usable, client=client,
+                )
+                self.assertEqual(load_code, 2, client)
+                self.assertEqual(loaded['diagnostic'], 'sandbox_rerun', client)
+                self.assertEqual(loaded['skills'], [])
+                recorded, record_code = record_selection(
+                    task(), {}, project=project, session='session-one', home=home, catalog_root=package,
+                    release_manifest={'schema_version': 1}, keychain=usable, client=client,
+                )
+                self.assertEqual(record_code, 2, client)
+                self.assertEqual(recorded['diagnostic'], 'sandbox_rerun', client)
+                verified, verify_code = selection_verify(self._package(), usable, client=client, home=home)
+                self.assertEqual(verify_code, 2, client)
+                self.assertEqual(verified['diagnostic'], 'sandbox_rerun', client)
+                message = verify_message(verified)
+                self.assertIn('outside the sandbox', message)
+                self.assertNotIn('No OpenRouter key is saved.', message)
+                self.assertNotIn('OpenRouter key is present.', message)
+                self.assertNotIn('{', message)
+        self.assertEqual(transport.calls, [])
+        self.assertEqual(usable.reads, 0)
+        with patch('nda_harness.skill_selection.write_denial', return_value='sandbox'):
+            denied, denied_code = select_skills(
+                task(), project=project, session='session-one', home=blocked_home, catalog_root=package,
+                release_manifest={'schema_version': 1}, keychain=usable, transport=transport, client='cursor',
+            )
+        self.assertEqual(denied_code, 2)
+        self.assertEqual(denied['diagnostic'], 'sandbox_rerun')
+        missing = _Keychain(None, status='missing')
+        outside, outside_code = select_skills(
+            task(), project=project, session='session-one', home=blocked_home, catalog_root=package,
+            release_manifest={'schema_version': 1}, keychain=missing, transport=transport, client='claude',
+        )
+        self.assertEqual(outside_code, 2)
+        self.assertEqual(outside['diagnostic'], 'credential_missing')
+        kept, kept_code = select_skills(
+            task(), project=project, session='session-two', home=home, catalog_root=package,
+            release_manifest={'schema_version': 1}, keychain=usable, transport=transport, client='cursor',
+        )
+        self.assertEqual(kept_code, 0)
+        self.assertEqual(kept['status'], 'ready')
+        self.assertNotEqual(kept.get('diagnostic'), 'sandbox_rerun')
+        self.assertGreater(len(transport.calls), 0)
+
     def test_packages_include_the_client_bound_selection_wrapper(self):
         from nda_harness.plugin_build import build
         roots = {'codex': '${PLUGIN_ROOT}', 'cursor': '${CURSOR_PLUGIN_ROOT}', 'claude': '${CLAUDE_PLUGIN_ROOT}'}
@@ -545,6 +610,13 @@ class SelectionTests(unittest.TestCase):
             self.assertNotIn('Forty-four visual types', skill)
             self.assertIn('skill-selection', bootstrap)
             self.assertIn('selection-setup', bootstrap)
+            self.assertIn('outside the sandbox', skill)
+            self.assertIn('sandbox_rerun', skill)
+            self.assertIn('shared by Codex, Cursor, and Claude', skill)
+            self.assertIn('outside the sandbox', bootstrap)
+            self.assertIn('sandbox_rerun', bootstrap)
+            self.assertNotIn('sandbox_skipped', skill)
+            self.assertNotIn('sandbox_skipped', bootstrap)
             self.assertNotIn('Add a settings page', bootstrap)
             self.assertNotIn('sk-or-', bootstrap)
         cursor_parent = Path(tempfile.mkdtemp(dir=ROOT))
@@ -556,6 +628,9 @@ class SelectionTests(unittest.TestCase):
         self.assertIn('Replace the saved OpenRouter key', rule)
         self.assertIn('Answering no keeps the saved key and finishes setup', rule)
         self.assertIn('record-selection', rule)
+        self.assertIn('outside the sandbox', rule)
+        self.assertIn('sandbox_rerun', rule)
+        self.assertIn('shared by Codex, Cursor, and Claude', rule)
 
     def _redirect_handler(self):
         from nda_harness.openrouter import RejectRedirects

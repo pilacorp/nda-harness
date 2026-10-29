@@ -140,7 +140,10 @@ If Terminal prints `A local terminal is required.`, run `/skill-selection` again
 and use the Terminal window it opens. For `authorization_failed`, run
 `/skill-selection` again and confirm replacement of the saved key. For
 `needs_context` or `blocked`, follow the reported diagnostic and next action
-before loading specialist skills.
+before loading specialist skills. On Codex, Cursor, and Claude, run skill
+selection outside the sandbox so it can use the shared macOS Keychain key. Diagnostic
+`sandbox_rerun` means that command ran in the sandbox: rerun it outside the sandbox
+and continue the assignment. Do not create a new OpenRouter key.
 
 ## Setup checklist
 

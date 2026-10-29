@@ -1,13 +1,14 @@
 """Deterministic specialist selection. No network or credentials."""
 import json
 import math
+import os
 from pathlib import Path
 import re
 import time
 import unicodedata
 
 from nda_harness.credentials import generation_id
-from nda_harness.files import atomic, digest, json_bytes
+from nda_harness.files import atomic, digest, json_bytes, write_denial
 from nda_harness.project import locked
 
 
@@ -211,6 +212,45 @@ def classify_answers(task, catalog, answers, model_returned):
 
 CACHE_TTL = 7 * 24 * 60 * 60
 
+_SANDBOX_GUIDANCE = (
+    ' Run select-skills, record-selection, load-selected-skills, and selection-verify outside the sandbox. '
+    'The OpenRouter key in the macOS Keychain is shared by Codex, Cursor, and Claude. Do not create a new key. '
+    'A sandboxed result has diagnostic sandbox_rerun. Rerun that command outside the sandbox and continue the assignment. '
+    'Do not treat sandbox_rerun as a missing key.'
+)
+
+
+def in_sandbox(home=None):
+    """True when this process cannot be the one that reads the shared login Keychain item."""
+    marker = os.environ.get('CODEX_SANDBOX')
+    if isinstance(marker, str) and marker.strip():
+        return True
+    if home is None:
+        return False
+    parent = Path(home)
+    if not parent.is_dir():
+        return False
+    return write_denial(parent) == 'sandbox'
+
+
+def sandbox_refusal(client, *, home=None, kind):
+    """Skill selection reads the shared Keychain item, so it must run outside the sandbox."""
+    if not in_sandbox(home):
+        return None
+    message = (
+        f'Rerun this {client} command outside the sandbox. The OpenRouter key in the macOS Keychain is shared by Codex, Cursor, and Claude. '
+        'Do not create a new key. Then continue the assignment.'
+    )
+    payload = {'diagnostic': 'sandbox_rerun', 'implementation_authorized': False, 'next': message, 'status': 'blocked'}
+    if kind == 'load':
+        payload['skills'] = []
+    elif kind == 'verify':
+        payload['usage'] = None
+    else:
+        payload['selected'] = None
+        payload['source'] = 'sandbox'
+    return payload, 2
+
 
 def selection_guidance(client):
     """Static setup instructions for one client. No task text and no key."""
@@ -224,7 +264,8 @@ def selection_guidance(client):
             'On authorization_failed, direct the user to that same re-setup command. '
             'For a new assignment, call select-skills with --project, --session, and --request-file, then load-selected-skills. '
             'On uncertain_decision, ask the user whether to load each skill in uncertain, then call record-selection with those decisions so the choice is stored in the local cache. '
-            'On blocked, report diagnostic and next. Do not load every specialist.')
+            'On blocked, report diagnostic and next. Do not load every specialist.'
+            + _SANDBOX_GUIDANCE)
 
 
 def read_selection_request(request_file, stream):
@@ -441,8 +482,11 @@ def _ready_record(decision, *, key, generation, fingerprint, release_manifest, c
     return record
 
 
-def select_skills(task, *, project, session, home, catalog_root, release_manifest, keychain, transport=None, refresh=False):
+def select_skills(task, *, project, session, home, catalog_root, release_manifest, keychain, transport=None, refresh=False, client=None):
     """Select specialists for this session, reusing a validated cache hit when the inputs match."""
+    skipped = sandbox_refusal(client, home=home, kind='select')
+    if skipped:
+        return skipped
     try:
         _session_id(session)
         current_generation = generation_id(home)
@@ -561,8 +605,11 @@ def select_skills(task, *, project, session, home, catalog_root, release_manifes
         return decision, 0
 
 
-def record_selection(task, decisions, *, project, session, home, catalog_root, release_manifest, keychain):
+def record_selection(task, decisions, *, project, session, home, catalog_root, release_manifest, keychain, client=None):
     """Store the user's yes or no for each uncertain skill in the local Jev cache."""
+    skipped = sandbox_refusal(client, home=home, kind='record')
+    if skipped:
+        return skipped
     try:
         _session_id(session)
         current_generation = generation_id(home)
@@ -627,8 +674,11 @@ def record_selection(task, decisions, *, project, session, home, catalog_root, r
         return decision, 0
 
 
-def load_selected_skills(task, *, project, session, home, catalog_root, release_manifest, keychain):
+def load_selected_skills(task, *, project, session, home, catalog_root, release_manifest, keychain, client=None):
     """Return bodies for the session's active ready selection. Never calls the network."""
+    skipped = sandbox_refusal(client, home=home, kind='load')
+    if skipped:
+        return skipped
     try:
         _session_id(session)
         keychain.status()

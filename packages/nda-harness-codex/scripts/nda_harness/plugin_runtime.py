@@ -270,7 +270,7 @@ def main(argv=None):
             print(json.dumps(memory_status(config, args.client, native, invalid=invalid), indent=2))
             return 2 if invalid else 0
         if args.command == 'selection-verify':
-            report, code = selection_verify(package, MacKeychain(), live=args.live)
+            report, code = selection_verify(package, MacKeychain(), live=args.live, client=args.client, home=home / '.nda-harness')
             print(verify_message(report) if sys.stdout.isatty() else json.dumps(report))
             return code
         if args.command == 'selection-setup':
@@ -298,7 +298,7 @@ def main(argv=None):
                     manifest = json.loads(release.read_text(encoding='utf-8')).get('asset_hashes') or {}
                 except (OSError, UnicodeError, json.JSONDecodeError):
                     manifest = {}
-            kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': MacKeychain()}
+            kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': MacKeychain(), 'client': args.client}
             if args.command == 'select-skills':
                 report, code = select_skills(data, transport=None, refresh=args.refresh, **kwargs)
             elif args.command == 'record-selection':

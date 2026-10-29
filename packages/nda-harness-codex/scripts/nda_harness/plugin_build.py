@@ -18,7 +18,7 @@ from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.8'
+RELEASE_VERSION = '0.0.9'
 NDA_RAG_SERVER = 'nda-harness-nda-rag'
 NDA_RAG_MCP = 'https://docs-dev.chainhub.vn/api/mcp'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'

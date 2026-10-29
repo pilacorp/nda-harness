@@ -426,6 +426,7 @@ using only an agent's statement that other skills are absent.
 | Condition | Required response |
 | --- | --- |
 | Missing key, locked/denied Keychain | `credential_missing` or `credential_unavailable`; guide terminal setup/unlock. No network call. |
+| Sandboxed skill selection on Codex, Cursor, or Claude | `sandbox_rerun`; rerun the same command outside the sandbox. The macOS Keychain key is shared. No network call and no new key. |
 | Invalid input/catalog/path/release | Reject before provider call or body loading; identify the failed category safely. |
 | HTTP 401/403 | `authorization_failed`; explain key/access check. No automatic replacement or fallback. |
 | HTTP 402/429 | `credit_or_limit` / `rate_limited`; guide administrator/explicit later retry. |
