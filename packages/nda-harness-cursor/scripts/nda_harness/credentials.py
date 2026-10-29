@@ -21,7 +21,15 @@ class KeychainDenied(OSError):
     pass
 
 
+def _guard_home(home):
+    """Refuse a symlinked home state root (~/.nda-harness)."""
+    root = Path(home)
+    if root.is_symlink():
+        raise KeychainDenied()
+
+
 def _state(home):
+    _guard_home(home)
     state = Path(home) / 'skill-selection'
     if state.is_symlink():
         raise KeychainDenied()
@@ -125,6 +133,7 @@ def migrate_message(report):
         'terminal_required': 'A local terminal is required.',
         'credential_missing': 'No OpenRouter key is saved. Run selection-setup in a local terminal.',
         'credential_unavailable': 'The OpenRouter key could not be migrated.',
+        'keychain_unavailable': 'The Keychain item could not be read, so it was not removed. The local file remains the store.',
         'sandbox_rerun': 'Skill selection must run outside the sandbox so it can use the shared OpenRouter key file. Rerun this command outside the sandbox.',
     }.get(diagnostic)
     if mapped:
@@ -170,6 +179,10 @@ class FileCredentialStore:
         return self.home / 'skill-selection' / KEY_NAME
 
     def status(self):
+        try:
+            _guard_home(self.home)
+        except KeychainDenied:
+            return 'unavailable'
         state = self.home / 'skill-selection'
         path = self._path()
         if state.is_symlink() or path.is_symlink():
@@ -328,7 +341,7 @@ def migrate_openrouter_key(tty, home, keychain, *, client=None):
     if file_status == 'present' and chain_status == 'missing':
         return _report('ready', 0, 'credential_already_file')
     if file_status == 'present' and chain_status == 'unavailable':
-        return _report('blocked', 2, 'credential_unavailable')
+        return _report('blocked', 2, 'keychain_unavailable')
 
     if file_status == 'missing' and chain_status == 'present':
         if not _confirm(tty, 'Move the OpenRouter key from Keychain into the local file and delete the Keychain item?'):

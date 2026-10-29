@@ -351,3 +351,123 @@ class CredentialTests(unittest.TestCase):
         subprocess.run(['git', 'init', '-q'], cwd=project, check=True)
         checked = subprocess.run(['git', 'check-ignore', '-q', '.nda-harness/skill-selection/openrouter-key'], cwd=project)
         self.assertEqual(checked.returncode, 0)
+
+    def test_migrate_other_answer_leaves_both_stores(self):
+        self.store.write(FIRST)
+        keychain = FakeKeychain()
+        keychain.secret = SECOND
+        from nda_harness.credentials import _rotate
+        generation = _rotate(self.home)
+        report, code = migrate_openrouter_key(ScriptedTTY(['maybe\n']), self.home, keychain)
+        self.assertEqual(code, 130)
+        self.assertEqual(report['status'], 'cancelled')
+        self.assertEqual(self.store.read(), FIRST)
+        self.assertEqual(keychain.secret, SECOND)
+        self.assertEqual(generation_id(self.home), generation)
+
+    def test_symlink_paths_are_unavailable(self):
+        keychain = FakeKeychain()
+        keychain.secret = FIRST
+        # openrouter-key symlink
+        state = self.home / 'skill-selection'
+        state.mkdir(mode=0o700)
+        target = self.home / 'elsewhere'
+        target.write_text(FIRST + '\n', encoding='utf-8')
+        (state / 'openrouter-key').symlink_to(target)
+        self.assertEqual(self.store.status(), 'unavailable')
+        report, code = migrate_openrouter_key(ScriptedTTY(['y\n']), self.home, keychain)
+        self.assertEqual(code, 2)
+        self.assertEqual(report['diagnostic'], 'credential_unavailable')
+        self.assertEqual(keychain.secret, FIRST)
+        (state / 'openrouter-key').unlink()
+        target.unlink()
+        state.rmdir()
+
+        # skill-selection directory symlink
+        real = self.home / 'real-selection'
+        real.mkdir(mode=0o700)
+        state.symlink_to(real)
+        self.assertEqual(self.store.status(), 'unavailable')
+        report, code = selection_setup(ScriptedTTY([]), self.home, keychain=keychain, read_secret=lambda: SECOND)
+        self.assertEqual(code, 2)
+        self.assertEqual(report['diagnostic'], 'credential_unavailable')
+        state.unlink()
+        real.rmdir()
+
+        # home (~/.nda-harness) symlink
+        linked = Path(tempfile.mkdtemp(dir=ROOT))
+        self.addCleanup(lambda: __import__('shutil').rmtree(linked, ignore_errors=True))
+        target_home = linked / 'target'
+        target_home.mkdir()
+        home_link = linked / 'home-link'
+        home_link.symlink_to(target_home)
+        store = FileCredentialStore(home_link)
+        self.assertEqual(store.status(), 'unavailable')
+        report, code = migrate_openrouter_key(ScriptedTTY(['y\n']), home_link, keychain)
+        self.assertEqual(code, 2)
+        self.assertEqual(report['diagnostic'], 'credential_unavailable')
+
+    def test_setup_declines_move_then_writes_new_key(self):
+        keychain = FakeKeychain()
+        keychain.secret = FIRST
+        report, code, calls, tty = self.setup(['n\n', 'y\n'], SECOND, keychain=keychain)
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, ['secret'])
+        self.assertEqual(self.store.read(), SECOND)
+        self.assertIsNone(keychain.secret)
+        prompts = ''.join(tty.prompts)
+        self.assertIn('An OpenRouter key is still in Keychain. Move it to the local file?', prompts)
+        self.assertIn('Delete the Keychain item?', prompts)
+        self.assertNotEqual(generation_id(self.home), '')
+
+    def test_remove_deletes_file_and_keychain(self):
+        self.store.write(FIRST)
+        keychain = FakeKeychain()
+        keychain.secret = SECOND
+        from nda_harness.credentials import _rotate
+        generation = _rotate(self.home)
+        report, code = selection_setup(ScriptedTTY(['n\n']), self.home, keychain=keychain, remove=True)
+        self.assertEqual(code, 130)
+        self.assertEqual(self.store.read(), FIRST)
+        self.assertEqual(keychain.secret, SECOND)
+        self.assertEqual(generation_id(self.home), generation)
+
+        report, code = selection_setup(ScriptedTTY(['y\n']), self.home, keychain=keychain, remove=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(report['diagnostic'], 'credential_removed')
+        self.assertEqual(self.store.status(), 'missing')
+        self.assertIsNone(keychain.secret)
+        self.assertTrue(self.ignore_path().is_file())
+        self.assertNotEqual(generation_id(self.home), generation)
+
+    def test_migrate_keychain_unavailable_keeps_file(self):
+        self.store.write(FIRST)
+        keychain = FakeKeychain(unavailable=True)
+        report, code = migrate_openrouter_key(ScriptedTTY([]), self.home, keychain)
+        self.assertEqual(code, 2)
+        self.assertEqual(report['diagnostic'], 'keychain_unavailable')
+        self.assertEqual(self.store.read(), FIRST)
+        self.assertEqual(
+            migrate_message(report),
+            'The Keychain item could not be read, so it was not removed. The local file remains the store.',
+        )
+
+    def test_home_gitignore_matches_openrouter_key(self):
+        import shutil
+        import subprocess
+        self.store.write(FIRST)
+        root = Path(tempfile.mkdtemp(dir=ROOT))
+        self.addCleanup(shutil.rmtree, root)
+        # Mirror the skill-selection directory into a disposable git work tree.
+        selection = root / 'skill-selection'
+        selection.mkdir()
+        (selection / '.gitignore').write_bytes(self.ignore_path().read_bytes())
+        (selection / 'openrouter-key').write_bytes(self.key_path().read_bytes())
+        subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+        checked = subprocess.run(['git', 'check-ignore', '-q', 'skill-selection/openrouter-key'], cwd=root)
+        self.assertEqual(checked.returncode, 0)
+        self.assertEqual((selection / '.gitignore').read_bytes(), b'/openrouter-key\n')
+        # Removal leaves the ignore file.
+        selection_setup(ScriptedTTY(['y\n']), self.home, remove=True)
+        self.assertTrue(self.ignore_path().is_file())
+        self.assertEqual(self.ignore_path().read_bytes(), b'/openrouter-key\n')

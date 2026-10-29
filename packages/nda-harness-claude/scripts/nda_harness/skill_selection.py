@@ -257,6 +257,7 @@ def selection_guidance(client):
     return ('Before reading a specialist skill body, use the skill-selection wrapper. '
             'Task text and catalog metadata go to OpenRouter. The key stays in ~/.nda-harness/skill-selection/openrouter-key. '
             'Never paste a key into chat, argv, or a project file. '
+            f'If a Keychain item remains from an older install, run selection-migrate --client {client} once in a local terminal. '
             f'First setup and re-setup use the packaged nda-plugin selection-setup --client {client} in a local terminal. '
             'Replace the saved OpenRouter key by running that command again and confirming in the terminal. '
             'Answering no keeps the saved key and finishes setup. '

@@ -62,9 +62,11 @@ for a later implementing agent. None of the commands introduced below exists yet
 2. Ask the agent to set up skill selection. Its `skill-selection` wrapper explains
    the data sent to OpenRouter and opens or identifies a normal local terminal.
    The person runs the packaged helper there and enters the key themselves.
-3. Run `selection-setup` in that terminal. It uses a hidden prompt and saves the
-   key in Keychain. Never paste the key into chat, a command argument, an `.env`
-   file in the repository, or a project profile.
+3. If an older install still has the key in Keychain, run `selection-migrate`
+   once. Otherwise run `selection-setup` in that terminal. It uses a hidden
+   prompt and saves the key in `~/.nda-harness/skill-selection/openrouter-key`.
+   Never paste the key into chat, a command argument, an `.env` file in the
+   repository, or a project profile. That path is ignored by Git.
 4. Run `selection-verify` for an offline check. Run it with `--live` for a small
    paid synthetic request. The live check returns only a sanitized status,
    request ID, model, and reported usage. It sends no project task or code.
@@ -74,6 +76,7 @@ for a later implementing agent. None of the commands introduced below exists yet
 Example commands after implementation, using Codex as the example client:
 
 ```sh
+rtk proxy /absolute/plugin/bin/nda-plugin selection-migrate --client codex
 rtk proxy /absolute/plugin/bin/nda-plugin selection-setup --client codex
 rtk proxy /absolute/plugin/bin/nda-plugin selection-verify --client codex
 rtk proxy /absolute/plugin/bin/nda-plugin selection-verify --client codex --live
@@ -84,11 +87,12 @@ hosted archives use `scripts/nda-plugin`, following their existing relocation.
 Cursor and Claude use their own fixed `--client` value, not a user selection menu.
 
 Each person configures the key once per macOS login account. All three clients
-use that same Keychain item. Re-running setup replaces only that item after the
+use that same user-only file. Re-running setup replaces only that file after the
 person confirms replacement in the terminal. Cancel preserves the old key.
-`selection-setup --remove` removes only the local item after terminal confirmation;
-it does not revoke the key in OpenRouter. There is no automatic paid call on setup,
-session start, verification without `--live`, or credential replacement.
+`selection-setup --remove` removes the local file and any leftover Keychain item
+after terminal confirmation; it does not revoke the key in OpenRouter. There is
+no automatic paid call on setup, session start, verification without `--live`,
+or credential replacement.
 
 During normal work, the agent prepares bounded task input, calls `select-skills`,
 and reads only the returned selection through `load-selected-skills`. A confident
