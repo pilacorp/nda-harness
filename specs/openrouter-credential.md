@@ -19,7 +19,10 @@ This change stores the key in a user-only file:
 
 The directory mode is `0700`. The file mode is `0600`. The helper refuses a
 symlink. It writes the file with the existing atomic-write helper. The sandboxed
-selector returns `sandbox_rerun` before it opens the file.
+selector returns `sandbox_rerun` before it opens the file. The key path stays
+out of Git: the state directory carries a local `.gitignore` for
+`openrouter-key`, and project setup also ignores
+`.nda-harness/skill-selection/`.
 
 People who already saved the key in Keychain move it with one terminal command,
 `selection-migrate`. That command is the migration script. It reads the existing
@@ -114,6 +117,7 @@ the project `.nda-harness/` folder.
 | Path | Mode | Role |
 | --- | --- | --- |
 | `~/.nda-harness/skill-selection/` | `0700` | Existing state directory. Reject a symlink. |
+| `~/.nda-harness/skill-selection/.gitignore` | `0600` | Ignores `openrouter-key` when that directory is inside a Git work tree. |
 | `~/.nda-harness/skill-selection/generation` | `0600` | Unchanged generation id. |
 | `~/.nda-harness/skill-selection/openrouter-key` | `0600` | The key file. Reject a symlink. |
 
@@ -130,6 +134,36 @@ replace is atomic. Setup and migrate set the directory to `0700` before they
 write. `select-skills`, `record-selection`, `load-selected-skills`, and
 `selection-verify` do not chmod. When the mode or owner is wrong, they return
 `credential_unavailable` and point at setup.
+
+### Git ignore
+
+The key must never enter a Git index.
+
+1. The store is only under the user home directory
+   `Path.home() / '.nda-harness' / 'skill-selection' / 'openrouter-key'`.
+   Never write `openrouter-key`, `generation`, or selection cache files under a
+   project's `.nda-harness/` folder.
+2. Whenever setup or migrate creates or updates the home state directory, write
+   `~/.nda-harness/skill-selection/.gitignore` whose entire body is the single
+   pattern `/openrouter-key` followed by a newline:
+
+   ```
+   /openrouter-key
+   ```
+
+   Use `files.atomic` at mode `0600`. Reject a symlink at that path. Do not put
+   the secret in the ignore file. The leading slash limits the rule to the key
+   file in that directory. Leave `.gitignore` in place on key removal so a later
+   setup still finds the rule.
+3. Extend `ensure_project_gitignore` in `scripts/nda_harness/project.py` so every
+   project `.gitignore` also contains `.nda-harness/skill-selection/`. Keep the
+   existing `.nda-harness/tasks/` and `.nda-harness/profile.json` patterns.
+   Commit that same pattern in this repository's root `.gitignore`. The project
+   pattern is defense when an agent or person places a key under the checkout by
+   mistake; it does not replace the home-directory store.
+4. Setup, migrate, verify, and selection commands must not `git add`,
+   `git commit`, or force-add the key file. Documentation repeats that the key
+   stays out of chat, argv, project files, and Git.
 
 `select-skills`, `record-selection`, `load-selected-skills`, and
 `selection-verify` read this file only. They do not call the Keychain adapter.
@@ -202,11 +236,15 @@ project files.
 
 Update the user docs that describe the current store: `docs/skill-selection.md`,
 `docs/setup-guide.md`, `docs/developer-integration.md`, `docs/plugin-operations.md`,
-`docs/architecture.md`, and the skill-selection sentence in `README.md`. In
-`specs/jev-skill-selection.md`, replace the Keychain storage paragraphs and the
-sandbox row that says the Keychain key is shared. Point them at this spec.
-Leave the historical Keychain failure note in `docs/compatibility/minimal-cli.md`
-as history. It is not this key.
+`docs/architecture.md`, and the skill-selection sentence in `README.md`. State
+that `~/.nda-harness/skill-selection/openrouter-key` is ignored by Git and must
+not be staged or committed. In `specs/jev-skill-selection.md`, replace the
+Keychain storage paragraphs and the sandbox row that says the Keychain key is
+shared. Point them at this spec. Leave the historical Keychain failure note in
+`docs/compatibility/minimal-cli.md` as history. It is not this key.
+
+Update `scripts/nda_harness/project.py` `ensure_project_gitignore` and this
+repository's root `.gitignore` as required under Git ignore above.
 
 `credential_unavailable` for a file problem says the key file could not be read.
 The Keychain-specific sentence remains only on `selection-migrate` and on
@@ -222,6 +260,7 @@ removal when the Keychain delete fails.
 | AC-04 | Setup, replacement, removal | Hidden setup writes the file. Cancel keeps the previous secret. Removal deletes the file and a leftover Keychain item. Generation rotates only when the saved secret changes or the key is removed. |
 | AC-05 | Existing diagnostics | A missing file is `credential_missing`. An unreadable, wrong-mode, or symlink path is `credential_unavailable`. Selection still does not load every specialist. |
 | AC-06 | Codex egress stays | The helper still sends the task only from the existing OpenRouter call. This change adds no flag that skips a client approval prompt. |
+| AC-07 | Key stays out of Git | Home state writes `/openrouter-key` into `~/.nda-harness/skill-selection/.gitignore`. Project setup keeps `.nda-harness/skill-selection/` in `.gitignore`. The key is never written under a project `.nda-harness/` tree. |
 
 ## Concrete test cases
 
@@ -231,7 +270,7 @@ machine's real Keychain item, and do not put a real key in the fixture.
 
 | ID | Setup/input | Action | Expected result | Layer / acceptance IDs |
 | --- | --- | --- | --- | --- |
-| TC-01 | Fake Keychain holds `sk-test-a`. The file is absent. Generation id is `g1`. | Run migrate and answer yes. | File mode is `0600`, directory mode is `0700`, body is `sk-test-a` plus one newline, Keychain status is missing, generation is still `g1`, and stdout/stderr/argv contain no `sk-test-a`. | Unit; AC-01, AC-03 |
+| TC-01 | Fake Keychain holds `sk-test-a`. The file is absent. Generation id is `g1`. | Run migrate and answer yes. | File mode is `0600`, directory mode is `0700`, body is `sk-test-a` plus one newline, Keychain status is missing, generation is still `g1`, `skill-selection/.gitignore` contains `/openrouter-key`, and stdout/stderr/argv contain no `sk-test-a`. | Unit; AC-01, AC-03, AC-07 |
 | TC-02 | Same as TC-01. | Answer no. | No file is created, the Keychain item remains, generation stays `g1`, exit `130`. | Unit; AC-03 |
 | TC-03 | File already holds `sk-test-a`. Keychain is missing. | Run migrate. | Diagnostic `credential_already_file`. Generation is unchanged. | Unit; AC-03 |
 | TC-04 | File and Keychain both hold `sk-test-a`. | Answer yes to delete the Keychain copy. | File bytes stay, Keychain is missing, generation is unchanged. | Unit; AC-03 |
@@ -244,6 +283,8 @@ machine's real Keychain item, and do not put a real key in the fixture.
 | TC-11 | File exists, and a different Keychain item exists. | Run `selection-setup --remove` and answer yes. | Both stores are gone. Generation rotates once. A no answer leaves both. | Unit; AC-04 |
 | TC-12 | File mode is `0644`, or the file is empty, or the body has an internal newline. | Run selection-verify and select-skills. | `credential_unavailable`. The command does not chmod the file. | Unit; AC-05 |
 | TC-13 | Built Codex, Cursor, and Claude packages. | Read the skill, bootstrap, and Cursor rule text. | They name the user-only file, `selection-migrate`, and `sandbox_rerun`. They do not tell the agent to read the login Keychain for this key. | Unit; AC-01, AC-02 |
+| TC-14 | Temporary home with a key written by setup or migrate. Initialize a Git repository whose work tree is that home (or the `skill-selection` directory). | Run `git check-ignore -q skill-selection/openrouter-key` from the home root, or `git check-ignore -q openrouter-key` from `skill-selection`. | Exit `0`. The ignore file body is exactly `/openrouter-key` plus a newline. Removing the key leaves `.gitignore` in place. | Unit; AC-07 |
+| TC-15 | Temporary project without `.nda-harness/skill-selection/` in `.gitignore`. | Run project configure / `ensure_project_gitignore`. | Project `.gitignore` contains `.nda-harness/skill-selection/` as well as the existing profile and tasks patterns. `git check-ignore -q .nda-harness/skill-selection/openrouter-key` exits `0` after a dummy file is created under that path. | Unit; AC-07 |
 
 Failure cases above must leave the previous good copy in place whenever the
 new copy is not verified. A test that inspects process output fails if the
@@ -303,6 +344,10 @@ on that retry when the bytes match.
 
 The sandbox probe may create and remove a probe file in the state directory.
 It must not open `openrouter-key`.
+
+The home-directory `.gitignore` does not protect a key that an agent writes
+under a project tree. That is why the project ignore pattern and the ban on
+project-relative key paths are both required.
 
 ## Review and implementation handoff
 
