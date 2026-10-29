@@ -180,6 +180,57 @@ class CredentialTests(unittest.TestCase):
         with self.assertRaises(OSError):
             self.store.read()
 
+    def test_selection_commands_refuse_bad_key_shapes_without_chmod(self):
+        from nda_harness.credentials import _rotate
+        from nda_harness.openrouter import selection_verify
+        from nda_harness.skill_selection import select_skills
+        _rotate(self.home)
+        path = self.key_path()
+        path.write_bytes(b'\n')
+        os.chmod(path, 0o600)
+        mode_before = stat.S_IMODE(path.stat().st_mode)
+
+        package = Path(tempfile.mkdtemp(dir=ROOT))
+        self.addCleanup(lambda: __import__('shutil').rmtree(package, ignore_errors=True))
+        (package / 'nda-plugin.json').write_text('{"schema_version":1}\n', encoding='utf-8')
+        skills = package / 'skills'
+        skills.mkdir()
+        (skills / 'catalog.json').write_text(
+            '{"schema_version":1,"skills":[{"id":"diagram-design","entrypoint":"diagram-design/SKILL.md",'
+            '"select_when":"diagram","exclude_when":"none","required_context":["audience"],"output":"A diagram"}]}',
+            encoding='utf-8',
+        )
+        skill = skills / 'diagram-design'
+        skill.mkdir()
+        (skill / 'SKILL.md').write_text('body', encoding='utf-8')
+
+        verified, code = selection_verify(package, self.store, live=False, client='cursor', home=self.home)
+        self.assertEqual(code, 2)
+        self.assertEqual(verified['diagnostic'], 'credential_unavailable')
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), mode_before)
+
+        project = package / 'project'
+        project.mkdir()
+        selected, code = select_skills(
+            {
+                'schema_version': 1,
+                'request': 'Draw a flow.',
+                'stage': 'implementation',
+                'project_facts': {'stack': ['Python'], 'deliverables': ['diagram'], 'constraints': ['none']},
+            },
+            project=project,
+            session='bad-shape',
+            home=self.home,
+            catalog_root=skills,
+            release_manifest={'schema_version': 1},
+            keychain=self.store,
+            transport=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('no transport')),
+            client='cursor',
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(selected['diagnostic'], 'credential_unavailable')
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), mode_before)
+
     def test_denied_atomic_write_stores_nothing(self):
         with patch('nda_harness.credentials.atomic', side_effect=PermissionError('denied')):
             report, code, _calls, _tty = self.setup([], FIRST)
