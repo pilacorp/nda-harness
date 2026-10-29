@@ -14,7 +14,7 @@ from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for, config_for
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
-from nda_harness.credentials import MacKeychain, selection_setup, setup_message
+from nda_harness.credentials import FileCredentialStore, MacKeychain, migrate_message, migrate_openrouter_key, selection_setup, setup_message
 from nda_harness.openrouter import selection_verify, verify_message
 from nda_harness.skill_selection import SelectionError, load_selected_skills, read_resolution_request, read_selection_request, record_selection, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
@@ -242,7 +242,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', 'selection-setup', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -270,15 +270,22 @@ def main(argv=None):
             print(json.dumps(memory_status(config, args.client, native, invalid=invalid), indent=2))
             return 2 if invalid else 0
         if args.command == 'selection-verify':
-            report, code = selection_verify(package, MacKeychain(), live=args.live, client=args.client, home=home / '.nda-harness')
+            report, code = selection_verify(package, FileCredentialStore(home / '.nda-harness'), live=args.live, client=args.client, home=home / '.nda-harness')
             print(verify_message(report) if sys.stdout.isatty() else json.dumps(report))
             return code
         if args.command == 'selection-setup':
             if not sys.stdin.isatty():
                 print(setup_message({'status': 'blocked', 'diagnostic': 'terminal_required'}))
                 return 2
-            report, code = selection_setup(MacKeychain(), sys.stdin, home / '.nda-harness', remove=args.remove)
+            report, code = selection_setup(sys.stdin, home / '.nda-harness', keychain=MacKeychain(), remove=args.remove)
             print(setup_message(report))
+            return code
+        if args.command == 'selection-migrate':
+            if not sys.stdin.isatty():
+                print(migrate_message({'status': 'blocked', 'diagnostic': 'terminal_required'}))
+                return 2
+            report, code = migrate_openrouter_key(sys.stdin, home / '.nda-harness', MacKeychain(), client=args.client)
+            print(migrate_message(report))
             return code
         project = args.project or str(Path.cwd())
         if args.command in ('select-skills', 'record-selection', 'load-selected-skills'):
@@ -298,7 +305,7 @@ def main(argv=None):
                     manifest = json.loads(release.read_text(encoding='utf-8')).get('asset_hashes') or {}
                 except (OSError, UnicodeError, json.JSONDecodeError):
                     manifest = {}
-            kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': MacKeychain(), 'client': args.client}
+            kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': FileCredentialStore(home / '.nda-harness'), 'client': args.client}
             if args.command == 'select-skills':
                 report, code = select_skills(data, transport=None, refresh=args.refresh, **kwargs)
             elif args.command == 'record-selection':
@@ -342,6 +349,9 @@ def main(argv=None):
         if args.command == 'selection-setup':
             print(setup_message({'status': 'blocked', 'diagnostic': diagnostic[0], 'next': diagnostic[1]}))
             return 2
+        if args.command == 'selection-migrate':
+            print(migrate_message({'status': 'blocked', 'diagnostic': diagnostic[0], 'next': diagnostic[1]}))
+            return 2
         if args.command == 'selection-verify' and sys.stdout.isatty():
             print(verify_message({'status': 'blocked', 'diagnostic': diagnostic[0]}))
             return 2
@@ -351,6 +361,9 @@ def main(argv=None):
         # Do not echo exceptions: subprocesses and invalid user config may carry secrets.
         if args.command == 'selection-setup':
             print(setup_message({}))
+            return 2
+        if args.command == 'selection-migrate':
+            print(migrate_message({}))
             return 2
         print(json.dumps({'status': 'blocked', 'implementation_authorized': False,
                           'next': 'Reconcile plugin integrity, project configuration, Git identity/hook ownership or prerequisites; rerun nda-setup.'}))

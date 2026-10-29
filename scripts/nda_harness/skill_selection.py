@@ -214,14 +214,14 @@ CACHE_TTL = 7 * 24 * 60 * 60
 
 _SANDBOX_GUIDANCE = (
     ' Run select-skills, record-selection, load-selected-skills, and selection-verify outside the sandbox. '
-    'The OpenRouter key in the macOS Keychain is shared by Codex, Cursor, and Claude. Do not create a new key. '
+    'The OpenRouter key file under ~/.nda-harness/skill-selection/ is shared by Codex, Cursor, and Claude. Do not create a new key. '
     'A sandboxed result has diagnostic sandbox_rerun. Rerun that command outside the sandbox and continue the assignment. '
     'Do not treat sandbox_rerun as a missing key.'
 )
 
 
 def in_sandbox(home=None):
-    """True when this process cannot be the one that reads the shared login Keychain item."""
+    """True when this process cannot be the one that reads the shared OpenRouter key file."""
     marker = os.environ.get('CODEX_SANDBOX')
     if isinstance(marker, str) and marker.strip():
         return True
@@ -234,11 +234,11 @@ def in_sandbox(home=None):
 
 
 def sandbox_refusal(client, *, home=None, kind):
-    """Skill selection reads the shared Keychain item, so it must run outside the sandbox."""
+    """Skill selection reads the shared key file, so it must run outside the sandbox."""
     if not in_sandbox(home):
         return None
     message = (
-        f'Rerun this {client} command outside the sandbox. The OpenRouter key in the macOS Keychain is shared by Codex, Cursor, and Claude. '
+        f'Rerun this {client} command outside the sandbox. The OpenRouter key file under ~/.nda-harness/skill-selection/ is shared by Codex, Cursor, and Claude. '
         'Do not create a new key. Then continue the assignment.'
     )
     payload = {'diagnostic': 'sandbox_rerun', 'implementation_authorized': False, 'next': message, 'status': 'blocked'}
@@ -255,8 +255,9 @@ def sandbox_refusal(client, *, home=None, kind):
 def selection_guidance(client):
     """Static setup instructions for one client. No task text and no key."""
     return ('Before reading a specialist skill body, use the skill-selection wrapper. '
-            'Task text and catalog metadata go to OpenRouter. The key stays in Keychain. '
+            'Task text and catalog metadata go to OpenRouter. The key stays in ~/.nda-harness/skill-selection/openrouter-key. '
             'Never paste a key into chat, argv, or a project file. '
+            f'If a Keychain item remains from an older install, run selection-migrate --client {client} once in a local terminal. '
             f'First setup and re-setup use the packaged nda-plugin selection-setup --client {client} in a local terminal. '
             'Replace the saved OpenRouter key by running that command again and confirming in the terminal. '
             'Answering no keeps the saved key and finishes setup. '

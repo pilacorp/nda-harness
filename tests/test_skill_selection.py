@@ -474,7 +474,7 @@ class SelectionTests(unittest.TestCase):
         transport = _Transport({'diagram-design': 0.05})
         self._select(package, project, home, keychain, transport, task())
         tty = _TTY(['y\n'])
-        selection_setup(keychain, tty, home, read_secret=lambda: 'second-bearer-token')
+        selection_setup(tty, home, read_secret=lambda: 'second-bearer-token')
         self._select(package, project, home, keychain, transport, task())
         self.assertEqual(len(transport.calls), 2)
         self.assertEqual(transport.calls[1][2]['Authorization'], 'Bearer second-bearer-token')
@@ -502,10 +502,11 @@ class SelectionTests(unittest.TestCase):
         project.mkdir()
         home = root / 'home'
         home.mkdir()
-        keychain = _Keychain(None, status='missing')
-        report, code = selection_setup(keychain, _TTY([]), home, read_secret=lambda: secret)
+        from nda_harness.credentials import FileCredentialStore
+        report, code = selection_setup(_TTY([]), home, read_secret=lambda: secret)
         self.assertEqual(code, 0)
         self.assertEqual(report['status'], 'ready')
+        keychain = FileCredentialStore(home)
         return package, project, home, keychain
 
     def _facts(self, stack):
@@ -610,6 +611,8 @@ class SelectionTests(unittest.TestCase):
             self.assertNotIn('Forty-four visual types', skill)
             self.assertIn('skill-selection', bootstrap)
             self.assertIn('selection-setup', bootstrap)
+            self.assertIn('selection-migrate', bootstrap)
+            self.assertIn('selection-migrate', skill)
             self.assertIn('outside the sandbox', skill)
             self.assertIn('sandbox_rerun', skill)
             self.assertIn('shared by Codex, Cursor, and Claude', skill)
@@ -625,6 +628,7 @@ class SelectionTests(unittest.TestCase):
         build(ROOT, cursor, 'cursor')
         rule = (cursor / 'rules/nda-harness.mdc').read_text(encoding='utf-8')
         self.assertIn('selection-setup', rule)
+        self.assertIn('selection-migrate', rule)
         self.assertIn('Replace the saved OpenRouter key', rule)
         self.assertIn('Answering no keeps the saved key and finishes setup', rule)
         self.assertIn('record-selection', rule)

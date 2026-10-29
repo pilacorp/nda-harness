@@ -96,8 +96,11 @@ Do not copy credentials between clients or delete credential files to retry.
 ## 3. Set up the skill selection flow
 
 The plugin uses Jev (`typesafe/jev-1.14`) through OpenRouter to choose optional
-specialists. Your personal OpenRouter key stays in the macOS Keychain. It is
-separate from Hindsight authentication and the server's OpenRouter key.
+specialists. Your personal OpenRouter key stays in
+`~/.nda-harness/skill-selection/openrouter-key` and is ignored by Git. It is
+separate from Hindsight authentication and the server's OpenRouter key. If an
+older install still has the key in Keychain, run `selection-migrate` once before
+setup.
 
 1. In the project chat, run:
 
@@ -141,7 +144,7 @@ and use the Terminal window it opens. For `authorization_failed`, run
 `/skill-selection` again and confirm replacement of the saved key. For
 `needs_context` or `blocked`, follow the reported diagnostic and next action
 before loading specialist skills. On Codex, Cursor, and Claude, run skill
-selection outside the sandbox so it can use the shared macOS Keychain key. Diagnostic
+selection outside the sandbox so it can use the shared OpenRouter key file. Diagnostic
 `sandbox_rerun` means that command ran in the sandbox: rerun it outside the sandbox
 and continue the assignment. Do not create a new OpenRouter key.
 

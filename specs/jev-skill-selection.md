@@ -11,7 +11,9 @@ OpenRouter. It will check the answer and return a list of skills to load. A task
 may need no specialist skill, one skill, or several skills.
 
 We will give each person a separate OpenRouter key. They will enter it once in
-a private terminal prompt, and the helper will store it in macOS Keychain.
+a private terminal prompt, and the helper will store it in
+`~/.nda-harness/skill-selection/openrouter-key`. See
+`specs/openrouter-credential.md` for the file store and Keychain migration.
 Administrators will track usage by key in OpenRouter. No new server is needed,
 and Hindsight remains separate.
 
@@ -60,9 +62,11 @@ for a later implementing agent. None of the commands introduced below exists yet
 2. Ask the agent to set up skill selection. Its `skill-selection` wrapper explains
    the data sent to OpenRouter and opens or identifies a normal local terminal.
    The person runs the packaged helper there and enters the key themselves.
-3. Run `selection-setup` in that terminal. It uses a hidden prompt and saves the
-   key in Keychain. Never paste the key into chat, a command argument, an `.env`
-   file in the repository, or a project profile.
+3. If an older install still has the key in Keychain, run `selection-migrate`
+   once. Otherwise run `selection-setup` in that terminal. It uses a hidden
+   prompt and saves the key in `~/.nda-harness/skill-selection/openrouter-key`.
+   Never paste the key into chat, a command argument, an `.env` file in the
+   repository, or a project profile. That path is ignored by Git.
 4. Run `selection-verify` for an offline check. Run it with `--live` for a small
    paid synthetic request. The live check returns only a sanitized status,
    request ID, model, and reported usage. It sends no project task or code.
@@ -72,6 +76,7 @@ for a later implementing agent. None of the commands introduced below exists yet
 Example commands after implementation, using Codex as the example client:
 
 ```sh
+rtk proxy /absolute/plugin/bin/nda-plugin selection-migrate --client codex
 rtk proxy /absolute/plugin/bin/nda-plugin selection-setup --client codex
 rtk proxy /absolute/plugin/bin/nda-plugin selection-verify --client codex
 rtk proxy /absolute/plugin/bin/nda-plugin selection-verify --client codex --live
@@ -82,11 +87,12 @@ hosted archives use `scripts/nda-plugin`, following their existing relocation.
 Cursor and Claude use their own fixed `--client` value, not a user selection menu.
 
 Each person configures the key once per macOS login account. All three clients
-use that same Keychain item. Re-running setup replaces only that item after the
+use that same user-only file. Re-running setup replaces only that file after the
 person confirms replacement in the terminal. Cancel preserves the old key.
-`selection-setup --remove` removes only the local item after terminal confirmation;
-it does not revoke the key in OpenRouter. There is no automatic paid call on setup,
-session start, verification without `--live`, or credential replacement.
+`selection-setup --remove` removes the local file and any leftover Keychain item
+after terminal confirmation; it does not revoke the key in OpenRouter. There is
+no automatic paid call on setup, session start, verification without `--live`,
+or credential replacement.
 
 During normal work, the agent prepares bounded task input, calls `select-skills`,
 and reads only the returned selection through `load-selected-skills`. A confident
@@ -333,19 +339,12 @@ body text are ordinary tool data, never privileged hook instructions.
 
 ## Credentials, cache, and task records
 
-Use a generic-password Keychain item with service `vn.pila.nda-harness.openrouter`
-and account `skill-selection`. Disable synchronization. Use macOS Security and
-CoreFoundation APIs through a small standard-library `ctypes` adapter: exact
-service/account queries for add, update, lookup, and delete. Do not pass the
-secret to a `security ... -w <key>` subprocess. Keychain denial/cancellation must
-not trigger plaintext storage. Read-only verification checks item attributes
-without retrieving or printing the password. OS access prompts are user-controlled;
-background hooks must not open them. Test access under each actual host runtime.
-
-There is no environment-variable or plaintext credential fallback in version 1.
-The key remains inside the helper during normal operation and is not added to
-child environments or output. This does not prevent software running as the same
-user from attempting Keychain access; OS permissions remain the security boundary.
+Store the key in `~/.nda-harness/skill-selection/openrouter-key` as specified in
+`specs/openrouter-credential.md`. Keep directory mode `0700`, file mode `0600`,
+and a local `.gitignore` that ignores `/openrouter-key`. `selection-migrate`
+moves an older Keychain item into that file. There is no environment-variable
+fallback. The key remains inside the helper during normal operation and is not
+added to child environments, argv, or output.
 
 Keep selection state under `~/.nda-harness/skill-selection/` with 0700 directories
 and 0600 files, rejecting symlinks and using existing lock/atomic-write patterns.
@@ -425,8 +424,8 @@ using only an agent's statement that other skills are absent.
 
 | Condition | Required response |
 | --- | --- |
-| Missing key, locked/denied Keychain | `credential_missing` or `credential_unavailable`; guide terminal setup/unlock. No network call. |
-| Sandboxed skill selection on Codex, Cursor, or Claude | `sandbox_rerun`; rerun the same command outside the sandbox. The macOS Keychain key is shared. No network call and no new key. |
+| Missing key, unreadable key file | `credential_missing` or `credential_unavailable`; guide terminal setup. No network call. |
+| Sandboxed skill selection on Codex, Cursor, or Claude | `sandbox_rerun`; rerun the same command outside the sandbox. The shared key file under `~/.nda-harness/skill-selection/` is used. No network call and no new key. |
 | Invalid input/catalog/path/release | Reject before provider call or body loading; identify the failed category safely. |
 | HTTP 401/403 | `authorization_failed`; explain key/access check. No automatic replacement or fallback. |
 | HTTP 402/429 | `credit_or_limit` / `rate_limited`; guide administrator/explicit later retry. |
@@ -494,7 +493,7 @@ This is the developer contract, not permission to implement before approval.
 | --- | --- |
 | New `scripts/nda_harness/skill_selection.py` | Input/catalog validation, rules, result validation, cache and selected-body loading. |
 | New `scripts/nda_harness/openrouter.py` | Fixed-origin bounded HTTPS decision transport and safe usage/error mapping. |
-| New `scripts/nda_harness/credentials.py` | Keychain adapter, hidden human setup and generation identity. |
+| New `scripts/nda_harness/credentials.py` | User-only file store (see `specs/openrouter-credential.md`), hidden human setup, Keychain migrate helper, and generation identity. |
 | `scripts/nda_harness/plugin_runtime.py` | Command dispatch, static selection guidance, offline/live diagnostics. |
 | `scripts/nda_harness/plugin_build.py` | Include new runtime modules; build specialist hub separately; preserve launcher relocation. |
 | New `skills/catalog.json`; `skills/catalog.md` | Authoritative metadata and human discovery agreement. |
@@ -527,11 +526,12 @@ Hindsight as part of rollback. Old selection caches are unusable after a package
 revision change; seven-day expiry bounds retention. Credential removal remains
 an explicit person-controlled operation.
 
-Design choices proposed here, beyond the issue's brief wording: Keychain-only
-storage, separate packaged hub, three-way probability thresholds, seven-day cache,
-and the evaluation gates. Review these before implementation. Native loading and
-Keychain behavior remain unverified until real-client testing; the helper cannot
-provide absolute context isolation or constrain arbitrary local file tools.
+Design choices proposed here, beyond the issue's brief wording: separate packaged
+hub, three-way probability thresholds, seven-day cache, and the evaluation gates.
+Credential storage moved to a user-only file under
+`specs/openrouter-credential.md`. Review these before implementation. Native
+loading remains unverified until real-client testing; the helper cannot provide
+absolute context isolation or constrain arbitrary local file tools.
 
 Public integration references checked on 2026-10-20:
 

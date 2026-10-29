@@ -30,7 +30,7 @@ Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 s
 
 Code stays in the developer's local repository for agent inspection. The existing Markdown/pgvector RAG supplies feature and architecture knowledge. Self-hosted Hindsight, using OpenRouter for LLM processing, provides each developer's personal memory, such as preferences and individual working notes; it is not an organization-wide source of facts.
 
-Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. That OpenRouter credential stays on the Hindsight server. A developer's separate OpenRouter key, used only for Jev skill selection, stays in the macOS Keychain.
+Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. That OpenRouter credential stays on the Hindsight server. A developer's separate OpenRouter key, used only for Jev skill selection, stays in `~/.nda-harness/skill-selection/openrouter-key` and must stay out of Git.
 
 ## Current phase
 

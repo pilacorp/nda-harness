@@ -171,7 +171,7 @@ def config_for(project):
 def ensure_project_gitignore(plan, project):
     path = project / '.gitignore'
     original = read(path)
-    patterns = (b'.nda-harness/tasks/', b'.nda-harness/profile.json')
+    patterns = (b'.nda-harness/tasks/', b'.nda-harness/profile.json', b'.nda-harness/skill-selection/')
     if original is None:
         plan.write(path, b'\n'.join(patterns) + b'\n')
         return
