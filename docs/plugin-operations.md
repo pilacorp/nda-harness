@@ -194,7 +194,7 @@ Authenticate button. Installation does not open a login browser.
 
 ## Skill selection key
 
-After the plugin is loaded, run `selection-setup` in a local terminal and enter the personal OpenRouter key. The terminal prints `OpenRouter key saved.` It does not print JSON. That key is only for Jev skill selection and stays in the macOS Keychain. See [skill selection](skill-selection.md).
+After the plugin is loaded, run `selection-setup` in a local terminal and enter the personal OpenRouter key. The terminal prints `OpenRouter key saved.` It does not print JSON. That key is only for Jev skill selection and stays in `~/.nda-harness/skill-selection/openrouter-key`. Run `selection-migrate` once if an older Keychain item remains. See [skill selection](skill-selection.md).
 
 ## First trusted session and project setup
 

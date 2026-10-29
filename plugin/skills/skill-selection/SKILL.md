@@ -12,7 +12,7 @@ When the user invokes this command, open a terminal and run selection-setup. Do 
 
 That script opens Terminal, changes to that project directory, and then runs `rtk proxy @ROOT@/bin/nda-plugin selection-setup --client @CLIENT@`. Leave that terminal focused so the user can answer the prompt. The terminal prints a short sentence, not JSON.
 
-Task text and catalog metadata are sent to OpenRouter at `https://openrouter.ai/api/alpha/decisions` using model `typesafe/jev-1.14`. The OpenRouter key stays in the macOS Keychain. Never paste a key into chat, a command argument, or a project file.
+Task text and catalog metadata are sent to OpenRouter at `https://openrouter.ai/api/alpha/decisions` using model `typesafe/jev-1.14`. The OpenRouter key stays in `~/.nda-harness/skill-selection/openrouter-key`. Never paste a key into chat, a command argument, or a project file. If a Keychain item remains from an older install, run `selection-migrate` in a local terminal once.
 
 First setup and re-setup use the same command in a normal local terminal:
 
@@ -32,6 +32,6 @@ On `authorization_failed`, direct the user to the same re-setup command. Do not 
 
 For a new assignment, call `select-skills` with `--project`, `--session`, and `--request-file`, then `load-selected-skills` with the same task JSON. Do not read specialist bodies before that. On `uncertain_decision`, ask the user whether to load each skill in `uncertain`. Do not choose for them. Then call `record-selection` with the same task JSON plus a `decisions` object mapping each uncertain skill id to true or false. That stores the choice in the local Jev cache. Then call `load-selected-skills`. On `blocked`, report `diagnostic` and `next`. Do not load every specialist.
 
-On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key in the macOS Keychain is shared by Codex, Cursor, and Claude. Do not create a new key. If the result is diagnostic `sandbox_rerun`, rerun that same command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
+On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key file under `~/.nda-harness/skill-selection/` is shared by Codex, Cursor, and Claude. Do not create a new key. If the result is diagnostic `sandbox_rerun`, rerun that same command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
 
 Mandatory workflow skills stay in force. Jev does not grant approval.

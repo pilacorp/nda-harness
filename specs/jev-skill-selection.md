@@ -11,7 +11,9 @@ OpenRouter. It will check the answer and return a list of skills to load. A task
 may need no specialist skill, one skill, or several skills.
 
 We will give each person a separate OpenRouter key. They will enter it once in
-a private terminal prompt, and the helper will store it in macOS Keychain.
+a private terminal prompt, and the helper will store it in
+`~/.nda-harness/skill-selection/openrouter-key`. See
+`specs/openrouter-credential.md` for the file store and Keychain migration.
 Administrators will track usage by key in OpenRouter. No new server is needed,
 and Hindsight remains separate.
 
@@ -333,19 +335,12 @@ body text are ordinary tool data, never privileged hook instructions.
 
 ## Credentials, cache, and task records
 
-Use a generic-password Keychain item with service `vn.pila.nda-harness.openrouter`
-and account `skill-selection`. Disable synchronization. Use macOS Security and
-CoreFoundation APIs through a small standard-library `ctypes` adapter: exact
-service/account queries for add, update, lookup, and delete. Do not pass the
-secret to a `security ... -w <key>` subprocess. Keychain denial/cancellation must
-not trigger plaintext storage. Read-only verification checks item attributes
-without retrieving or printing the password. OS access prompts are user-controlled;
-background hooks must not open them. Test access under each actual host runtime.
-
-There is no environment-variable or plaintext credential fallback in version 1.
-The key remains inside the helper during normal operation and is not added to
-child environments or output. This does not prevent software running as the same
-user from attempting Keychain access; OS permissions remain the security boundary.
+Store the key in `~/.nda-harness/skill-selection/openrouter-key` as specified in
+`specs/openrouter-credential.md`. Keep directory mode `0700`, file mode `0600`,
+and a local `.gitignore` that ignores `/openrouter-key`. `selection-migrate`
+moves an older Keychain item into that file. There is no environment-variable
+fallback. The key remains inside the helper during normal operation and is not
+added to child environments, argv, or output.
 
 Keep selection state under `~/.nda-harness/skill-selection/` with 0700 directories
 and 0600 files, rejecting symlinks and using existing lock/atomic-write patterns.
@@ -425,8 +420,8 @@ using only an agent's statement that other skills are absent.
 
 | Condition | Required response |
 | --- | --- |
-| Missing key, locked/denied Keychain | `credential_missing` or `credential_unavailable`; guide terminal setup/unlock. No network call. |
-| Sandboxed skill selection on Codex, Cursor, or Claude | `sandbox_rerun`; rerun the same command outside the sandbox. The macOS Keychain key is shared. No network call and no new key. |
+| Missing key, unreadable key file | `credential_missing` or `credential_unavailable`; guide terminal setup. No network call. |
+| Sandboxed skill selection on Codex, Cursor, or Claude | `sandbox_rerun`; rerun the same command outside the sandbox. The shared key file under `~/.nda-harness/skill-selection/` is used. No network call and no new key. |
 | Invalid input/catalog/path/release | Reject before provider call or body loading; identify the failed category safely. |
 | HTTP 401/403 | `authorization_failed`; explain key/access check. No automatic replacement or fallback. |
 | HTTP 402/429 | `credit_or_limit` / `rate_limited`; guide administrator/explicit later retry. |

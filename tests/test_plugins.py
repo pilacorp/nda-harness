@@ -465,7 +465,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(json.loads(config.read_text()), {'schema_version': 1, 'test_command': 'true'})
         self.assertEqual(self.git('check-ignore', '-q', '.nda-harness/profile.json').returncode, 0)
         self.assertEqual(self.git('check-ignore', '-q', '.nda-harness/config.json').returncode, 1)
-        self.assertEqual((self.project / '.gitignore').read_text(), '.nda-harness/tasks/\n.nda-harness/profile.json\n')
+        self.assertEqual((self.project / '.gitignore').read_text(), '.nda-harness/tasks/\n.nda-harness/profile.json\n.nda-harness/skill-selection/\n')
         self.assertEqual(self.commit().returncode, 0)
         self.assertEqual(sorted(p.name for p in profile.parent.iterdir()), ['config.json', 'profile.json'])
 
@@ -509,7 +509,7 @@ class PluginTests(unittest.TestCase):
         ignore = self.project / '.gitignore'
         ignore.write_bytes(b'# keep\r\n.env\r\n')
         self.setup(skip=True)
-        expected = b'# keep\r\n.env\r\n.nda-harness/tasks/\r\n.nda-harness/profile.json\r\n'
+        expected = b'# keep\r\n.env\r\n.nda-harness/tasks/\r\n.nda-harness/profile.json\r\n.nda-harness/skill-selection/\r\n'
         self.assertEqual(ignore.read_bytes(), expected)
         self.setup()
         self.assertEqual(ignore.read_bytes(), expected)
