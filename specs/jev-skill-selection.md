@@ -493,7 +493,7 @@ This is the developer contract, not permission to implement before approval.
 | --- | --- |
 | New `scripts/nda_harness/skill_selection.py` | Input/catalog validation, rules, result validation, cache and selected-body loading. |
 | New `scripts/nda_harness/openrouter.py` | Fixed-origin bounded HTTPS decision transport and safe usage/error mapping. |
-| New `scripts/nda_harness/credentials.py` | Keychain adapter, hidden human setup and generation identity. |
+| New `scripts/nda_harness/credentials.py` | User-only file store (see `specs/openrouter-credential.md`), hidden human setup, Keychain migrate helper, and generation identity. |
 | `scripts/nda_harness/plugin_runtime.py` | Command dispatch, static selection guidance, offline/live diagnostics. |
 | `scripts/nda_harness/plugin_build.py` | Include new runtime modules; build specialist hub separately; preserve launcher relocation. |
 | New `skills/catalog.json`; `skills/catalog.md` | Authoritative metadata and human discovery agreement. |
@@ -526,11 +526,12 @@ Hindsight as part of rollback. Old selection caches are unusable after a package
 revision change; seven-day expiry bounds retention. Credential removal remains
 an explicit person-controlled operation.
 
-Design choices proposed here, beyond the issue's brief wording: Keychain-only
-storage, separate packaged hub, three-way probability thresholds, seven-day cache,
-and the evaluation gates. Review these before implementation. Native loading and
-Keychain behavior remain unverified until real-client testing; the helper cannot
-provide absolute context isolation or constrain arbitrary local file tools.
+Design choices proposed here, beyond the issue's brief wording: separate packaged
+hub, three-way probability thresholds, seven-day cache, and the evaluation gates.
+Credential storage moved to a user-only file under
+`specs/openrouter-credential.md`. Review these before implementation. Native
+loading remains unverified until real-client testing; the helper cannot provide
+absolute context isolation or constrain arbitrary local file tools.
 
 Public integration references checked on 2026-10-20:
 

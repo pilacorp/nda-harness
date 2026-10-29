@@ -167,6 +167,19 @@ class CredentialTests(unittest.TestCase):
             self.store.read()
         self.assertEqual(stat.S_IMODE(self.key_path().stat().st_mode), 0o644)
 
+    def test_empty_or_multiline_key_file_is_unavailable(self):
+        state = self.home / 'skill-selection'
+        state.mkdir(mode=0o700)
+        path = self.key_path()
+        path.write_bytes(b'\n')
+        os.chmod(path, 0o600)
+        self.assertEqual(self.store.status(), 'unavailable')
+        path.write_bytes(b'line-one\nline-two\n')
+        os.chmod(path, 0o600)
+        self.assertEqual(self.store.status(), 'unavailable')
+        with self.assertRaises(OSError):
+            self.store.read()
+
     def test_denied_atomic_write_stores_nothing(self):
         with patch('nda_harness.credentials.atomic', side_effect=PermissionError('denied')):
             report, code, _calls, _tty = self.setup([], FIRST)
@@ -406,6 +419,55 @@ class CredentialTests(unittest.TestCase):
         report, code = migrate_openrouter_key(ScriptedTTY(['y\n']), home_link, keychain)
         self.assertEqual(code, 2)
         self.assertEqual(report['diagnostic'], 'credential_unavailable')
+
+    def test_select_skills_refuses_symlink_key_without_opening_transport(self):
+        from nda_harness.skill_selection import select_skills
+        package = Path(tempfile.mkdtemp(dir=ROOT))
+        self.addCleanup(lambda: __import__('shutil').rmtree(package, ignore_errors=True))
+        skill = package / 'diagram-design'
+        skill.mkdir()
+        (skill / 'SKILL.md').write_text('body', encoding='utf-8')
+        (package / 'catalog.json').write_text(
+            '{"schema_version":1,"skills":[{"id":"diagram-design","entrypoint":"diagram-design/SKILL.md",'
+            '"select_when":"diagram","exclude_when":"none","required_context":["audience"],"output":"A diagram"}]}',
+            encoding='utf-8',
+        )
+        project = package / 'project'
+        project.mkdir()
+        from nda_harness.credentials import _rotate
+        _rotate(self.home)
+        state = self.home / 'skill-selection'
+        target = self.home / 'elsewhere-key'
+        target.write_text(FIRST + '\n', encoding='utf-8')
+        key = state / 'openrouter-key'
+        if key.exists() or key.is_symlink():
+            key.unlink()
+        key.symlink_to(target)
+        calls = []
+
+        def transport(url, payload, headers):
+            calls.append(url)
+            raise AssertionError('transport must not run')
+
+        report, code = select_skills(
+            {
+                'schema_version': 1,
+                'request': 'Draw a flow.',
+                'stage': 'implementation',
+                'project_facts': {'stack': ['Python'], 'deliverables': ['diagram'], 'constraints': ['none']},
+            },
+            project=project,
+            session='symlink-session',
+            home=self.home,
+            catalog_root=package,
+            release_manifest={'schema_version': 1},
+            keychain=self.store,
+            transport=transport,
+            client='cursor',
+        )
+        self.assertEqual(code, 2)
+        self.assertEqual(report['diagnostic'], 'credential_unavailable')
+        self.assertEqual(calls, [])
 
     def test_setup_declines_move_then_writes_new_key(self):
         keychain = FakeKeychain()
