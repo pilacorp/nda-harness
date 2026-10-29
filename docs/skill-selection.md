@@ -8,9 +8,15 @@ The current specialists are `diagram-design`, `ui-ux-pro-max`, and `vietnamese-o
 
 ## Key
 
-Each developer uses a personal OpenRouter key. It is stored in the macOS Keychain and is not the Hindsight server key. Do not paste it into chat, a command argument, or a project file.
+Each developer uses a personal OpenRouter key. It is stored in `~/.nda-harness/skill-selection/openrouter-key` (mode `0600`) and is not the Hindsight server key. That path is ignored by Git. Do not paste it into chat, a command argument, or a project file.
 
-In a local terminal, from the project directory:
+If an older install still has the key in the macOS Keychain, migrate once in a local terminal:
+
+```sh
+rtk proxy <plugin-root>/bin/nda-plugin selection-migrate --client <client>
+```
+
+For a new key, or after migration, run setup:
 
 ```sh
 rtk proxy <plugin-root>/bin/nda-plugin selection-setup --client <client>
@@ -28,7 +34,7 @@ When Jev returns `uncertain_decision`, `select-skills` lists each uncertain skil
 
 Equivalent task text reuses a cached result for seven days. A changed assignment, catalog, package, rules version, model, or key generation calls Jev again. Replacing the key starts a new generation, so the previous cache is not loaded.
 
-On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key in the macOS Keychain is shared by those clients. Do not create a new key. A sandboxed invocation returns diagnostic `sandbox_rerun` and does not call OpenRouter. Rerun that command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
+On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key file under `~/.nda-harness/skill-selection/` is shared by those clients. Do not create a new key. A sandboxed invocation returns diagnostic `sandbox_rerun` and does not call OpenRouter. Rerun that command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
 
 ## Limits
 

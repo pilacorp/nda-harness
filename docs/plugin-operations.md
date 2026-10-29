@@ -96,7 +96,7 @@ Run from the repository root, choosing a new semantic version for each release:
 
 ```sh
 PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
-  --archive --version 0.0.9 --output dist/nda-harness-codex-0.0.9.zip
+  --archive --version 0.0.10 --output dist/nda-harness-codex-0.0.10.zip
 ```
 
 Select the ZIP in **Upload plugin archive**. The command preserves existing
@@ -194,7 +194,7 @@ Authenticate button. Installation does not open a login browser.
 
 ## Skill selection key
 
-After the plugin is loaded, run `selection-setup` in a local terminal and enter the personal OpenRouter key. The terminal prints `OpenRouter key saved.` It does not print JSON. That key is only for Jev skill selection and stays in the macOS Keychain. See [skill selection](skill-selection.md).
+After the plugin is loaded, run `selection-setup` in a local terminal and enter the personal OpenRouter key. The terminal prints `OpenRouter key saved.` It does not print JSON. That key is only for Jev skill selection and stays in `~/.nda-harness/skill-selection/openrouter-key`. Run `selection-migrate` once if an older Keychain item remains. See [skill selection](skill-selection.md).
 
 ## First trusted session and project setup
 

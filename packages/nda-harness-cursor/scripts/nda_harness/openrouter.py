@@ -111,14 +111,14 @@ def verify_message(report):
     diagnostic = report.get('diagnostic') if isinstance(report, dict) else None
     model = report.get('model_returned') if isinstance(report, dict) else None
     if diagnostic == 'sandbox_rerun':
-        return 'Skill selection must run outside the sandbox so it can use the shared macOS Keychain key. Rerun this command outside the sandbox.'
+        return 'Skill selection must run outside the sandbox so it can use the shared OpenRouter key file. Rerun this command outside the sandbox.'
     if status == 'ready' and accept_model(model):
         return 'Live check passed. Model ' + model + '.'
     if status == 'ready':
         return 'OpenRouter key is present.'
     return {
         'credential_missing': 'No OpenRouter key is saved.',
-        'credential_unavailable': 'Keychain could not be read.',
+        'credential_unavailable': 'The key file could not be read.',
         'invalid_catalog': 'The skill selection package is invalid.',
         'authorization_failed': 'OpenRouter rejected the key. ' + REAUTHENTICATION,
         'credit_or_limit': 'OpenRouter reported a credit or limit problem.',

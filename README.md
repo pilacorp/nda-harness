@@ -30,14 +30,14 @@ Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 s
 
 Code stays in the developer's local repository for agent inspection. The existing Markdown/pgvector RAG supplies feature and architecture knowledge. Self-hosted Hindsight, using OpenRouter for LLM processing, provides each developer's personal memory, such as preferences and individual working notes; it is not an organization-wide source of facts.
 
-Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. That OpenRouter credential stays on the Hindsight server. A developer's separate OpenRouter key, used only for Jev skill selection, stays in the macOS Keychain.
+Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. That OpenRouter credential stays on the Hindsight server. A developer's separate OpenRouter key, used only for Jev skill selection, stays in `~/.nda-harness/skill-selection/openrouter-key` and must stay out of Git.
 
 ## Current phase
 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.9**, tracked from `main`. The
+version **0.0.10**, tracked from `main`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).
