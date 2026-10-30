@@ -1,6 +1,6 @@
 # Jev skill selection
 
-The plugin selects optional specialist skills with Jev through OpenRouter. The coding model does not choose that set, and it does not read specialist bodies before the helper returns them.
+The plugin selects optional specialist skills with Jev through OpenRouter. When no OpenRouter key is saved, the same helper gives those questions to the coding agent already running the session and stores the answer as `local-agent`. The agent does not read specialist bodies before the helper returns them.
 
 Model: `typesafe/jev-1.14`. Endpoint: `https://openrouter.ai/api/alpha/decisions`. One request asks one yes/no question per specialist in `skills/catalog.json`, sorted by id. The request carries bounded task text and catalog metadata. It does not carry skill bodies or the key.
 
@@ -31,6 +31,8 @@ The Cursor plugin opens that terminal with `skill-selection`. The prompt is hidd
 For a new assignment the agent calls `select-skills` with `--project`, `--session`, and `--request-file`, then `load-selected-skills` with the same task JSON. Those agent commands return JSON. `select-skills` does not include skill bodies. `load-selected-skills` returns only the selected bodies.
 
 When Jev returns `uncertain_decision`, `select-skills` lists each uncertain skill and its probability and does not return a loadable selection. The agent asks the user, in chat, whether to load each of those skills. It does not choose for them. It then calls `record-selection` with the same task JSON plus `decisions`, an object mapping each uncertain skill id to `true` or `false`. That writes the resolved choice into the local cache. A later `select-skills` for the same task reuses that cache. `load-selected-skills` then returns only the skills the user included.
+
+When no key is saved, `select-skills` returns diagnostic `local_agent` and the same questions Jev would have received. It does not call OpenRouter and it does not ask for setup. The running coding agent answers every question with `type` `noul` and a probability from 0 to 1, then calls `select-skills` again with `--answers-file` containing that answer object. The helper stores the model name `local-agent` and applies the same 0.80 / 0.20 cutoffs. A saved key this session cannot read still stops with `credential_unavailable`. A `local-agent` result is cached for seven days. Saving a key starts a new generation, so the next selection calls Jev.
 
 Equivalent task text reuses a cached result for seven days. A changed assignment, catalog, package, rules version, model, or key generation calls Jev again. Replacing the key starts a new generation, so the previous cache is not loaded.
 

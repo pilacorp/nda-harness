@@ -16,7 +16,7 @@ from nda_harness.project import locked, configure, inspect_project, root_for, lo
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
 from nda_harness.credentials import FileCredentialStore, MacKeychain, migrate_message, migrate_openrouter_key, selection_setup, setup_message
 from nda_harness.openrouter import selection_verify, verify_message
-from nda_harness.skill_selection import SelectionError, load_selected_skills, read_resolution_request, read_selection_request, record_selection, select_skills
+from nda_harness.skill_selection import SelectionError, load_selected_skills, read_local_answers, read_resolution_request, read_selection_request, record_selection, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
 
 
@@ -259,6 +259,7 @@ def main(argv=None):
     parser.add_argument('--remove', action='store_true')
     parser.add_argument('--live', action='store_true')
     parser.add_argument('--request-file')
+    parser.add_argument('--answers-file')
     parser.add_argument('--refresh', action='store_true')
     args = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[2]
@@ -307,7 +308,14 @@ def main(argv=None):
                     manifest = {}
             kwargs = {'project': Path(project), 'session': args.session, 'home': home / '.nda-harness', 'catalog_root': package / 'skills', 'release_manifest': manifest, 'keychain': FileCredentialStore(home / '.nda-harness'), 'client': args.client}
             if args.command == 'select-skills':
-                report, code = select_skills(data, transport=None, refresh=args.refresh, **kwargs)
+                answers = None
+                if args.answers_file:
+                    try:
+                        answers = read_local_answers(args.answers_file)
+                    except SelectionError:
+                        print(json.dumps({'diagnostic': 'invalid_provider_response', 'implementation_authorized': False, 'selected': None, 'status': 'blocked'}))
+                        return 2
+                report, code = select_skills(data, transport=None, refresh=args.refresh, answers=answers, **kwargs)
             elif args.command == 'record-selection':
                 report, code = record_selection(data, decisions, **kwargs)
             else:
