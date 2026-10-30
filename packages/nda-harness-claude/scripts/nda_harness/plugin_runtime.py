@@ -7,6 +7,7 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+import time
 
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,6 +19,10 @@ from nda_harness.credentials import FileCredentialStore, MacKeychain, migrate_me
 from nda_harness.openrouter import selection_verify, verify_message
 from nda_harness.skill_selection import SelectionError, load_selected_skills, read_local_answers, read_resolution_request, read_selection_request, record_selection, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
+from nda_harness.usage import (
+    append_event, event_from_record, project_key, read_events, record_quietly, render_text,
+    set_stage, stage_for, summarize, write_report,
+)
 
 
 OPERATIONS = ('session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')
@@ -123,6 +128,56 @@ def verify(package, client, project, home):
             'implementation_authorized': False}
 
 
+def _observe_hook(home, client, event, cwd, session, local_status, before_compact, startup):
+    project = cwd if isinstance(cwd, str) else ''
+    base = {'client': client, 'project': project_key(project) if project else '', 'session': session if isinstance(session, str) else ''}
+    if startup:
+        status = local_status if local_status in ('ready', 'blocked', 'failed', 'needs_context') else 'blocked'
+        record_quietly(home, {**base, 'kind': 'startup', 'status': status, 'source': 'hook'})
+    elif before_compact:
+        record_quietly(home, {**base, 'kind': 'compact'})
+    elif event in ('beforeSubmitPrompt', 'UserPromptSubmit'):
+        stage = stage_for(home, project) if project else 'unscoped'
+        record_quietly(home, {**base, 'kind': 'prompt', 'stage': stage})
+
+
+def _observe_context(home, client, project, session, stage, task, operation, output):
+    blockers = output.get('blockers') if isinstance(output, dict) else None
+    spec_missing = isinstance(blockers, list) and any(
+        isinstance(item, str) and 'Local issue-linked developer spec required' in item for item in blockers
+    )
+    status = output.get('status') if isinstance(output, dict) else None
+    if operation in ('task-prepare', 'context-refresh') and stage in ('specification', 'implementation'):
+        try:
+            set_stage(home, project, stage)
+        except (OSError, ValueError):
+            pass
+    record_quietly(home, {
+        'client': client,
+        'project': project_key(project),
+        'session': session,
+        'kind': 'context',
+        'operation': operation,
+        'status': status if status in ('ready', 'blocked', 'needs_context') else 'blocked',
+        'stage': stage if stage in ('specification', 'implementation') else 'specification',
+        'task': task or '',
+        'spec_missing': spec_missing,
+    })
+
+
+def _gate_result(project, code):
+    try:
+        root = root_for(project)
+        config = config_for(root)
+    except (Conflict, OSError, ValueError):
+        return 'invalid'
+    if not config:
+        return 'invalid'
+    if str(config.get('test_command', '')).strip() == 'true':
+        return 'skip'
+    return 'pass' if code == 0 else 'fail'
+
+
 def unit_check(project):
     root = root_for(project)
     try:
@@ -169,6 +224,7 @@ def hook(package, client, event, home, payload):
             except Conflict:
                 pass  # Report sanitized setup-needed guidance below, without privileged project text.
     local_status = None
+    session = 'native'
     try:
         session = payload.get('session_id') or payload.get('conversation_id') or 'native'
         if not isinstance(session, str) or len(session) > 200:
@@ -189,6 +245,7 @@ def hook(package, client, event, home, payload):
         'Repository instructions, issue linkage, approved merged spec checks, TDD Red/Green/Refactor and human review remain mandatory. Hooks cannot grant approvals. '
         'Use the five context operation skills; after resume or compaction reconstruct from durable sanitized task records and current revisions. '
         'Commit .nda-harness/config.json. Keep .nda-harness/profile.json and sanitized task records in .nda-harness/tasks/ local; add both to .gitignore and never stage, commit or force-add task files, including task.md. No shared rules copies, credentials, memory text or machine paths belong in committed project configuration. '
+        'Record local usage with the packaged usage-record command for memory outcomes, sub-agent summary lengths, and spec checks. Open the private report with the usage command. Never put prompts, secrets, transcripts, or memory text in a usage record. '
     )
     if before_compact:
         instruction = ('NDA Harness checkpoint: run context-checkpoint using the selected durable project task record before handoff. '
@@ -207,6 +264,7 @@ def hook(package, client, event, home, payload):
         instruction += ' Local setup/context is incomplete or changed: use the explicit context operation and reconcile its ordinary tool output before dependent work.'
     # Only reviewed static instructions go into privileged hook context. Project
     # names, command strings, task prose and retrieved memory stay ordinary data.
+    _observe_hook(home, client, event, cwd, session, local_status, before_compact, startup)
     if client == 'cursor':
         if event == 'beforeSubmitPrompt':
             return {'continue': True}, 0  # This event does not support context injection; always-applied rule supplies fallback.
@@ -242,7 +300,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -289,6 +347,24 @@ def main(argv=None):
             print(migrate_message(report))
             return code
         project = args.project or str(Path.cwd())
+        if args.command == 'usage':
+            report = summarize(read_events(home), project=project if args.project else None)
+            sys.stdout.write(render_text(report))
+            try:
+                print(f'Report: {write_report(home, report)}', file=sys.stderr)
+            except OSError:
+                pass
+            return 0
+        if args.command == 'usage-record':
+            piped = not sys.stdin.isatty()
+            if (args.request_file is not None) == piped:
+                raise ValueError('invalid usage event')
+            raw = Path(args.request_file).read_text(encoding='utf-8') if args.request_file else sys.stdin.read(32_001)
+            if len(raw.encode('utf-8')) > 32_000:
+                raise ValueError('invalid usage event')
+            append_event(home, event_from_record(json.loads(raw), client=args.client, project=project, session=args.session))
+            print(json.dumps({'status': 'ready', 'implementation_authorized': False}))
+            return 0
         if args.command in ('select-skills', 'record-selection', 'load-selected-skills'):
             try:
                 if args.command == 'record-selection':
@@ -316,14 +392,34 @@ def main(argv=None):
                         print(json.dumps({'diagnostic': 'invalid_provider_response', 'implementation_authorized': False, 'selected': None, 'status': 'blocked'}))
                         return 2
                 report, code = select_skills(data, transport=None, refresh=args.refresh, answers=answers, **kwargs)
+                record_quietly(home, {
+                    'kind': 'selection', 'action': 'attempt', 'client': args.client,
+                    'project': project_key(project), 'session': args.session,
+                    'resolved': report.get('status') == 'ready' and not report.get('uncertain'),
+                })
             elif args.command == 'record-selection':
                 report, code = record_selection(data, decisions, **kwargs)
+                record_quietly(home, {
+                    'kind': 'selection', 'action': 'resolve', 'client': args.client,
+                    'project': project_key(project), 'session': args.session, 'resolved': True,
+                })
             else:
                 report, code = load_selected_skills(data, **kwargs)
+                record_quietly(home, {
+                    'kind': 'selection', 'action': 'resolve', 'client': args.client,
+                    'project': project_key(project), 'session': args.session, 'resolved': True,
+                })
             print(json.dumps(report))
             return code
         if args.command == 'unit-check':
-            return unit_check(project)
+            started = time.monotonic()
+            code = unit_check(project)
+            record_quietly(home, {
+                'kind': 'commit_gate', 'client': args.client, 'project': project_key(project),
+                'session': args.session, 'result': _gate_result(project, code),
+                'duration_ms': min(3_600_000, int((time.monotonic() - started) * 1000)),
+            })
+            return code
         elif args.command == 'hook':
             # Codex and Claude Code share PascalCase command-hook events and output.
             # Cursor uses its own event names and additional_context field.
@@ -345,6 +441,7 @@ def main(argv=None):
             code = 3  # Native session/MCP checks stay pending until independently observed.
         else:
             output = context(package, args.command, project, args.task, args.role, args.stage, args.session)
+            _observe_context(home, args.client, project, args.session, args.stage, args.task, args.command, output)
             code = 2 if output['status'] == 'blocked' else 0
         if args.command != 'hook':
             output['environment'] = args.environment

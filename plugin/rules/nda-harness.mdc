@@ -71,6 +71,8 @@ unavailable in this session, with authentication unverified. An unauthorized cal
 alone does not establish failed refresh. Continue with client default memory when
 it exists; do not fabricate saves or later synchronization.
 
+Local usage stays on this machine. Record a Hindsight outcome, an empty bank, a sub-agent summary length, or a spec check with the packaged `usage-record` command. Open the private report with the packaged `usage` command. Never put prompts, secrets, transcripts, or memory text in a usage record.
+
 @AUTH_GUIDANCE@
 
 @SELECTION_GUIDANCE@
