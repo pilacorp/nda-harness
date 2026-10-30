@@ -52,10 +52,11 @@ class _Pipe:
 
 
 class _Transport:
-    def __init__(self, probabilities, status=200, delay=0):
+    def __init__(self, probabilities, status=200, delay=0, model='typesafe/jev-1.14'):
         self.probabilities = probabilities
         self.status = status
         self.delay = delay
+        self.model = model
         self.calls = []
 
     def __call__(self, url, payload, headers):
@@ -64,7 +65,7 @@ class _Transport:
         self.calls.append((url, payload, headers))
         body = json.dumps({
             'answers': {skill: {'noul': probability, 'type': 'noul'} for skill, probability in self.probabilities.items()},
-            'id': 'gen-cache', 'model': 'typesafe/jev-1.14',
+            'id': 'gen-cache', 'model': self.model,
             'usage': {'cost': 0, 'input_tokens': 2, 'output_tokens': 1},
         }).encode()
         return self.status, body
@@ -469,6 +470,85 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(declined['selected'], [])
         self.assertEqual(len(transport.calls), 3)
 
+    def test_missing_key_asks_the_running_agent(self):
+        from nda_harness.skill_selection import selection_guidance
+        package, project, home, keychain = self._selection_env(setup=False)
+        transport = _Transport({'diagram-design': 0.99})
+        common = dict(project=project, session='session-one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain, transport=transport)
+        asked, code = select_skills(task(), **common)
+        self.assertEqual(code, 3)
+        self.assertEqual(asked['status'], 'needs_context')
+        self.assertEqual(asked['diagnostic'], 'local_agent')
+        self.assertEqual(asked['model_requested'], 'local-agent')
+        self.assertIsNone(asked['selected'])
+        self.assertEqual(transport.calls, [])
+        self.assertNotIn('SENTINEL_BODY_NOT_FOR_JEV', json.dumps(asked))
+        self.assertNotIn('selection-setup', asked['next'])
+        self.assertEqual(asked['questions']['diagram-design']['type'], 'noul')
+        self.assertIn('--answers-file', asked['next'])
+
+        answered, code = select_skills(task(), answers={'diagram-design': {'type': 'noul', 'noul': 0.91}}, **common)
+        self.assertEqual(code, 0)
+        self.assertEqual(answered['status'], 'ready')
+        self.assertEqual(answered['source'], 'local-agent')
+        self.assertEqual(answered['model_requested'], 'local-agent')
+        self.assertEqual(answered['model_returned'], 'local-agent')
+        self.assertEqual(answered['selected'], [{'entrypoint': 'diagram-design/SKILL.md', 'id': 'diagram-design'}])
+        self.assertNotIn('SENTINEL_BODY_NOT_FOR_JEV', json.dumps(answered))
+        self.assertEqual(transport.calls, [])
+
+        cached, code = select_skills(task(), **common)
+        self.assertEqual(code, 0)
+        self.assertEqual(cached['source'], 'cache')
+        self.assertEqual(cached['model_returned'], 'local-agent')
+        loaded, code = load_selected_skills(task(), project=project, session='session-one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain)
+        self.assertEqual(code, 0)
+        self.assertIn('SENTINEL_BODY_NOT_FOR_JEV', loaded['skills'][0]['body'])
+
+        later = time.time() + 8 * 24 * 60 * 60
+        with patch('nda_harness.skill_selection.time.time', return_value=later):
+            expired, code = select_skills(task(), **common)
+        self.assertEqual(code, 3)
+        self.assertEqual(expired['diagnostic'], 'local_agent')
+
+        uncertain, code = select_skills(task(), answers={'diagram-design': {'type': 'noul', 'noul': 0.5}}, refresh=True, **common)
+        self.assertEqual(code, 3)
+        self.assertEqual(uncertain['diagnostic'], 'uncertain_decision')
+        self.assertEqual(uncertain['model_returned'], 'local-agent')
+        recorded, code = record_selection(task(), {'diagram-design': False}, project=project, session='session-one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain)
+        self.assertEqual(code, 0)
+        self.assertEqual(recorded['selected'], [])
+        self.assertEqual(recorded['source'], 'user')
+        self.assertEqual(recorded['model_returned'], 'local-agent')
+
+        unavailable = _Keychain('bearer-token-value', status='unavailable')
+        blocked, code = select_skills(task(), answers={'diagram-design': {'type': 'noul', 'noul': 0.99}}, project=project, session='session-one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=unavailable, transport=transport)
+        self.assertEqual(code, 2)
+        self.assertEqual(blocked['diagnostic'], 'credential_unavailable')
+        self.assertEqual(transport.calls, [])
+
+        report, code = selection_setup(_TTY([]), home, read_secret=lambda: 'bearer-token-value')
+        self.assertEqual(code, 0)
+        jev, code = select_skills(task(request='Ship the settings page.'), answers={'diagram-design': {'type': 'noul', 'noul': 0.01}}, **common)
+        self.assertEqual(code, 0)
+        self.assertEqual(jev['source'], 'openrouter')
+        self.assertEqual(jev['model_returned'], 'typesafe/jev-1.14')
+        self.assertEqual(jev['selected'], [{'entrypoint': 'diagram-design/SKILL.md', 'id': 'diagram-design'}])
+        self.assertEqual(len(transport.calls), 1)
+        spoof = _Transport({'diagram-design': 0.99}, model='local-agent')
+        rejected, code = select_skills(task(request='Review the API boundary.'), project=project, session='session-one', home=home, catalog_root=package, release_manifest={'schema_version': 1}, keychain=keychain, transport=spoof)
+        self.assertEqual(code, 2)
+        self.assertEqual(rejected['diagnostic'], 'invalid_provider_response')
+        self.assertIsNone(rejected['selected'])
+
+        guidance = selection_guidance('cursor')
+        self.assertIn('local_agent', guidance)
+        self.assertIn('local-agent', guidance)
+        self.assertIn('--answers-file', guidance)
+        graph = (ROOT / 'plugin/skills/sub-agent-graph/SKILL.md').read_text(encoding='utf-8')
+        self.assertIn('local_agent', graph)
+        self.assertIn('local-agent', graph)
+
     def test_replacement_uses_the_new_key_and_skips_the_old_cache(self):
         package, project, home, keychain = self._selection_env(secret='first-bearer-token')
         transport = _Transport({'diagram-design': 0.05})
@@ -486,7 +566,7 @@ class SelectionTests(unittest.TestCase):
         with self.assertRaises(SelectionError):
             read_selection_request('request.json', _Pipe('{}'))
 
-    def _selection_env(self, secret='bearer-token-value'):
+    def _selection_env(self, secret='bearer-token-value', setup=True):
         root = Path(tempfile.mkdtemp(dir=ROOT))
         self.addCleanup(shutil.rmtree, root)
         package = root / 'hub'
@@ -503,10 +583,11 @@ class SelectionTests(unittest.TestCase):
         home = root / 'home'
         home.mkdir()
         from nda_harness.credentials import FileCredentialStore
-        report, code = selection_setup(_TTY([]), home, read_secret=lambda: secret)
-        self.assertEqual(code, 0)
-        self.assertEqual(report['status'], 'ready')
         keychain = FileCredentialStore(home)
+        if setup:
+            report, code = selection_setup(_TTY([]), home, read_secret=lambda: secret)
+            self.assertEqual(code, 0)
+            self.assertEqual(report['status'], 'ready')
         return package, project, home, keychain
 
     def _facts(self, stack):
@@ -572,8 +653,10 @@ class SelectionTests(unittest.TestCase):
             task(), project=project, session='session-one', home=blocked_home, catalog_root=package,
             release_manifest={'schema_version': 1}, keychain=missing, transport=transport, client='claude',
         )
-        self.assertEqual(outside_code, 2)
-        self.assertEqual(outside['diagnostic'], 'credential_missing')
+        self.assertEqual(outside_code, 3)
+        self.assertEqual(outside['diagnostic'], 'local_agent')
+        self.assertEqual(outside['model_requested'], 'local-agent')
+        self.assertEqual(transport.calls, [])
         kept, kept_code = select_skills(
             task(), project=project, session='session-two', home=home, catalog_root=package,
             release_manifest={'schema_version': 1}, keychain=usable, transport=transport, client='cursor',

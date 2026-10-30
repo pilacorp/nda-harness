@@ -18,7 +18,7 @@ from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.10'
+RELEASE_VERSION = '0.0.11'
 NDA_RAG_SERVER = 'nda-harness-nda-rag'
 NDA_RAG_MCP = 'https://docs-dev.chainhub.vn/api/mcp'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
@@ -26,7 +26,9 @@ SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
            'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
-           'credentials.py', 'openrouter.py', 'skill_selection.py')
+           'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py')
+REPOSITORY_URL = 'https://github.com/pilacorp/nda-harness'
+USAGE_HOME_URL = REPOSITORY_URL + '/blob/dev/docs/usage-report.md'
 
 
 def validate_endpoint(url, local_test=False):
@@ -198,7 +200,8 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
                                            'logo': './assets/logo.jpg', 'composerIcon': './assets/logo.jpg'}})
         else:
             manifest.update({'author': {'name': 'NDA Harness'}, 'logo': 'assets/logo.jpg', 'rules': './rules/',
-                             'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json'})
+                             'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json',
+                             'homepage': USAGE_HOME_URL, 'repository': REPOSITORY_URL})
         write(root, f'.{client}-plugin/plugin.json', json_bytes(manifest))
         servers = {
             'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'},

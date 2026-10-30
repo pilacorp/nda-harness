@@ -25,7 +25,7 @@ Supported coding-agent setups require Superpowers, RTK, and Context7. Context7 s
 - [Installation](INSTALLATION.md): add the GitHub marketplace and install NDA Harness in Codex, Cursor or Claude.
 - [Plugin operations](docs/plugin-operations.md): migration, project setup, optional memory, recovery and contributor builds.
 - [Developer integration](docs/developer-integration.md): repository preparation, local agent setup, readiness checks, daily use, handoffs, and upgrades.
-- [Skills hub](skills/catalog.md): UI/UX Pro Max, official Vietnamese document wording, and Diagram Design. The local Jev helper selects them; load only the returned bodies.
+- [Skills hub](skills/catalog.md): UI/UX Pro Max, official Vietnamese document wording, and Diagram Design. The local Jev helper selects them, or the running coding agent answers the same questions when no OpenRouter key is saved. Load only the returned bodies.
 - [Skill selection](docs/skill-selection.md): personal OpenRouter key, Jev `typesafe/jev-1.14`, and the select/load commands.
 
 Code stays in the developer's local repository for agent inspection. The existing Markdown/pgvector RAG supplies feature and architecture knowledge. Self-hosted Hindsight, using OpenRouter for LLM processing, provides each developer's personal memory, such as preferences and individual working notes; it is not an organization-wide source of facts.
@@ -37,7 +37,7 @@ Memory storage stays internal; processing sends relevant memory content through 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.10**, tracked from `main`. The
+version **0.0.11**, tracked from `main`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).

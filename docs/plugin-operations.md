@@ -96,7 +96,7 @@ Run from the repository root, choosing a new semantic version for each release:
 
 ```sh
 PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
-  --archive --version 0.0.10 --output dist/nda-harness-codex-0.0.10.zip
+  --archive --version 0.0.11 --output dist/nda-harness-codex-0.0.11.zip
 ```
 
 Select the ZIP in **Upload plugin archive**. The command preserves existing

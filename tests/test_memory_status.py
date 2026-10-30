@@ -127,6 +127,8 @@ class PackagedMemoryStatusTests(unittest.TestCase):
                               env={**os.environ, 'HOME': str(self.home)}, timeout=15)
 
     def test_packaged_cli_classifies_without_project_setup_or_state_writes(self):
+        private = self.base / 'memory-status-home'
+        private.mkdir()
         for client, data, expected in (
                 ('codex', notification(failureReason='reauthenticationRequired'), 'awaiting_authentication'),
                 ('claude', {'name': SERVER, 'status': 'needs-auth'}, 'awaiting_authentication'),
@@ -134,10 +136,13 @@ class PackagedMemoryStatusTests(unittest.TestCase):
                  'awaiting_authentication'),
                 ('cursor', notification(failureReason='reauthenticationRequired'), 'pending_native_diagnostic')):
             with self.subTest(client=client):
-                run = self.run_helper(client, json.dumps(data))
+                root = self.packages[client]
+                run = subprocess.run([str(root / 'bin/nda-plugin'), 'memory-status', '--client', client],
+                                      input=json.dumps(data), text=True, capture_output=True, cwd=private,
+                                      env={**os.environ, 'HOME': str(private)}, timeout=15)
                 self.assertEqual(run.returncode, 0, run.stderr + run.stdout)
                 self.assertEqual(json.loads(run.stdout)['memory_state'], expected)
-                self.assertEqual(list(self.home.iterdir()), [])
+                self.assertEqual(list(private.iterdir()), [])
 
     def test_invalid_input_is_bounded_and_sanitized(self):
         for data in ('SECRET {', '["SECRET"]', '"SECRET"', '{"error":"' + 'x' * 1_000_001,

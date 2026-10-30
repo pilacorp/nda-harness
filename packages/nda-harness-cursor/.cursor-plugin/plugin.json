@@ -4,11 +4,13 @@
   },
   "description": "NDA development workflow, project test gates and one optional memory system.",
   "displayName": "NDA Harness",
+  "homepage": "https://github.com/pilacorp/nda-harness/blob/dev/docs/usage-report.md",
   "hooks": "./hooks/hooks.json",
   "logo": "assets/logo.jpg",
   "mcpServers": "./mcp.json",
   "name": "nda-harness",
+  "repository": "https://github.com/pilacorp/nda-harness",
   "rules": "./rules/",
   "skills": "./skills/",
-  "version": "0.0.10"
+  "version": "0.0.11"
 }

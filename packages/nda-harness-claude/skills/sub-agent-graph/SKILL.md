@@ -31,6 +31,6 @@ Leave out the parent transcript, earlier unrelated attempts, files the child wil
 
 Call Hindsight `recall` and `retain` for the project bank in `.nda-harness/profile.json`. Search and fetch internal RAG before writing the summary. Do not put Hindsight credentials or a memory dump into the summary.
 
-Run Jev for the node before spawning. Load a specialist body only when doing that specialist work yourself. The child receives the selected id and path and does not call `select-skills`.
+Run Jev for the node before spawning. When `select-skills` returns diagnostic `local_agent`, answer those questions in Jev's noul format and submit them with `--answers-file`. The saved model name is `local-agent`. Load a specialist body only when doing that specialist work yourself. The child receives the selected id and path and does not call `select-skills`.
 
 Give the child `sub-agent-loop`. Append the child's finding, artifact references, and stop-condition result to the node.
