@@ -217,15 +217,16 @@ missing or failed, use **nda-setup** for recovery. Never infer ready from instal
 The agent checks `.nda-harness/config.json` at the project directory and asks for a
 non-watch test command in chat. Explicit **Skip** stores `true`, passing without
 tests. No answer means pending. Hooks exchange JSON, not terminal wizard input.
-A folder that is not a Git checkout, and a repository with no remote, requires a
-shared project name. Distinct remotes require explicit selection. Git commit
-hooks are installed only for a repository. Existing project configuration is reused.
+Git commit hooks are installed only for a repository. The bank id is not derived
+from the Git remote. `select-bank` opens the Hindsight bank page, and setup stores
+the printed id with `--bank-id`. Existing project configuration is reused.
 
 After answering, the plugin invokes its fixed-client packaged helper, for example:
 
 ```sh
 /absolute/package/path/bin/nda-plugin setup --client codex \
-  --project /absolute/project --test-command 'npm run test:unit'
+  --project /absolute/project --test-command 'npm run test:unit' \
+  --bank-id chosen-bank
 ```
 
 Use `--skip-tests` only for explicit Skip. `--project-name example-app` identifies

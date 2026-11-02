@@ -12,14 +12,15 @@ Choose the template by the bank's purpose, not the client application:
 ## Creating a bank
 
 1. Read the project `.nda-harness/profile.json` and use exactly
-   `memory.bank_id`. Equivalent clones and both clients share this project bank;
-   dev/staging/prod are labels within it, never separate banks. Call `list_banks`
-   first, following pagination, and reuse that exact bank. Do not apply a template
-   to an existing bank just because its configuration differs from these defaults.
-2. If that exact bank is missing, read the chosen JSON file in full. Create a bank
-   with the configured ID and a project-scoped purpose using `create_bank`. Do not create a bank
-   per conversation or overwrite an existing bank's purpose. List again if creation
-   reports an existing bank or a conflict; reuse it without reconfiguration.
+   `memory.bank_id`. That id is chosen on the Hindsight bank page during setup.
+   Clients on the same checkout share it. dev/staging/prod are labels within it,
+   never separate banks. Call `list_banks` first, following pagination, and reuse
+   that exact bank. Do not apply a template to an existing bank just because its
+   configuration differs from these defaults.
+2. If that exact bank is missing, ask the user to run `select-bank` again. Do not
+   invent an id from the Git remote and do not call `create_bank` for a missing
+   profile. The bank page creates the bank. After that page creates one, read the
+   chosen JSON file in full and apply it only to that new bank.
 3. Inspect the discovered MCP schemas. For the bank you just created, call
    `update_bank` with explicit `bank_id` and `config_updates` equal to the entire
    manifest's `bank` object. Preserve every supplied mission, observation flag and

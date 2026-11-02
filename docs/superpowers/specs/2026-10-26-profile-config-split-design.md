@@ -14,7 +14,7 @@ Split them. Memory stays personal in `profile.json` and may be ignored by Git. T
 - Setup and verification accept a Git-ignored `profile.json`.
 - Setup and verification reject a Git-ignored `config.json` and roll back a setup that would leave the project in that state.
 - The pre-commit hook runs the test command from `config.json`.
-- Bank identity is still derived from the Git remote, or from an explicit project name when there is no remote. Another clone of the same remote can rebuild the same bank without a committed profile.
+- The bank id is chosen or created on the Hindsight bank page during setup and stored in `profile.json`. It is not derived from the Git remote. A later setup reuses the stored id. A clone does not rebuild a bank from the remote; the user chooses the bank again.
 - Task records stay local under `.nda-harness/tasks/` and stay ignored.
 
 ## Non-goals
@@ -23,7 +23,7 @@ Split them. Memory stays personal in `profile.json` and may be ignored by Git. T
 - A personal test command, or a project-scoped memory record.
 - Storing the personal profile under `~/.nda-harness`.
 - Ignoring the whole `.nda-harness/` directory. That would hide `config.json`.
-- Changing how a bank id is calculated.
+- Deriving the bank id from the Git remote. Setup stores the id the user chose.
 - Changing the historical user-scope installer profile, the schema-1 pack profile that also names `spec_directory` and `task_directory`.
 - Untracking a profile that is already in the Git index. Setup does not run `git rm`.
 
@@ -45,16 +45,13 @@ These came from the design conversation:
 {
   "schema_version": 3,
   "memory": {
-    "identity_sha256": "64 lowercase hex characters",
-    "bank_id": "nda-project- plus the first 32 hex characters",
-    "system": "optional packaged system id",
-    "remote": "optional selected remote name",
-    "name": "optional project-name slug"
+    "bank_id": "the bank the user chose or created",
+    "system": "optional packaged system id"
   }
 }
 ```
 
-The memory object keeps today's validation. `system`, `remote`, and `name` stay optional. No other keys are allowed. `test_command` is not part of this schema.
+`bank_id` is required and is the id the user chose. `system` stays optional. Older profiles may still contain `identity_sha256`, `remote`, or `name`; setup rewrites the profile to `bank_id` and `system`. No other keys are allowed. `test_command` is not part of this schema.
 
 `config.json` schema 1:
 

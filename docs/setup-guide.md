@@ -35,9 +35,9 @@ Hindsight authentication in each client you use.
    incomplete startup; installation alone does not establish readiness.
 3. Answer the test-command question in chat. Supply the exact command to run
    from the repository root, or explicitly answer **Skip** to configure a passing
-   `true` command with no tests. If the project has no Git remote, provide a stable
-   shared project name when asked. If it has distinct remotes, choose which one
-   identifies the project.
+   `true` command with no tests. Setup then opens the Hindsight page where you
+   choose or create a memory bank. That bank id is stored in
+   `.nda-harness/profile.json`. It is not derived from the Git remote.
 4. Review the resulting project files. Commit `.nda-harness/config.json` and
    the `.gitignore` entries for `.nda-harness/profile.json` and
    `.nda-harness/tasks/`. Keep the personal profile and task records local and

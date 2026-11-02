@@ -11,6 +11,7 @@ import time
 
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from nda_harness.bank_select import await_bank_choice, valid_bank_id
 from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for, config_for
@@ -300,7 +301,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -308,6 +309,7 @@ def main(argv=None):
     parser.add_argument('--project-name')
     parser.add_argument('--remote')
     parser.add_argument('--memory-system')
+    parser.add_argument('--bank-id')
     parser.add_argument('--environment', choices=('dev', 'staging', 'prod'), default='dev')
     parser.add_argument('--event')
     parser.add_argument('--task')
@@ -324,6 +326,15 @@ def main(argv=None):
     home = Path.home().resolve()
     try:
         config = package_config(package, args.client)
+        if args.command == 'select-bank':
+            if args.bank_id is not None:
+                if not valid_bank_id(args.bank_id):
+                    raise Conflict('Bank id must be a short slug of letters, digits, dots, underscores, or hyphens.')
+                output = {'status': 'ready', 'bank_id': args.bank_id}
+            else:
+                output = await_bank_choice()
+            print(json.dumps(output, indent=2))
+            return 0 if output['status'] == 'ready' else 2
         if args.command == 'memory-status':
             native, invalid = read_memory_diagnostic(sys.stdin)
             print(json.dumps(memory_status(config, args.client, native, invalid=invalid), indent=2))
@@ -434,7 +445,8 @@ def main(argv=None):
             output = {'status': 'pending_client_checks', 'bootstrap': bootstrap(package, args.client, home)}
             if output['bootstrap']['state'] == 'ready':
                 output['project'] = configure(project, package, home, args.test_command, skip=args.skip_tests,
-                                              name=args.project_name, remote=args.remote, system=args.memory_system)
+                                              name=args.project_name, remote=args.remote, system=args.memory_system,
+                                              bank_id=args.bank_id)
             code = 3
         elif args.command == 'verify':
             output = verify(package, args.client, project, home)

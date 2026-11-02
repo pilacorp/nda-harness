@@ -43,8 +43,8 @@ class PluginTests(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(['git', '-C', str(self.project), *args], env=self.env, text=True, capture_output=True)
 
-    def setup(self, command=None, skip=False):
-        return configure(self.project, self.package, self.home, command, skip=skip)
+    def setup(self, command=None, skip=False, bank_id='example-bank'):
+        return configure(self.project, self.package, self.home, command, skip=skip, bank_id=bank_id)
 
     def test_native_mcp_server_identifiers_are_safe(self):
         for name in json.loads((self.package / '.mcp.json').read_text())['mcpServers']:
@@ -313,7 +313,7 @@ class PluginTests(unittest.TestCase):
 
         single = self.base / 'one-memory'
         build(ROOT, single, 'codex', 'https://memory.example.test/mcp/')
-        configure(self.project, single, self.home, skip=True)
+        configure(self.project, single, self.home, skip=True, bank_id='example-bank')
         profile = json.loads((self.project / '.nda-harness/profile.json').read_text())
         self.assertEqual(profile['memory']['system'], 'hindsight')
         self.assertEqual(packaged(json.loads((single / 'nda-plugin.json').read_text())),
@@ -330,9 +330,9 @@ class PluginTests(unittest.TestCase):
         subprocess.run(['git', '-C', str(other), 'init', '-q'], env=self.env, check=True)
         subprocess.run(['git', '-C', str(other), 'remote', 'add', 'origin', 'git@github.com:example/other.git'], env=self.env, check=True)
         with self.assertRaises(Conflict):
-            configure(other, several, self.home, skip=True)
+            configure(other, several, self.home, skip=True, bank_id='example-bank')
         self.assertFalse((other / '.nda-harness/profile.json').exists())
-        configure(other, several, self.home, skip=True, system='example-memory')
+        configure(other, several, self.home, skip=True, system='example-memory', bank_id='example-bank')
         chosen = json.loads((other / '.nda-harness/profile.json').read_text())
         self.assertEqual(chosen['memory']['system'], 'example-memory')
         self.assertIn('bank_id', chosen['memory'])
@@ -451,7 +451,7 @@ class PluginTests(unittest.TestCase):
         cursor = self.base / 'cursor'
         build(ROOT, claude, 'claude')
         build(ROOT, cursor, 'cursor')
-        self.assertEqual(configure(self.project, claude, self.home, skip=True)['status'], 'ready')
+        self.assertEqual(configure(self.project, claude, self.home, skip=True, bank_id='example-bank')['status'], 'ready')
         bank = json.loads((self.project / '.nda-harness/profile.json').read_text())['memory']['bank_id']
         for package in (claude, self.package, cursor):
             status = inspect_project(self.project, package, self.home)
@@ -496,7 +496,7 @@ class PluginTests(unittest.TestCase):
         directory.mkdir()
         (directory / 'profile.json').write_text(json.dumps(legacy) + '\n')
         self.assertEqual(inspect_project(self.project, self.package, self.home)['status'], 'needs_configuration')
-        self.assertEqual(self.setup()['status'], 'ready')
+        self.assertEqual(self.setup(bank_id=None)['status'], 'ready')
         personal = json.loads((directory / 'profile.json').read_text())
         self.assertEqual(personal['schema_version'], 3)
         self.assertEqual(set(personal), {'schema_version', 'memory'})
@@ -612,20 +612,22 @@ class PluginTests(unittest.TestCase):
         with self.assertRaises(Conflict):
             project_identity(self.project)
 
-    def test_directory_without_git_uses_project_name_and_skips_hooks(self):
+    def test_directory_without_git_uses_chosen_bank_and_skips_hooks(self):
         folder = self.base / 'local notes'
         folder.mkdir()
-        with self.assertRaises(Conflict):
-            configure(folder, self.package, self.home, skip=True)
+        pending = configure(folder, self.package, self.home, skip=True)
+        self.assertEqual(pending['status'], 'needs_configuration')
+        self.assertEqual(pending['bank_id'], 'pending')
         self.assertFalse((folder / '.nda-harness/profile.json').exists())
-        result = configure(folder, self.package, self.home, skip=True, name='local-notes')
+        result = configure(folder, self.package, self.home, skip=True, bank_id='local-notes')
         self.assertEqual(result['status'], 'ready')
         self.assertEqual(result['protection'], 'not_applicable')
         profile = json.loads((folder / '.nda-harness/profile.json').read_text())
         self.assertNotIn('test_command', profile)
         self.assertEqual(json.loads((folder / '.nda-harness/config.json').read_text())['test_command'], 'true')
         self.assertFalse((folder / '.gitignore').exists())
-        self.assertEqual(profile['memory']['name'], 'local-notes')
+        self.assertEqual(profile['memory']['bank_id'], 'local-notes')
+        self.assertNotIn('name', profile['memory'])
         self.assertNotIn('remote', profile['memory'])
         status = inspect_project(folder, self.package, self.home)
         self.assertEqual(status['status'], 'ready')
@@ -645,10 +647,48 @@ class PluginTests(unittest.TestCase):
         a = project_identity(self.project, name='example-app')
         self.assertEqual(a, project_identity(self.project, name='example-app'))
         self.git('remote', 'add', 'origin', 'https://github.com/example/project')
-        self.setup(skip=True)
+        self.setup(skip=True, bank_id='chosen-bank')
         self.git('remote', 'set-url', 'origin', 'https://github.com/example/other')
-        with self.assertRaises(Conflict):
-            self.setup()
+        self.assertEqual(self.setup(bank_id=None)['bank_id'], 'chosen-bank')
+        profile = json.loads((self.project / '.nda-harness/profile.json').read_text())
+        self.assertEqual(profile['memory']['bank_id'], 'chosen-bank')
+        self.assertNotIn('identity_sha256', profile['memory'])
+
+    def test_missing_bank_is_not_derived_from_git(self):
+        derived = project_identity(self.project)['bank_id']
+        result = configure(self.project, self.package, self.home, skip=True)
+        self.assertEqual(result['status'], 'needs_configuration')
+        self.assertEqual(result['bank_id'], 'pending')
+        self.assertNotEqual(result['bank_id'], derived)
+        self.assertFalse((self.project / '.nda-harness/profile.json').exists())
+        self.assertFalse((self.project / '.nda-harness/config.json').exists())
+
+    def test_select_bank_accepts_one_matching_choice(self):
+        from urllib.error import HTTPError
+        from urllib.parse import parse_qs, urlencode, urlsplit
+        from urllib.request import urlopen
+        from nda_harness.bank_select import await_bank_choice, loopback_redirect
+
+        self.assertIsNone(loopback_redirect('https://evil.example/callback'))
+        self.assertIsNone(loopback_redirect('http://evil.example:9/callback'))
+        self.assertIsNone(loopback_redirect('http://user:secret@127.0.0.1:9/callback'))
+
+        def opener(url):
+            query = parse_qs(urlsplit(url).query)
+            redirect = query['redirect_uri'][0]
+            state = query['state'][0]
+            self.assertEqual(urlsplit(url).hostname, 'hindsight.pila.vn')
+            self.assertEqual(urlsplit(url).path, '/harness/bank')
+            self.assertIsNotNone(loopback_redirect(redirect))
+            with self.assertRaises(HTTPError) as rejected:
+                urlopen(redirect + '?' + urlencode({'state': 'other-state', 'bank_id': 'example-bank'}))
+            self.assertEqual(rejected.exception.code, 400)
+            accepted = urlopen(redirect + '?' + urlencode({'state': state, 'bank_id': 'chosen-bank'}))
+            self.assertEqual(accepted.status, 200)
+            self.assertIn(b'Bank selected', accepted.read())
+
+        result = await_bank_choice(opener=opener, timeout=5)
+        self.assertEqual(result, {'status': 'ready', 'bank_id': 'chosen-bank'})
 
     def test_failed_activation_rolls_back_config_and_previous_hook(self):
         with patch('nda_harness.project.activate', side_effect=OSError('failure')):
@@ -767,7 +807,10 @@ class PluginTests(unittest.TestCase):
         subprocess.run(['git', '-C', str(clone), 'remote', 'set-url', 'origin', 'https://github.com/example/project.git'], env=self.env, check=True)
         self.assertEqual(inspect_project(clone, self.package, self.home)['status'], 'needs_configuration')
         original = json.loads((self.project / '.nda-harness/profile.json').read_text())
-        configure(clone, self.package, self.home)
+        pending = configure(clone, self.package, self.home)
+        self.assertEqual(pending['bank_id'], 'pending')
+        self.assertFalse((clone / '.nda-harness/profile.json').exists())
+        configure(clone, self.package, self.home, bank_id=original['memory']['bank_id'])
         self.assertEqual(inspect_project(clone, self.package, self.home)['bank_id'], original['memory']['bank_id'])
 
     def test_unwritable_private_state_tells_the_operator_to_grant_write_access(self):
