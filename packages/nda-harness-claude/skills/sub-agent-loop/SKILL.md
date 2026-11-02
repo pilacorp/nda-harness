@@ -3,6 +3,8 @@ name: sub-agent-loop
 description: Use when you are a sub-agent working one assignment from a parent summary. Return a short result.
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 You are the loop engineer for one node. Work from the parent summary. Do not create another node and do not spawn a sub-agent.
 
 ## Stay inside the assignment

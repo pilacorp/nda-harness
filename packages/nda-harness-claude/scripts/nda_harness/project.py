@@ -178,7 +178,12 @@ def directory_config(project):
     if config is None:
         return None
     try:
-        if set(config) != {'schema_version', 'test_command'} or config['schema_version'] != 1 or not _valid_command(config['test_command']):
+        keys = set(config)
+        if not {'schema_version', 'test_command'} <= keys or keys - {'schema_version', 'test_command', 'enabled'}:
+            raise ValueError()
+        if config['schema_version'] != 1 or not _valid_command(config['test_command']):
+            raise ValueError()
+        if 'enabled' in config and type(config['enabled']) is not bool:
             raise ValueError()
     except (KeyError, TypeError, ValueError):
         raise Conflict('Project configuration is invalid; reconcile configuration before dependent work.') from None
@@ -245,9 +250,14 @@ def effective_profile(project):
 
 
 def effective_config(project):
-    """Merge test commands. A config.json in the repo replaces an outer one."""
+    """Merge test commands. A config.json in the repo replaces an outer one.
+
+    ``enabled`` merges by key. A layer that omits it leaves the outer value.
+    A missing field means the project stays on.
+    """
     project = Path(project).resolve()
     command = None
+    enabled = True
     for root in harness_layers(project):
         try:
             config = directory_config(root)
@@ -257,13 +267,27 @@ def effective_config(project):
             continue
         if config:
             command = config['test_command']
+            if 'enabled' in config:
+                enabled = config['enabled']
             continue
         kind, profile = _layer_profile(root, project)
         if kind == 'legacy':
             command = profile['test_command']
     if command is None:
         return None
-    return {'schema_version': 1, 'test_command': command}
+    return {'schema_version': 1, 'test_command': command, 'enabled': enabled}
+
+
+def project_disabled(project):
+    """True only when a resolved config explicitly sets enabled to false."""
+    try:
+        config = config_for(project)
+    except (Conflict, OSError, ValueError):
+        return False
+    return bool(config and config.get('enabled') is False)
+
+
+DISABLED_MESSAGE = 'NDA Harness is disabled on the project'
 
 
 def profile_for(project):
@@ -304,7 +328,7 @@ def recover(state, project, receipt):
     return prior
 
 
-def configure(project, package, home, test_command=None, *, skip=False, name=None, remote=None, system=None, bank_id=None):
+def configure(project, package, home, test_command=None, *, skip=False, name=None, remote=None, system=None, bank_id=None, enable=False):
     project, package, home = root_for(project), Path(package).resolve(), Path(home).resolve()
     if skip and test_command is not None:
         raise Conflict('Use an explicit test command or explicit Skip.')
@@ -340,6 +364,10 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
             memory['system'] = chosen
         profile = {'schema_version': 3, 'memory': memory}
         project_config = {'schema_version': 1, 'test_command': command}
+        if enable:
+            project_config['enabled'] = True
+        elif existing and 'enabled' in existing:
+            project_config['enabled'] = existing['enabled']
         plan = Plan(receipt)
         plan.write(project / '.nda-harness/profile.json', json_bytes(profile))
         plan.write(project / '.nda-harness/config.json', json_bytes(project_config))

@@ -14,7 +14,9 @@ if __package__ in (None, ''):
 from nda_harness.bank_select import await_bank_choice, valid_bank_id
 from nda_harness.files import Plan, Conflict, atomic, digest, json_bytes, read
 from nda_harness.dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
-from nda_harness.project import locked, configure, inspect_project, root_for, load_json, profile_for, config_for
+from nda_harness.project import (
+    DISABLED_MESSAGE, locked, configure, inspect_project, project_disabled, root_for, load_json, profile_for, config_for,
+)
 from nda_harness.plugin_build import CLIENTS, validate_endpoint
 from nda_harness.credentials import FileCredentialStore, MacKeychain, migrate_message, migrate_openrouter_key, selection_setup, setup_message
 from nda_harness.openrouter import selection_verify, verify_message
@@ -27,6 +29,12 @@ from nda_harness.usage import (
 
 
 OPERATIONS = ('session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')
+QUIET_COMMANDS = frozenset({
+    'verify', 'usage', 'usage-record', 'memory-status',
+    'selection-setup', 'selection-migrate', 'selection-verify',
+    'select-skills', 'record-selection', 'load-selected-skills',
+    *OPERATIONS,
+})
 
 
 def read_memory_diagnostic(stream):
@@ -174,7 +182,7 @@ def _gate_result(project, code):
         return 'invalid'
     if not config:
         return 'invalid'
-    if str(config.get('test_command', '')).strip() == 'true':
+    if config.get('enabled') is False or str(config.get('test_command', '')).strip() == 'true':
         return 'skip'
     return 'pass' if code == 0 else 'fail'
 
@@ -185,6 +193,8 @@ def unit_check(project):
         config = config_for(root)
         if not config:
             raise ValueError()
+        if config.get('enabled') is False:
+            return 0
         run = subprocess.run(['/bin/sh', '-c', config['test_command']], cwd=root, timeout=300, capture_output=True)
         if run.returncode:
             print('NDA pre-commit: configured tests failed. Rerun the command locally for output.', file=sys.stderr)
@@ -206,15 +216,33 @@ def context(package, operation, project, task=None, role=None, stage='specificat
     return output
 
 
-def hook(package, client, event, home, payload):
-    # Raw prompt/transcript content is intentionally ignored and never retained.
-    config = package_config(package, client)
+def _hook_cwd(payload):
     cwd = payload.get('cwd')
     roots = payload.get('workspace_roots', [])
     if not cwd and isinstance(roots, list) and len(roots) == 1:
         cwd = roots[0]
     if not isinstance(cwd, str):
         cwd = str(Path.cwd())
+    return cwd
+
+
+def _quiet_hook(client, event):
+    """The client still starts the hook. A disabled project adds no workflow text."""
+    if client == 'cursor':
+        if event == 'beforeSubmitPrompt':
+            return {'continue': True}
+        return {}
+    if event in ('PreCompact', 'preCompact'):
+        return {}
+    return {'hookSpecificOutput': {'hookEventName': event, 'additionalContext': ''}}
+
+
+def hook(package, client, event, home, payload):
+    # Raw prompt/transcript content is intentionally ignored and never retained.
+    cwd = _hook_cwd(payload)
+    if project_disabled(cwd):
+        return _quiet_hook(client, event), 0
+    config = package_config(package, client)
     startup = event in ('SessionStart', 'sessionStart', 'workspaceOpen')
     before_compact = event in ('PreCompact', 'preCompact')
     if startup:
@@ -326,6 +354,9 @@ def main(argv=None):
     home = Path.home().resolve()
     try:
         config = package_config(package, args.client)
+        if args.command in QUIET_COMMANDS and project_disabled(args.project or os.getcwd()):
+            print(DISABLED_MESSAGE)
+            return 0
         if args.command == 'select-bank':
             if args.bank_id is not None:
                 if not valid_bank_id(args.bank_id):
@@ -446,7 +477,7 @@ def main(argv=None):
             if output['bootstrap']['state'] == 'ready':
                 output['project'] = configure(project, package, home, args.test_command, skip=args.skip_tests,
                                               name=args.project_name, remote=args.remote, system=args.memory_system,
-                                              bank_id=args.bank_id)
+                                              bank_id=args.bank_id, enable=True)
             code = 3
         elif args.command == 'verify':
             output = verify(package, args.client, project, home)

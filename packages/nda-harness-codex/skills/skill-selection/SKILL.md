@@ -4,6 +4,8 @@ description: Set up or reuse Jev skill selection for this client, then load only
 disable-model-invocation: true
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 This plugin is bound to **codex**. Never ask the user to choose a client.
 
 When the user invokes this command, open a terminal and run selection-setup. Do not run it in the agent shell. Pass the actual project root:

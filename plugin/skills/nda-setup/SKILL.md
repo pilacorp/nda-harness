@@ -3,6 +3,8 @@ name: nda-setup
 description: Recover plugin bootstrap or configure the current project and its local Git test gate.
 ---
 
+If `.nda-harness/config.json` has `"enabled": false`, this command turns the project on by writing `"enabled": true`. `select-bank` is part of this command when the profile has no bank id. Every other harness command stays off.
+
 This plugin is bound to **@CLIENT@**. Never ask the user to choose clients or scope.
 Run the packaged `@ROOT@/bin/nda-plugin setup --client @CLIENT@ --project <actual-root>`
 using the plugin's resolved absolute install path, quoted as a single executable.
