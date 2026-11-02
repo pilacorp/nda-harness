@@ -171,11 +171,28 @@ class PluginTests(unittest.TestCase):
         self.assertIn('resolve-library-id', runtime)
         self.assertIn('list_banks', (memory / 'skills/session-bootstrap/SKILL.md').read_text())
 
+    def test_vietnamese_tech_writing_keeps_its_upstream_license_and_validator(self):
+        skill = ROOT / 'skills' / 'vietnamese-tech-writing'
+        self.assertIn('MIT License', (skill / 'LICENSE').read_text(encoding='utf-8'))
+        self.assertIn('9ab84436a4bff62a98810c73bf94278f3b409a9d', (skill / 'SOURCE.md').read_text(encoding='utf-8'))
+        body = (skill / 'SKILL.md').read_text(encoding='utf-8')
+        self.assertIn('vietnamese-official-wording', body)
+        self.assertIn('Keep the English terms English', body)
+        official = (ROOT / 'skills' / 'vietnamese-official-wording' / 'SKILL.md').read_text(encoding='utf-8')
+        self.assertIn('vietnamese-tech-writing', official)
+        self.assertIn('đề nghị', official)
+        completed = subprocess.run(
+            [sys.executable, str(skill / 'scripts' / 'validate_copy.py'), '--list-rules'],
+            check=False, capture_output=True, text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn('PRO002', completed.stdout)
+
     def test_sub_agent_skills_ship_identically_and_stay_out_of_the_catalog(self):
         catalog = json.loads((ROOT / 'skills/catalog.json').read_text())
         self.assertEqual(
             [skill['id'] for skill in catalog['skills']],
-            ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording'],
+            ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording', 'vietnamese-tech-writing'],
         )
         packages = {'codex': self.package, 'cursor': self.base / 'cursor-subagents'}
         build(ROOT, packages['cursor'], 'cursor')

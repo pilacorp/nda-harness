@@ -100,6 +100,7 @@ The local Jev helper reads catalog metadata and returns the specialist set. The 
 | --- | --- | --- |
 | UI design, implementation, or review | [UI/UX Pro Max](../skills/ui-ux-pro-max/SKILL.md) | Pinned upstream design guidance and local search resources; existing design system/spec governs |
 | Formal Vietnamese organizational documents | [Official Vietnamese document wording](../skills/vietnamese-official-wording/SKILL.md) | Template-led Vietnamese drafting/revision; human approves official issuance |
+| Vietnamese technical or product documents | [Vietnamese tech writing](../skills/vietnamese-tech-writing/SKILL.md) | Pinned upstream vi-VN engineering and product wording; source facts stay authoritative |
 | Explanatory architecture/workflow diagrams | [Diagram Design](../skills/diagram-design/SKILL.md) | Pinned upstream templates, type references, and local verification; approved project style governs |
 
 Each assignment includes the issue/task, repository revision, shared policy/profile paths, mandatory Superpowers/RTK/Context7 requirements and verified execution path, selected specialist skills and release revision, relevant inputs, allowed file scope and side effects, expected output, and stop conditions. Record that selection and scope in the repository task record. Findings return to the coordinating agent and human reviewer; they do not advance a gate by themselves. Recheck selections and revisions on resume rather than accumulating prior skills. The required bootstrap/workflow skills are separate from the optional specialist hub selection.
@@ -119,7 +120,7 @@ Separate discovery from execution. The coordinator initially reads only catalog 
 | During execution | Read references or run local helpers needed for the selected task | Load the chosen type/stack resources on demand; task changes require a recorded new selection |
 | Return or resume | Return concise findings/artifact references; recheck revision and selection for the next assignment | Do not accumulate prior skill bodies or return full transcripts/resources to the parent |
 
-Ordinary backend/test-review tasks may select no specialist skill. A diagram assignment selects `diagram-design`; a formal Vietnamese document selects `vietnamese-official-wording`; an interface assignment selects `ui-ux-pro-max`. Jev may select more than one when the assignment needs both. When an OpenRouter key is saved, the coding model does not make this choice. When no key is saved, the running coding agent answers the same questions and the helper records the model as `local-agent`.
+Ordinary backend/test-review tasks may select no specialist skill. A diagram assignment selects `diagram-design`; a formal Vietnamese document selects `vietnamese-official-wording`; a Vietnamese technical or product document selects `vietnamese-tech-writing`; an interface assignment selects `ui-ux-pro-max`. Jev may select more than one when the assignment needs both. When an OpenRouter key is saved, the coding model does not make this choice. When no key is saved, the running coding agent answers the same questions and the helper records the model as `local-agent`.
 
 ### Jev specialist selection
 
@@ -129,7 +130,7 @@ Each developer stores a personal OpenRouter key in `~/.nda-harness/skill-selecti
 
 A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill and stores that choice with `record-selection` in the local Jev cache. Confident exclusion of every skill is a successful empty selection. Results are cached under `~/.nda-harness/skill-selection/` and are not approval. `implementation_authorized` stays false. Mandatory workflow skills stay in force whether or not Jev selects a specialist.
 
-The three specialist directories still ship next to workflow skills. Moving them to a separate hub path is later work. See [skill selection](skill-selection.md).
+The specialist directories still ship next to workflow skills. Moving them to a separate hub path is later work. See [skill selection](skill-selection.md).
 
 Record selection inline in the repository task record: assignment ID, task stage, catalog/harness revision, selected IDs and resolved paths, short reason, allowed file scope/side effects, requested tools, observed exposure limitations, and next action. These are concise handoff records, not test logs or proof of unseen context. A missing/invalid selection blocks that delegation, not unrelated work. The receiver rechecks the assignment revision and workflow permissions before editing.
 
@@ -417,6 +418,6 @@ The following are acceptance walkthroughs to execute in the pilot, not completed
 
 ## Decisions and prerequisites
 
-Defaults are English documentation, one shared policy, mandatory Superpowers/RTK/Context7 dependencies, repository-local version pinning, existing test runners, separate RAG and personal-memory services, and developer-controlled personal memory. The specialist Skills hub initially contains UI/UX Pro Max, official Vietnamese document wording, and Diagram Design. Shared organizational memory and mandatory multi-agent orchestration are outside this phase.
+Defaults are English documentation, one shared policy, mandatory Superpowers/RTK/Context7 dependencies, repository-local version pinning, existing test runners, separate RAG and personal-memory services, and developer-controlled personal memory. The specialist Skills hub contains UI/UX Pro Max, official Vietnamese document wording, Vietnamese tech writing, and Diagram Design. Shared organizational memory and mandatory multi-agent orchestration are outside this phase.
 
 Before implementation, owners must supply the pilot repository, existing test commands, authorized approvers, approved Superpowers/RTK revisions, Context7 connection contract, and supported-agent integration mapping, RAG interface/authentication, and self-hosted Hindsight endpoint/capabilities. These are integration facts to confirm, not reasons to invent replacement services. Release packaging, machine-readable evidence, validators, and deployment are subsequent work.

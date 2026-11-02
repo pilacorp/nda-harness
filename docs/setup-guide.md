@@ -133,7 +133,7 @@ setup.
    specialist bodies. You do not need to run these agent commands yourself.
 
 Selection sends bounded task text and catalog metadata to OpenRouter. The current
-specialists are Diagram Design, UI/UX Pro Max, and Vietnamese official wording.
+specialists are Diagram Design, UI/UX Pro Max, Vietnamese official wording, and Vietnamese tech writing.
 An empty selection is valid. When a score is strictly between 0.20 and 0.80, the agent
 asks whether to load that skill and stores the answer in the local Jev cache.
 Mandatory workflow skills remain active, and selection does not approve

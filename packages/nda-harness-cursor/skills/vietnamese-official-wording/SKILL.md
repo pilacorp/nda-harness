@@ -5,7 +5,7 @@ description: Draft or revise formal Vietnamese organizational documents using ap
 
 # Official Vietnamese document wording
 
-Use this skill for formal Vietnamese reports, notices, proposals, official correspondence, and organizational documents. It is an internal wording skill, not a claim of government certification or legal review. Keep technical project documentation in English unless the task requests Vietnamese output.
+Use this skill for formal Vietnamese reports, notices, proposals, official correspondence, and organizational documents. It is an internal wording skill, not a claim of government certification or legal review. Vietnamese technical or product writing, including design docs, READMEs, API docs, pull requests, release notes, runbooks, and UI copy, uses `vietnamese-tech-writing` instead of this skill. Keep technical project documentation in English unless the task requests Vietnamese output.
 
 Identify the document type, issuing organization, audience, purpose, and requested action. Read the supplied organizational template, glossary, and source facts first. Preserve an existing document's structure and intended meaning; ask only for missing details that materially affect the draft. If no approved template exists, produce a clearly identified draft in a conventional structure rather than inventing an organization's required format.
 
