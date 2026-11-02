@@ -32,11 +32,13 @@ Use `nda-setup` to recover incomplete bootstrap or activate this clone's Git hoo
 An installed plugin does not prove trusted hooks ran or MCP connected.
 
 Inspect `.nda-harness/profile.json` for memory and `.nda-harness/config.json` for
-the test command at the actual Git project root. When `.nda-harness/config.json` is missing, ask
+the test command at the actual Git project root. When repositories are nested,
+merge ancestor `.nda-harness` files and let the folder in the repo override.
+When `.nda-harness/config.json` is missing, ask
 the user in chat for a non-watch test command, offering explicit Skip. No answer
 means pending. Only explicit Skip means literal `true`. When the config is present
-and the profile is missing, run nda-setup without a new test command so the stored
-command is kept and the personal profile is rebuilt. Keep diagnostic conversation
+and the profile is missing, keep the stored test command and run select-bank, then
+nda-setup with that `--bank-id`. Do not invent a bank from the Git remote. Keep diagnostic conversation
 available while setup is incomplete; block dependent implementation, not the chat.
 
 Commit `.nda-harness/config.json`. Keep `.nda-harness/profile.json` and task
@@ -62,8 +64,8 @@ selected and this session already lists its tools such as `list_banks`, `create_
 before substantive work. Do not wait for the user to mention NDA Hindsight.
 
 Read `.nda-harness/profile.json` and use exactly `memory.bank_id`. Call
-`list_banks` for that id. If it is missing, call `create_bank` with that same id
-and a project-scoped mission, then apply the packaged coding-agent template.
+`list_banks` for that id. If the profile has no bank id, run select-bank during
+nda-setup. Do not call `create_bank` to invent a GitHub-derived bank.
 Call `recall` with that `bank_id` and the user request before answering. After
 a meaningful decision, preference, or work note, call `retain` in that same bank.
 Default environment is dev. Never store secrets. Missing tools mean Hindsight is

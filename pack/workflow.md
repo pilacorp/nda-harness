@@ -22,7 +22,10 @@ The local Git pre-commit wrapper preserves existing hooks and runs the configure
 non-watch test command at the actual project root. Either failure blocks commit.
 Committed `.nda-harness/config.json` is project configuration and holds the test
 command. `.nda-harness/profile.json` is the personal memory record and may be
-ignored by Git. Private activation, backups, locks and executable paths stay
+ignored by Git. When a repository sits inside another repository, merge
+`config.json` and `profile.json` from the outer `.nda-harness` folder. The
+folder inside the repository wins on every key it sets.
+Private activation, backups, locks and executable paths stay
 outside the repository. Activate every clone through the plugin. Explicit Skip
 stores `true` and does not mean tests ran. Task records under
 `.nda-harness/tasks/` are local working state: ignore that directory and
@@ -38,9 +41,10 @@ no provider configuration or credential storage belongs to this harness. When th
 selected system is NDA Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
 hindsight-memory and call them before substantive work. Do not wait for the user
 to mention NDA Hindsight. Use exactly `memory.bank_id` from `.nda-harness/profile.json`:
-`list_banks` for that id, `create_bank` with that same id when it is missing,
-then `recall` and later `retain`. One bank per project is shared by Codex
-and Cursor and equivalent Git clones. Dev/staging/prod are labels within that bank,
+`list_banks` for that id, then `recall` and later `retain`. The id is chosen on
+the Hindsight bank page during setup, not derived from the Git remote. One bank
+recorded in that profile is shared by Codex and Cursor on the same checkout.
+Dev/staging/prod are labels within that bank,
 with dev the default; they do not grant environment access. Never store credentials.
 
 For new banks, read `hindsight/README.md` and the applicable full template. Apply

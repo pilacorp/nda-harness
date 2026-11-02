@@ -14,11 +14,12 @@ test command in chat, offering Skip. Then pass the exact user-chosen command as 
 from absent input, failures, or noninteractive hooks. Avoid commands containing
 credentials; configure references to local secret stores instead.
 
-For a folder that is not a Git checkout, and for a repository with no remote, ask
-for a stable shared project name (`--project-name` lowercase slug). Git commit
-hooks are installed only for a repository. For distinct remotes ask which remote identifies this project
-(`--remote`); do not choose based on branch or client. Identity conflicts require
-owner reconciliation, not deleting the profile or silently switching banks.
+Git commit hooks are installed only for a repository. The bank id is not derived
+from the Git remote or a project name. When the profile has no bank id, run
+`select-bank`. That opens `https://hindsight.pila.vn/harness/bank` and waits for
+the user to choose or create a bank. Pass the printed id to setup as `--bank-id`,
+together with the test command or `--skip-tests`. A later setup reuses the stored
+id and does not open the page. Do not call `create_bank` from the agent.
 
 Commit `.nda-harness/config.json`. Add `.nda-harness/profile.json` and
 `.nda-harness/tasks/` to the project's `.gitignore` and keep the personal profile

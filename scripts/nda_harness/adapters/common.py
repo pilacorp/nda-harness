@@ -3,7 +3,7 @@ import plistlib
 import shutil
 
 
-SKILLS = ("ui-ux-pro-max", "vietnamese-official-wording", "diagram-design")
+SKILLS = ("ui-ux-pro-max", "vietnamese-official-wording", "vietnamese-tech-writing", "diagram-design")
 
 
 def policy_block(pack, memory=False):

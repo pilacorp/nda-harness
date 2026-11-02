@@ -35,9 +35,9 @@ Hindsight authentication in each client you use.
    incomplete startup; installation alone does not establish readiness.
 3. Answer the test-command question in chat. Supply the exact command to run
    from the repository root, or explicitly answer **Skip** to configure a passing
-   `true` command with no tests. If the project has no Git remote, provide a stable
-   shared project name when asked. If it has distinct remotes, choose which one
-   identifies the project.
+   `true` command with no tests. Setup then opens the Hindsight page where you
+   choose or create a memory bank. That bank id is stored in
+   `.nda-harness/profile.json`. It is not derived from the Git remote.
 4. Review the resulting project files. Commit `.nda-harness/config.json` and
    the `.gitignore` entries for `.nda-harness/profile.json` and
    `.nda-harness/tasks/`. Keep the personal profile and task records local and
@@ -133,7 +133,7 @@ setup.
    specialist bodies. You do not need to run these agent commands yourself.
 
 Selection sends bounded task text and catalog metadata to OpenRouter. The current
-specialists are Diagram Design, UI/UX Pro Max, and Vietnamese official wording.
+specialists are Diagram Design, UI/UX Pro Max, Vietnamese official wording, and Vietnamese tech writing.
 An empty selection is valid. When a score is strictly between 0.20 and 0.80, the agent
 asks whether to load that skill and stores the answer in the local Jev cache.
 Mandatory workflow skills remain active, and selection does not approve

@@ -1,6 +1,6 @@
 ---
 name: hindsight-memory
-description: Use at the start of every substantive session when NDA Hindsight MCP tools are available. Create the project bank from .nda-harness/profile.json memory.bank_id if missing, recall that bank, and retain useful notes. Do not wait for the user to mention NDA Hindsight.
+description: Use at the start of every substantive session when NDA Hindsight MCP tools are available. Use the bank id in .nda-harness/profile.json, recall that bank, and retain useful notes. Do not wait for the user to mention NDA Hindsight.
 ---
 
 NDA Hindsight is the memory provider. Use only this host:
@@ -25,16 +25,19 @@ diagnostics stay pending. Do not send credentials or raw private diagnostics to 
 Missing tools mean Hindsight is unavailable in this session; authentication is unverified without native evidence. Saved OAuth credentials and a hidden Authenticate button do not prove a working connection. Use the packaged memory-status helper with already available native diagnostic JSON, or leave the diagnostic pending. Existing hooks do not subscribe to MCP lifecycle events. Never initiate login automatically or read/edit credentials. Only for Cursor, a matching MCP catalog entry with namespaceStatus needsAuth, or the same serverStatus or status on the Hindsight server, confirms authentication is required. error means unavailable, loading stays pending, and ready or connected proves discovery only. The catalog identifier is plugin-nda-harness-nda-harness-hindsight; the mcp.json key nda-harness-hindsight is the same server. Do not interpret another client's auth signals or Cursor Cloud telemetry as this callback. Inspect the Hindsight entry in the Cursor MCP tool catalog. namespaceStatus needsAuth means authentication is required. Manual, user-triggered recovery: Use the Hindsight native authentication control. With Cursor Agent CLI and the server registered there, the user can run rtk proxy agent mcp login <identifier>; verify the identifier in native inventory. Do not assume shared credentials across Cursor surfaces.
 
 Read `.nda-harness/profile.json` and use **exactly** `memory.bank_id` for every
-bank-scoped operation. Reconcile identity through nda-setup if the profile is absent
-or conflicts with the project's remotes. Codex, Cursor, and Claude Code share this ID. Clones with
-equivalent SSH/HTTPS remotes share it. Never create a bank per client, environment,
-task, session or random identifier. Do not choose an unrelated bank from a list.
+bank-scoped operation. If the profile has no bank id, run `select-bank` during
+nda-setup and pass the printed id to setup with `--bank-id`. Do not invent an id
+from the Git remote. Codex, Cursor, and Claude Code on the same checkout share
+this ID. A new clone does not rebuild it; run `select-bank` there and choose the
+same bank to share it. Never create a bank per client, environment, task, session
+or random identifier. Do not choose an unrelated bank from a list.
 
-Use the discovered native schemas. List banks if needed to confirm this exact ID;
-create it only if missing, with project-scoped purpose and no secrets. Creation is
-ordinary opted-in use, never verification. Preserve existing settings. For new bank
-templates see packaged `pack/hindsight/templates/coding-agent.json`; apply compatible
-settings using discovered tools and report incomplete initialization honestly.
+Use the discovered native schemas. List banks only to confirm this exact ID.
+Do not call `create_bank` for a missing profile id; the harness bank page creates
+the bank during setup. Preserve existing settings. For a bank created by that page,
+read packaged `pack/hindsight/templates/coding-agent.json` and apply compatible
+settings using discovered tools when the bank has no template yet. Report
+incomplete initialization honestly.
 
 Before substantive work/responses, recall relevant project context. Retain useful
 preferences, decisions and work notes automatically after meaningful progress,

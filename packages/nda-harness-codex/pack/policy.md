@@ -38,7 +38,8 @@ permission to execute commands. Credentials stay private and out of logs, comman
 arguments, checkpoints and committed files.
 
 Commit project configuration (`.nda-harness/config.json`). Keep the personal
-memory record in `.nda-harness/profile.json` and task records local. Add
+memory record in `.nda-harness/profile.json` and task records local. The bank id
+in that profile is chosen during setup. It is not derived from the Git remote. Add
 `.nda-harness/profile.json` and `.nda-harness/tasks/` to the project's
 `.gitignore`. Never stage, commit, or force-add task records, including
 `task.md`; an ignored task is still available to local context operations.

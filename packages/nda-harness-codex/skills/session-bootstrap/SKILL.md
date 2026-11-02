@@ -40,8 +40,9 @@ If that field is absent and several systems are packaged, ask the user and pass
 system is NDA Hindsight and this session lists its tools (`list_banks`, `create_bank`,
 `recall`, `retain`), load `hindsight-memory` before dependent work. MCP is
 `https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
-Use exactly `memory.bank_id`. Call `list_banks`. When that id is missing, call `create_bank`
-with it, then `recall` the user request in that bank. Do not wait for the user
+Use exactly `memory.bank_id`. Call `list_banks` for that id, then `recall` the user
+request in that bank. If the profile has no bank id, run `select-bank` during
+nda-setup instead of calling `create_bank`. Do not wait for the user
 to name NDA Hindsight, and do not start login from this skill. Missing tools mean
 unavailable in this session, with authentication unverified; an unauthorized call
 alone does not establish failed refresh. Continue with client default memory when

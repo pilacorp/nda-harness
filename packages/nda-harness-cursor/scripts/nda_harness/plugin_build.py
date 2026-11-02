@@ -18,7 +18,7 @@ from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
 from .skill_selection import selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.11'
+RELEASE_VERSION = '0.0.12'
 NDA_RAG_SERVER = 'nda-harness-nda-rag'
 NDA_RAG_MCP = 'https://docs-dev.chainhub.vn/api/mcp'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
@@ -26,7 +26,8 @@ SUPERPOWERS_ARCHIVE = 'superpowers-bb92a777.tar.gz'
 SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2'
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
            'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
-           'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py')
+           'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py',
+           'bank_select.py')
 REPOSITORY_URL = 'https://github.com/pilacorp/nda-harness'
 USAGE_HOME_URL = REPOSITORY_URL + '/blob/dev/docs/usage-report.md'
 
@@ -135,6 +136,23 @@ def memory_endpoints(hindsight_url=None, pairs=(), *, local_test=False):
     return endpoints
 
 
+def apply_standards_dispatch(source, root):
+    """Append the standards-review dispatch onto the generated review skill.
+
+    The spec template stays the upstream file. The vendor copy stays unmodified.
+    """
+    skill = root / 'skills/requesting-code-review/SKILL.md'
+    addon = source / 'plugin/adaptations/requesting-code-review-standards.md'
+    if not skill.is_file() or not addon.is_file():
+        raise ValueError('Standards code-review dispatch is missing.')
+    extra = addon.read_text(encoding='utf-8').strip()
+    if 'standards-reviewer.md' not in extra:
+        raise ValueError('Standards code-review dispatch must name standards-reviewer.md.')
+    text = skill.read_text(encoding='utf-8')
+    if 'standards-reviewer.md' not in text:
+        skill.write_text(text.rstrip() + '\n\n' + extra + '\n', encoding='utf-8')
+
+
 def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None, rag_endpoint=None, version=RELEASE_VERSION):
     source, destination = Path(source).resolve(), Path(destination).absolute()
     if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', version) or len(version) > 64:
@@ -174,6 +192,7 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         for path in sorted((source / 'plugin/skills').rglob('*')):
             if path.is_file():
                 write(root, Path('skills') / path.relative_to(source / 'plugin/skills'), path.read_bytes())
+        apply_standards_dispatch(source, root)
         services = {system_id: hindsight_services(url) if system_id == 'hindsight' else {'mcp': url}
                     for system_id, url in endpoints.items()}
         config = {'schema_version': 1, 'client': client,

@@ -42,8 +42,9 @@ Specialist skills are selected by the local Jev helper. When no OpenRouter key i
 
 Hindsight is optional. Authenticate from plugin details using native MCP controls;
 no provider settings or credentials belong in the harness. After authentication,
-hindsight-memory automatically uses the configured project bank. Same-account clients
-share it; dev/staging/prod are labels in that bank, with dev the default. Never
+hindsight-memory uses the bank id stored in `.nda-harness/profile.json`. Setup
+stores the id chosen on the Hindsight bank page. Clients on the same checkout
+share that profile; dev/staging/prod are labels in that bank, with dev the default. Never
 retain credentials or private logs. Outage permits available default client memory
 without fabricated saves or automatic fallback-content synchronization later.
 

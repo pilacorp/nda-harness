@@ -9,6 +9,7 @@ import re
 import shlex
 from urllib.parse import urlsplit
 
+from .bank_select import valid_bank_id
 from .files import Plan, Conflict, atomic, digest, guard_path, json_bytes, read
 from .hooks import git, hook_plan, activate, restore, value
 
@@ -129,9 +130,26 @@ def _valid_memory(memory):
         raise ValueError()
     if 'system' in memory and (not isinstance(memory['system'], str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,31}', memory['system'])):
         raise ValueError()
-    if not re.fullmatch('[0-9a-f]{64}', memory['identity_sha256']) or memory['bank_id'] != 'nda-project-' + memory['identity_sha256'][:32]:
+    if 'identity_sha256' in memory and not re.fullmatch('[0-9a-f]{64}', memory['identity_sha256']):
+        raise ValueError()
+    if 'name' in memory and not re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,79}', memory['name']):
+        raise ValueError()
+    if 'remote' in memory and (not isinstance(memory['remote'], str) or not memory['remote'] or '\x00' in memory['remote']):
+        raise ValueError()
+    if not valid_bank_id(memory.get('bank_id')):
         raise ValueError()
     return memory
+
+
+def resolve_bank_id(stored, requested):
+    """Use an explicit choice, otherwise the bank already stored in the profile."""
+    if requested is not None:
+        if not valid_bank_id(requested):
+            raise Conflict('Bank id must be a short slug of letters, digits, dots, underscores, or hyphens.')
+        return requested
+    if valid_bank_id(stored):
+        return stored
+    return None
 
 
 def stored_profile(project):
@@ -151,12 +169,11 @@ def stored_profile(project):
         raise Conflict('Project profile is invalid; reconcile configuration before dependent work.') from None
 
 
-def profile_for(project):
-    kind, profile = stored_profile(project)
-    return profile if kind == 'current' else None
+_MEMORY_KEYS = {'identity_sha256', 'bank_id', 'remote', 'name', 'system'}
 
 
-def config_for(project):
+def directory_config(project):
+    """Read config.json in this directory only."""
     config = load_json(project / '.nda-harness/config.json')
     if config is None:
         return None
@@ -166,6 +183,96 @@ def config_for(project):
     except (KeyError, TypeError, ValueError):
         raise Conflict('Project configuration is invalid; reconcile configuration before dependent work.') from None
     return config
+
+
+def harness_layers(project):
+    """Outer harness directories first. The folder in the repo is last and wins."""
+    project = Path(project).resolve()
+    found = []
+    current = project
+    home = Path.home().resolve()
+    while True:
+        directory = current / '.nda-harness'
+        if directory.is_dir() and not directory.is_symlink():
+            found.append(current)
+        parent = current.parent
+        if parent == current or parent == home:
+            break
+        parent_harness = parent / '.nda-harness'
+        parent_git = parent / '.git'
+        if parent_harness.is_symlink() or parent_git.is_symlink():
+            break
+        if not parent_git.exists() and not parent_harness.is_dir():
+            break
+        current = parent
+    found.reverse()
+    return found
+
+
+def _layer_profile(root, project):
+    try:
+        return stored_profile(root)
+    except Conflict:
+        if Path(root).resolve() == Path(project).resolve():
+            raise
+        return None, None
+
+
+def effective_profile(project):
+    """Merge ancestor profiles. Keys in the repo folder replace outer keys."""
+    project = Path(project).resolve()
+    memory = {}
+    nearest = None
+    nearest_profile = None
+    for root in harness_layers(project):
+        kind, profile = _layer_profile(root, project)
+        if profile is None:
+            continue
+        if kind == 'legacy' and Path(root).resolve() == project:
+            return kind, profile
+        if kind not in ('current', 'legacy'):
+            continue
+        memory.update({key: value for key, value in profile['memory'].items() if key in _MEMORY_KEYS})
+        nearest = kind
+        nearest_profile = profile
+    if nearest == 'current':
+        try:
+            _valid_memory(memory)
+        except (KeyError, TypeError, ValueError):
+            raise Conflict('Project profile is invalid; reconcile configuration before dependent work.') from None
+        return 'current', {'schema_version': 3, 'memory': memory}
+    return nearest, nearest_profile
+
+
+def effective_config(project):
+    """Merge test commands. A config.json in the repo replaces an outer one."""
+    project = Path(project).resolve()
+    command = None
+    for root in harness_layers(project):
+        try:
+            config = directory_config(root)
+        except Conflict:
+            if Path(root).resolve() == project:
+                raise
+            continue
+        if config:
+            command = config['test_command']
+            continue
+        kind, profile = _layer_profile(root, project)
+        if kind == 'legacy':
+            command = profile['test_command']
+    if command is None:
+        return None
+    return {'schema_version': 1, 'test_command': command}
+
+
+def profile_for(project):
+    kind, profile = effective_profile(project)
+    return profile if kind == 'current' else None
+
+
+def config_for(project):
+    return effective_config(project)
 
 
 def ensure_project_gitignore(plan, project):
@@ -197,7 +304,7 @@ def recover(state, project, receipt):
     return prior
 
 
-def configure(project, package, home, test_command=None, *, skip=False, name=None, remote=None, system=None):
+def configure(project, package, home, test_command=None, *, skip=False, name=None, remote=None, system=None, bank_id=None):
     project, package, home = root_for(project), Path(package).resolve(), Path(home).resolve()
     if skip and test_command is not None:
         raise Conflict('Use an explicit test command or explicit Skip.')
@@ -209,22 +316,29 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
         kind, stored = stored_profile(project)
         previous = stored if kind == 'current' else None
         legacy = stored if kind == 'legacy' else None
-        existing = config_for(project)
+        existing = directory_config(project)
         if legacy and existing and existing['test_command'] != legacy['test_command']:
             raise Conflict('Project test command conflicts with the saved profile; reconcile the two files before setup.')
         selection = (previous or legacy or {}).get('memory', {})
-        identity = project_identity(project, name=name or selection.get('name'), remote=remote or selection.get('remote'))
-        if stored and identity['identity_sha256'] != stored['memory']['identity_sha256']:
-            raise Conflict('Project bank identity conflicts with current Git identity; reconcile explicitly before changing banks.')
+        # name and remote no longer choose the bank. They remain accepted so older callers do not break.
+        del name, remote
+        bank = resolve_bank_id(selection.get('bank_id'), bank_id)
         command = 'true' if skip else test_command if test_command is not None else existing['test_command'] if existing else legacy['test_command'] if legacy else None
-        if command is None:
-            return {'status': 'needs_configuration', 'test_command': 'pending', 'protection': 'incomplete',
-                    'next': 'Ask the user for a non-watch test command or explicit Skip in agent chat; never infer Skip.'}
+        if command is None or bank is None:
+            pending = {'status': 'needs_configuration', 'protection': 'incomplete'}
+            if command is None:
+                pending['test_command'] = 'pending'
+                pending['next'] = 'Ask the user for a non-watch test command or explicit Skip in agent chat; never infer Skip.'
+            if bank is None:
+                pending['bank_id'] = 'pending'
+                pending.setdefault('next', 'Run select-bank so the user can choose or create a Hindsight bank, then rerun setup with --bank-id.')
+            return pending
         from nda_harness.memory import select_system
         chosen = select_system(load_json(package / 'nda-plugin.json') or {}, requested=system, previous=selection.get('system'))
+        memory = {'bank_id': bank}
         if chosen:
-            identity = {**identity, 'system': chosen}
-        profile = {'schema_version': 3, 'memory': identity}
+            memory['system'] = chosen
+        profile = {'schema_version': 3, 'memory': memory}
         project_config = {'schema_version': 1, 'test_command': command}
         plan = Plan(receipt)
         plan.write(project / '.nda-harness/profile.json', json_bytes(profile))
@@ -260,13 +374,13 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
             raise
     return {'status': 'ready', 'protection': 'active' if is_repository(project) else 'not_applicable',
             'test_command': 'skipped' if command == 'true' else 'configured',
-            'bank_id': identity['bank_id'], 'environment': 'dev'}
+            'bank_id': bank, 'environment': 'dev'}
 
 
 def inspect_project(project, package, home):
     project = root_for(project)
-    kind, profile = stored_profile(project)
-    project_config = config_for(project)
+    kind, profile = effective_profile(project)
+    project_config = effective_config(project)
     if kind != 'current' or project_config is None:
         return {'status': 'needs_configuration', 'protection': 'incomplete'}
     command = project_config['test_command']
@@ -276,9 +390,6 @@ def inspect_project(project, package, home):
                 'test_command': 'skipped' if command == 'true' else 'configured'}
     if git(project, 'check-ignore', '-q', '.nda-harness/config.json').returncode == 0:
         raise Conflict('Project configuration is ignored by Git; reconcile ignore rules.')
-    expected = project_identity(project, name=profile['memory'].get('name'), remote=profile['memory'].get('remote'))
-    if expected['identity_sha256'] != profile['memory']['identity_sha256']:
-        raise Conflict('Project bank identity conflicts with Git remote identity.')
     state = state_for(project, home)
     receipt = load_json(state / 'receipt.json', {})
     registration = receipt.get('git', {})

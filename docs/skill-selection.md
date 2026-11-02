@@ -4,7 +4,7 @@ The plugin selects optional specialist skills with Jev through OpenRouter. When 
 
 Model: `typesafe/jev-1.14`. Endpoint: `https://openrouter.ai/api/alpha/decisions`. One request asks one yes/no question per specialist in `skills/catalog.json`, sorted by id. The request carries bounded task text and catalog metadata. It does not carry skill bodies or the key.
 
-The current specialists are `diagram-design`, `ui-ux-pro-max`, and `vietnamese-official-wording`. A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill, then calls `record-selection` so that choice is stored in the local Jev cache. An empty selection is valid. Mandatory workflow skills stay in force either way. Selection does not approve work.
+The current specialists are `diagram-design`, `ui-ux-pro-max`, `vietnamese-official-wording`, and `vietnamese-tech-writing`. A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill, then calls `record-selection` so that choice is stored in the local Jev cache. An empty selection is valid. Mandatory workflow skills stay in force either way. Selection does not approve work.
 
 ## Key
 

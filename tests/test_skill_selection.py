@@ -203,17 +203,17 @@ class SelectionTests(unittest.TestCase):
     def test_shipped_catalog_loads(self):
         catalog = load_catalog(ROOT / 'skills')
         self.assertEqual([skill['id'] for skill in catalog['skills']],
-                         ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording'])
+                         ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording', 'vietnamese-tech-writing'])
 
     def test_probability_sets_select_zero_one_or_many(self):
         catalog = load_catalog(ROOT / 'skills')
-        low = self._classify(catalog, {'diagram-design': 0.04, 'ui-ux-pro-max': 0.02, 'vietnamese-official-wording': 0.01})
+        low = self._classify(catalog, {'diagram-design': 0.04, 'ui-ux-pro-max': 0.02, 'vietnamese-official-wording': 0.01, 'vietnamese-tech-writing': 0.01})
         self.assertEqual(low['status'], 'ready')
         self.assertEqual(low['selected'], [])
         self.assertEqual(set(low['probabilities']), {skill['id'] for skill in catalog['skills']})
-        one = self._classify(catalog, {'diagram-design': 0.04, 'ui-ux-pro-max': 0.96, 'vietnamese-official-wording': 0.02})
+        one = self._classify(catalog, {'diagram-design': 0.04, 'ui-ux-pro-max': 0.96, 'vietnamese-official-wording': 0.02, 'vietnamese-tech-writing': 0.01})
         self.assertEqual(one['selected'], [{'entrypoint': 'ui-ux-pro-max/SKILL.md', 'id': 'ui-ux-pro-max'}])
-        two = self._classify(catalog, {'diagram-design': 0.91, 'ui-ux-pro-max': 0.9, 'vietnamese-official-wording': 0.1})
+        two = self._classify(catalog, {'diagram-design': 0.91, 'ui-ux-pro-max': 0.9, 'vietnamese-official-wording': 0.1, 'vietnamese-tech-writing': 0.01})
         self.assertEqual([item['id'] for item in two['selected']], ['diagram-design', 'ui-ux-pro-max'])
         self.assertEqual([item['entrypoint'] for item in two['selected']], ['diagram-design/SKILL.md', 'ui-ux-pro-max/SKILL.md'])
         self.assertFalse(one['implementation_authorized'])
@@ -221,11 +221,11 @@ class SelectionTests(unittest.TestCase):
 
     def test_thresholds_reject_uncertain_and_invalid_answers(self):
         catalog = load_catalog(ROOT / 'skills')
-        self.assertEqual(self._classify(catalog, {'diagram-design': 0.20, 'ui-ux-pro-max': 0.20, 'vietnamese-official-wording': 0.20})['selected'], [])
-        selected = self._classify(catalog, {'diagram-design': 0.80, 'ui-ux-pro-max': 0.80, 'vietnamese-official-wording': 0.80})['selected']
-        self.assertEqual([item['id'] for item in selected], ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording'])
+        self.assertEqual(self._classify(catalog, {'diagram-design': 0.20, 'ui-ux-pro-max': 0.20, 'vietnamese-official-wording': 0.20, 'vietnamese-tech-writing': 0.20})['selected'], [])
+        selected = self._classify(catalog, {'diagram-design': 0.80, 'ui-ux-pro-max': 0.80, 'vietnamese-official-wording': 0.80, 'vietnamese-tech-writing': 0.80})['selected']
+        self.assertEqual([item['id'] for item in selected], ['diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording', 'vietnamese-tech-writing'])
         for probability in (0.21, 0.79):
-            result = self._classify(catalog, {'diagram-design': probability, 'ui-ux-pro-max': 0.99, 'vietnamese-official-wording': 0.01})
+            result = self._classify(catalog, {'diagram-design': probability, 'ui-ux-pro-max': 0.99, 'vietnamese-official-wording': 0.01, 'vietnamese-tech-writing': 0.01})
             self.assertEqual(result['status'], 'needs_context')
             self.assertIsNone(result['selected'])
             self.assertEqual(result['diagnostic'], 'uncertain_decision')
@@ -242,8 +242,8 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(result['status'], 'blocked')
             self.assertIsNone(result['selected'])
             self.assertEqual(result['diagnostic'], 'invalid_provider_response')
-        self.assertEqual(self._classify(catalog, {'diagram-design': 0.01, 'ui-ux-pro-max': 0.01, 'vietnamese-official-wording': 0.01}, 'typesafe/jev-1.13')['diagnostic'], 'invalid_provider_response')
-        dated = self._classify(catalog, {'diagram-design': 0.01, 'ui-ux-pro-max': 0.01, 'vietnamese-official-wording': 0.01}, 'typesafe/jev-1.14-20260917')
+        self.assertEqual(self._classify(catalog, {'diagram-design': 0.01, 'ui-ux-pro-max': 0.01, 'vietnamese-official-wording': 0.01, 'vietnamese-tech-writing': 0.01}, 'typesafe/jev-1.13')['diagnostic'], 'invalid_provider_response')
+        dated = self._classify(catalog, {'diagram-design': 0.01, 'ui-ux-pro-max': 0.01, 'vietnamese-official-wording': 0.01, 'vietnamese-tech-writing': 0.01}, 'typesafe/jev-1.14-20260917')
         self.assertEqual(dated['status'], 'ready')
         self.assertEqual(dated['model_returned'], 'typesafe/jev-1.14-20260917')
 
@@ -729,7 +729,7 @@ class SelectionTests(unittest.TestCase):
         skills = root / 'skills'
         skills.mkdir()
         shutil.copy(ROOT / 'skills' / 'catalog.json', skills / 'catalog.json')
-        for name in ('diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording'):
+        for name in ('diagram-design', 'ui-ux-pro-max', 'vietnamese-official-wording', 'vietnamese-tech-writing'):
             destination = skills / name
             destination.mkdir()
             shutil.copy(ROOT / 'skills' / name / 'SKILL.md', destination / 'SKILL.md')

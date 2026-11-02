@@ -43,7 +43,7 @@ assignment summary, the task-record checklist, and tests that the packaged
 skills and the specialist catalog match this contract.
 
 Out of scope: a multi-agent runtime or queue; changing the Jev model,
-thresholds, or the three specialist catalog entries; pre-delegation hooks;
+thresholds, or the specialist catalog entries; pre-delegation hooks;
 editing vendored Superpowers files; a child calling Hindsight or internal RAG;
 a child spawning its own sub-agents.
 
@@ -76,7 +76,7 @@ Add both directory names to the workflow-skill coverage in
 `tests/test_plugins.py` so a built package contains
 `skills/sub-agent-graph/SKILL.md` and `skills/sub-agent-loop/SKILL.md`, and the
 two files are identical across clients. The existing catalog test continues to
-expect only `diagram-design`, `ui-ux-pro-max`, and `vietnamese-official-wording`.
+expect `diagram-design`, `ui-ux-pro-max`, `vietnamese-official-wording`, and `vietnamese-tech-writing`.
 
 ### Assignment graph
 
@@ -160,7 +160,7 @@ These are planned tests, not executed implementation evidence.
 | ID | Setup/input | Action | Expected result | Layer / acceptance IDs |
 | --- | --- | --- | --- | --- |
 | TC-01 | Repository source after the skills exist | Build the Cursor, Codex, and Claude packages | Both skill files exist and match across clients | unit; AC-04, AC-06 |
-| TC-02 | `skills/catalog.json` | Read catalog ids | The ids are `diagram-design`, `ui-ux-pro-max`, and `vietnamese-official-wording` | unit; AC-04 |
+| TC-02 | `skills/catalog.json` | Read catalog ids | The ids are `diagram-design`, `ui-ux-pro-max`, `vietnamese-official-wording`, and `vietnamese-tech-writing` | unit; AC-04 |
 | TC-03 | `sub-agent-graph` skill text | Read the skill | It names the summary fields, the task-record checklist, and parent ownership of Hindsight and internal RAG | unit; AC-01, AC-02, AC-05 |
 | TC-04 | `sub-agent-loop` skill text | Read the skill | It tells the child to skip Hindsight and internal RAG, to query Context7 only for public library needs, and to return a short result | unit; AC-03, AC-05 |
 | TC-05 | Session bootstrap skill text | Read the skill | It points delegation at `sub-agent-graph` and the child at `sub-agent-loop` | unit; AC-04 |

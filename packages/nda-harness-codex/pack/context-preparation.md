@@ -9,6 +9,9 @@ Git worktree root, an explicit selected task record and a local session identity
 On entry check `.nda-harness/profile.json` for memory and `.nda-harness/config.json`
 for the test command. Ask for a non-watch test command in agent chat when the
 config is missing. Only explicit Skip stores `true`; absent input stays pending.
+The bank id is the one stored in the profile. It is chosen on the Hindsight bank
+page during setup, not derived from the Git remote or a project name. A missing
+profile means run `select-bank`, then setup with `--bank-id`.
 Local Git protection must also be activated in every clone. Commit
 `config.json`. Keep the personal profile and sanitized task records local under
 `.nda-harness/`, add `.nda-harness/profile.json` and `.nda-harness/tasks/` to
