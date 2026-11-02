@@ -135,6 +135,23 @@ def memory_endpoints(hindsight_url=None, pairs=(), *, local_test=False):
     return endpoints
 
 
+def apply_standards_dispatch(source, root):
+    """Append the standards-review dispatch onto the generated review skill.
+
+    The spec template stays the upstream file. The vendor copy stays unmodified.
+    """
+    skill = root / 'skills/requesting-code-review/SKILL.md'
+    addon = source / 'plugin/adaptations/requesting-code-review-standards.md'
+    if not skill.is_file() or not addon.is_file():
+        raise ValueError('Standards code-review dispatch is missing.')
+    extra = addon.read_text(encoding='utf-8').strip()
+    if 'standards-reviewer.md' not in extra:
+        raise ValueError('Standards code-review dispatch must name standards-reviewer.md.')
+    text = skill.read_text(encoding='utf-8')
+    if 'standards-reviewer.md' not in text:
+        skill.write_text(text.rstrip() + '\n\n' + extra + '\n', encoding='utf-8')
+
+
 def build(source, destination, client, endpoint=None, *, local_test=False, memory_endpoints=None, rag_endpoint=None, version=RELEASE_VERSION):
     source, destination = Path(source).resolve(), Path(destination).absolute()
     if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', version) or len(version) > 64:
@@ -174,6 +191,7 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         for path in sorted((source / 'plugin/skills').rglob('*')):
             if path.is_file():
                 write(root, Path('skills') / path.relative_to(source / 'plugin/skills'), path.read_bytes())
+        apply_standards_dispatch(source, root)
         services = {system_id: hindsight_services(url) if system_id == 'hindsight' else {'mcp': url}
                     for system_id, url in endpoints.items()}
         config = {'schema_version': 1, 'client': client,

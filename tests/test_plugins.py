@@ -886,6 +886,27 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(existing.read_text(), 'keep original')
         self.assertFalse(new.exists())
 
+    def test_standards_reviewer_sits_beside_the_unchanged_spec_template(self):
+        review = self.package / 'skills/requesting-code-review'
+        skill = (review / 'SKILL.md').read_text()
+        standards = (review / 'standards-reviewer.md').read_text()
+        spec = (review / 'code-reviewer.md').read_text()
+        vendor = self.package / 'vendor/superpowers/skills/requesting-code-review'
+        vendor_skill = (vendor / 'SKILL.md').read_text()
+        vendor_spec = (vendor / 'code-reviewer.md').read_text()
+        self.assertIn('code-reviewer.md', skill)
+        self.assertIn('standards-reviewer.md', skill)
+        self.assertIn('## Standards', skill)
+        self.assertEqual(spec, vendor_spec.replace('superpowers:', 'nda-harness:'))
+        self.assertIn('The spec is a vision document', spec)
+        self.assertNotIn('standards-reviewer.md', vendor_skill)
+        self.assertIn('Mysterious Name', standards)
+        self.assertIn('Copyright (c) 2026 Matt Pocock', standards)
+        self.assertIn('judgement', standards.lower())
+        self.assertIn('without invoking code-review or spawning agents', standards)
+        self.assertNotIn('setup-matt-pocock-skills', standards)
+        self.assertNotIn('Ready to merge', standards)
+
 
 if __name__ == '__main__':
     unittest.main()
