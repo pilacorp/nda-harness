@@ -22,7 +22,10 @@ The local Git pre-commit wrapper preserves existing hooks and runs the configure
 non-watch test command at the actual project root. Either failure blocks commit.
 Committed `.nda-harness/config.json` is project configuration and holds the test
 command. `.nda-harness/profile.json` is the personal memory record and may be
-ignored by Git. Private activation, backups, locks and executable paths stay
+ignored by Git. When a repository sits inside another repository, merge
+`config.json` and `profile.json` from the outer `.nda-harness` folder. The
+folder inside the repository wins on every key it sets.
+Private activation, backups, locks and executable paths stay
 outside the repository. Activate every clone through the plugin. Explicit Skip
 stores `true` and does not mean tests ran. Task records under
 `.nda-harness/tasks/` are local working state: ignore that directory and

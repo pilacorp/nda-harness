@@ -18,7 +18,7 @@ from nda_harness.plugin_build import (
     NDA_RAG_MCP, RELEASE_VERSION, build, build_archive, main as build_main,
     validate_archive, validate_endpoint, validate_rag_endpoint,
 )
-from nda_harness.project import configure, inspect_project, project_identity, state_for
+from nda_harness.project import configure, config_for, inspect_project, profile_for, project_identity, state_for
 from nda_harness.plugin_runtime import bootstrap, diagnose, hook, main, verify
 from nda_harness.files import Conflict, Plan, atomic, json_bytes
 
@@ -653,6 +653,62 @@ class PluginTests(unittest.TestCase):
         profile = json.loads((self.project / '.nda-harness/profile.json').read_text())
         self.assertEqual(profile['memory']['bank_id'], 'chosen-bank')
         self.assertNotIn('identity_sha256', profile['memory'])
+
+    def test_nested_repo_harness_overrides_parent_folder(self):
+        parent = self.base / 'workspace'
+        parent.mkdir()
+        subprocess.run(['git', 'init', '-q', str(parent)], env=self.env, check=True)
+        parent_harness = parent / '.nda-harness'
+        parent_harness.mkdir()
+        (parent_harness / 'profile.json').write_text(json.dumps({
+            'schema_version': 3,
+            'memory': {'bank_id': 'parent-bank', 'system': 'hindsight', 'name': 'workspace-app'},
+        }) + '\n')
+        (parent_harness / 'config.json').write_text(json.dumps({
+            'schema_version': 1, 'test_command': 'printf parent',
+        }) + '\n')
+        child = parent / 'docs'
+        child.mkdir()
+        subprocess.run(['git', 'init', '-q', str(child)], env=self.env, check=True)
+        child_harness = child / '.nda-harness'
+        child_harness.mkdir()
+        (child_harness / 'profile.json').write_text(json.dumps({
+            'schema_version': 3,
+            'memory': {'bank_id': 'child-bank', 'system': 'hindsight'},
+        }) + '\n')
+        (child_harness / 'config.json').write_text(json.dumps({
+            'schema_version': 1, 'test_command': 'printf child',
+        }) + '\n')
+        profile = profile_for(child)
+        self.assertEqual(profile['memory']['bank_id'], 'child-bank')
+        self.assertEqual(profile['memory']['system'], 'hindsight')
+        self.assertEqual(profile['memory']['name'], 'workspace-app')
+        self.assertEqual(config_for(child)['test_command'], 'printf child')
+        self.assertEqual(profile_for(parent)['memory']['bank_id'], 'parent-bank')
+        bare = parent / 'other'
+        bare.mkdir()
+        subprocess.run(['git', 'init', '-q', str(bare)], env=self.env, check=True)
+        self.assertEqual(profile_for(bare)['memory']['bank_id'], 'parent-bank')
+        self.assertEqual(config_for(bare)['test_command'], 'printf parent')
+
+    def test_sibling_repos_do_not_merge_harness_files(self):
+        folder = self.base / 'siblings'
+        folder.mkdir()
+        first = folder / 'first'
+        second = folder / 'second'
+        for path, bank in ((first, 'first-bank'), (second, 'second-bank')):
+            path.mkdir()
+            subprocess.run(['git', 'init', '-q', str(path)], env=self.env, check=True)
+            harness = path / '.nda-harness'
+            harness.mkdir()
+            (harness / 'profile.json').write_text(json.dumps({
+                'schema_version': 3, 'memory': {'bank_id': bank, 'system': 'hindsight'},
+            }) + '\n')
+            (harness / 'config.json').write_text(json.dumps({
+                'schema_version': 1, 'test_command': 'true',
+            }) + '\n')
+        self.assertEqual(profile_for(first)['memory']['bank_id'], 'first-bank')
+        self.assertEqual(profile_for(second)['memory']['bank_id'], 'second-bank')
 
     def test_missing_bank_is_not_derived_from_git(self):
         derived = project_identity(self.project)['bank_id']

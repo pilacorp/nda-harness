@@ -108,6 +108,61 @@ def atomic(path, value):
             os.unlink(temporary)
 
 
+def harness_layers(root):
+    """Outer directories first. The .nda-harness folder in the repo is last."""
+    found = []
+    current = root
+    home = Path.home().resolve()
+    while True:
+        directory = current / ".nda-harness"
+        if directory.is_dir() and not directory.is_symlink():
+            found.append(current)
+        parent = current.parent
+        if parent == current or parent == home:
+            break
+        if (parent / ".git").is_symlink() or (parent / ".nda-harness").is_symlink():
+            break
+        if not (parent / ".git").exists() and not (parent / ".nda-harness").is_dir():
+            break
+        current = parent
+    found.reverse()
+    return found
+
+
+def merged_harness(root):
+    """Return (profile, config) with the repo folder overriding ancestors."""
+    memory = {}
+    command = None
+    saw_profile = False
+    for layer in harness_layers(root):
+        profile_path = layer / ".nda-harness/profile.json"
+        config_path = layer / ".nda-harness/config.json"
+        if profile_path.is_file() and not profile_path.is_symlink():
+            try:
+                personal = json.loads(profile_path.read_text())
+            except (OSError, ValueError):
+                if layer == root:
+                    raise
+                personal = None
+            if isinstance(personal, dict) and isinstance(personal.get("memory"), dict):
+                memory.update(personal["memory"])
+                saw_profile = True
+                if personal.get("schema_version") in (1, 2) and isinstance(personal.get("test_command"), str):
+                    command = personal["test_command"]
+        if config_path.is_file() and not config_path.is_symlink():
+            try:
+                project_config = json.loads(config_path.read_text())
+            except (OSError, ValueError):
+                if layer == root:
+                    raise
+                project_config = None
+            if isinstance(project_config, dict) and isinstance(project_config.get("test_command"), str):
+                command = project_config["test_command"]
+    profile = {"schema_version": 3, "memory": memory} if saw_profile else None
+    config = {"schema_version": 1, "test_command": command} if command else None
+    return profile, config
+
+
 def prepare(args):
     root = Path(args.project).expanduser().resolve()
     top = git(root, "rev-parse", "--show-toplevel").decode().strip()
@@ -116,13 +171,22 @@ def prepare(args):
     # A directory that is not a repository is its own project root.
     pack = Path(__file__).resolve().parents[1]
     adopted_pack = root / ".nda-harness"
+    merged_profile, merged_config = merged_harness(root)
     profile = adopted_pack / "profile.json"
     config = adopted_pack / "config.json"
     blockers = []
     branch = git(root, "branch", "--show-current").decode().strip()
     head = git(root, "rev-parse", "--verify", "HEAD").decode().strip()
     if not profile.is_file():
-        blockers.append("Project setup/profile required; user installation does not adopt this checkout")
+        try:
+            personal, project_config = merged_harness(root)
+            memory = personal.get("memory") if isinstance(personal, dict) else None
+            if not isinstance(memory, dict) or not memory.get("bank_id"):
+                raise ValueError()
+            if not isinstance(project_config, dict) or not project_config.get("test_command"):
+                raise ValueError()
+        except (ValueError, OSError, AttributeError, TypeError):
+            blockers.append("Project setup/profile required; user installation does not adopt this checkout")
     else:
         try:
             personal = json.loads(profile.read_text())
@@ -133,8 +197,15 @@ def prepare(args):
                     raise ValueError()
                 if project_config.get("schema_version") != 1 or not project_config.get("test_command"):
                     raise ValueError()
-            elif personal.get("schema_version") not in (1, 2) or not personal.get("test_command"):
-                raise ValueError()
+            elif personal.get("schema_version") in (1, 2) and personal.get("test_command"):
+                pass
+            else:
+                _, project_config = merged_harness(root)
+                memory = personal.get("memory")
+                if personal.get("schema_version") != 3 or not isinstance(memory, dict) or not memory.get("bank_id"):
+                    raise ValueError()
+                if not isinstance(project_config, dict) or not project_config.get("test_command"):
+                    raise ValueError()
         except (ValueError, OSError, AttributeError, TypeError):
             blockers.append("Invalid project profile; reconcile setup")
     # User installed runtime reads repository profile while retaining its own rules.

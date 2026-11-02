@@ -169,12 +169,11 @@ def stored_profile(project):
         raise Conflict('Project profile is invalid; reconcile configuration before dependent work.') from None
 
 
-def profile_for(project):
-    kind, profile = stored_profile(project)
-    return profile if kind == 'current' else None
+_MEMORY_KEYS = {'identity_sha256', 'bank_id', 'remote', 'name', 'system'}
 
 
-def config_for(project):
+def directory_config(project):
+    """Read config.json in this directory only."""
     config = load_json(project / '.nda-harness/config.json')
     if config is None:
         return None
@@ -184,6 +183,96 @@ def config_for(project):
     except (KeyError, TypeError, ValueError):
         raise Conflict('Project configuration is invalid; reconcile configuration before dependent work.') from None
     return config
+
+
+def harness_layers(project):
+    """Outer harness directories first. The folder in the repo is last and wins."""
+    project = Path(project).resolve()
+    found = []
+    current = project
+    home = Path.home().resolve()
+    while True:
+        directory = current / '.nda-harness'
+        if directory.is_dir() and not directory.is_symlink():
+            found.append(current)
+        parent = current.parent
+        if parent == current or parent == home:
+            break
+        parent_harness = parent / '.nda-harness'
+        parent_git = parent / '.git'
+        if parent_harness.is_symlink() or parent_git.is_symlink():
+            break
+        if not parent_git.exists() and not parent_harness.is_dir():
+            break
+        current = parent
+    found.reverse()
+    return found
+
+
+def _layer_profile(root, project):
+    try:
+        return stored_profile(root)
+    except Conflict:
+        if Path(root).resolve() == Path(project).resolve():
+            raise
+        return None, None
+
+
+def effective_profile(project):
+    """Merge ancestor profiles. Keys in the repo folder replace outer keys."""
+    project = Path(project).resolve()
+    memory = {}
+    nearest = None
+    nearest_profile = None
+    for root in harness_layers(project):
+        kind, profile = _layer_profile(root, project)
+        if profile is None:
+            continue
+        if kind == 'legacy' and Path(root).resolve() == project:
+            return kind, profile
+        if kind not in ('current', 'legacy'):
+            continue
+        memory.update({key: value for key, value in profile['memory'].items() if key in _MEMORY_KEYS})
+        nearest = kind
+        nearest_profile = profile
+    if nearest == 'current':
+        try:
+            _valid_memory(memory)
+        except (KeyError, TypeError, ValueError):
+            raise Conflict('Project profile is invalid; reconcile configuration before dependent work.') from None
+        return 'current', {'schema_version': 3, 'memory': memory}
+    return nearest, nearest_profile
+
+
+def effective_config(project):
+    """Merge test commands. A config.json in the repo replaces an outer one."""
+    project = Path(project).resolve()
+    command = None
+    for root in harness_layers(project):
+        try:
+            config = directory_config(root)
+        except Conflict:
+            if Path(root).resolve() == project:
+                raise
+            continue
+        if config:
+            command = config['test_command']
+            continue
+        kind, profile = _layer_profile(root, project)
+        if kind == 'legacy':
+            command = profile['test_command']
+    if command is None:
+        return None
+    return {'schema_version': 1, 'test_command': command}
+
+
+def profile_for(project):
+    kind, profile = effective_profile(project)
+    return profile if kind == 'current' else None
+
+
+def config_for(project):
+    return effective_config(project)
 
 
 def ensure_project_gitignore(plan, project):
@@ -227,7 +316,7 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
         kind, stored = stored_profile(project)
         previous = stored if kind == 'current' else None
         legacy = stored if kind == 'legacy' else None
-        existing = config_for(project)
+        existing = directory_config(project)
         if legacy and existing and existing['test_command'] != legacy['test_command']:
             raise Conflict('Project test command conflicts with the saved profile; reconcile the two files before setup.')
         selection = (previous or legacy or {}).get('memory', {})
@@ -290,8 +379,8 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
 
 def inspect_project(project, package, home):
     project = root_for(project)
-    kind, profile = stored_profile(project)
-    project_config = config_for(project)
+    kind, profile = effective_profile(project)
+    project_config = effective_config(project)
     if kind != 'current' or project_config is None:
         return {'status': 'needs_configuration', 'protection': 'incomplete'}
     command = project_config['test_command']
