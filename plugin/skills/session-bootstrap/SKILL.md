@@ -3,6 +3,8 @@ name: session-bootstrap
 description: Use at the start of every session before task work. Prefix shell commands with rtk, call Context7 resolve-library-id and query-docs, and when the selected memory system's tools are listed call them.
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 Read the full packaged `pack/policy.md`, `pack/workflow.md`, and
 `pack/context-preparation.md`. Run the installed helper from the resolved plugin
 path, independent of the working directory or a source checkout:

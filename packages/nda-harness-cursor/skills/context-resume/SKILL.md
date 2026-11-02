@@ -3,6 +3,8 @@ name: context-resume
 description: Reconstruct context from project records and current revisions after compaction or cross-client handoff.
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 Read the full packaged `pack/policy.md`, `pack/workflow.md`, and
 `pack/context-preparation.md`. Run the installed helper from the resolved plugin
 path, independent of the working directory or a source checkout:

@@ -3,6 +3,8 @@ name: hindsight-memory
 description: Use at the start of every substantive session when NDA Hindsight MCP tools are available. Use the bank id in .nda-harness/profile.json, recall that bank, and retain useful notes. Do not wait for the user to mention NDA Hindsight.
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 NDA Hindsight is the memory provider. Use only this host:
 
 - MCP: `https://hindsight-api.pila.vn/mcp/`

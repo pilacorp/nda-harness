@@ -3,6 +3,10 @@ description: NDA Harness workflow and readiness for every project
 alwaysApply: true
 ---
 
+When `.nda-harness/config.json` for the project you are working in contains `"enabled": false`, that project is off. Keep running shell commands through RTK and keep using Context7 for library documentation. Do not follow the rest of this rule. Do not query NDA RAG or Hindsight. Do not run harness skills. If the user invokes `nda-setup`, run that skill; it writes `"enabled": true` and may call `select-bank` when the profile has no bank id. If the user invokes any other harness command, reply with exactly: NDA Harness is disabled on the project.
+
+A missing `enabled` field means the project is on. `"enabled": true` means the project is on.
+
 Use the installed NDA Harness plugin in every project. Read its full packaged
 `pack/policy.md`, `pack/workflow.md`, `pack/context-preparation.md`, and
 `skills/using-superpowers/SKILL.md` before dependent work.

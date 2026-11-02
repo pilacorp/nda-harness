@@ -3,6 +3,8 @@ name: sub-agent-graph
 description: Use when assigning work to a sub-agent. The parent keeps the assignment graph, writes one summary per node, and stores the short result.
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 The parent is the graph engineer. Load this skill before delegating. The child loads `sub-agent-loop` and does the assignment. This skill does not start an orchestrator, a queue, or another memory bank.
 
 ## Graph

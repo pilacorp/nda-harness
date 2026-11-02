@@ -3,6 +3,8 @@ name: nda-verify
 description: Inspect plugin and project readiness without repairs or memory side effects.
 ---
 
+If `.nda-harness/config.json` in this project has `"enabled": false`, reply with exactly `NDA Harness is disabled on the project` and stop. Do not run this skill.
+
 Run `${CURSOR_PLUGIN_ROOT}/bin/nda-plugin verify --client cursor --project <actual-root>`
 from this plugin's resolved path. Verification reads configuration and asset hashes;
 it does not run configured tests, install dependencies, alter hooks, log in, export
