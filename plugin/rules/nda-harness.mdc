@@ -72,6 +72,10 @@ Read `.nda-harness/profile.json` and use exactly `memory.bank_id`. Call
 nda-setup. Do not call `create_bank` to invent a GitHub-derived bank.
 Call `recall` with that `bank_id` and the user request before answering. After
 a meaningful decision, preference, or work note, call `retain` in that same bank.
+Use `recall` by default. The agent may choose `reflect`, when available, for
+synthesis or reasoning across multiple memories; do not routinely call both.
+Verify reflection conclusions against current code, approved specifications, and
+current evidence. Do not retain unverified conclusions as facts.
 Default environment is dev. Never store secrets. Missing tools mean Hindsight is
 unavailable in this session, with authentication unverified. An unauthorized call
 alone does not establish failed refresh. Continue with client default memory when

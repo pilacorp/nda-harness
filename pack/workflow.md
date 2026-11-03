@@ -47,6 +47,12 @@ recorded in that profile is shared by Codex and Cursor on the same checkout.
 Dev/staging/prod are labels within that bank,
 with dev the default; they do not grant environment access. Never store credentials.
 
+Use `recall` by default. The coding agent may choose `reflect`, when available,
+for synthesis or reasoning across multiple memories; do not routinely call both.
+Treat reflection output as advisory and verify conclusions against current code,
+approved specifications, and current evidence. Do not retain unverified
+conclusions as facts.
+
 For new banks, read `hindsight/README.md` and the applicable full template. Apply
 compatible settings through discovered native schemas only; preserve existing
 settings and report incomplete initialization honestly. Verification must not

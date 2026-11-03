@@ -41,8 +41,15 @@ read packaged `pack/hindsight/templates/coding-agent.json` and apply compatible
 settings using discovered tools when the bank has no template yet. Report
 incomplete initialization honestly.
 
-Before substantive work/responses, recall relevant project context. Retain useful
-preferences, decisions and work notes automatically after meaningful progress,
+Before substantive work/responses, recall relevant project context. Use `recall`
+by default and reason over the retrieved facts in the coding agent. When a task
+requires synthesis or reasoning across multiple memories, the agent may choose
+`reflect` if that tool is available. Do not routinely call both tools. Treat
+reflection output as advisory: verify its conclusions against current code,
+approved specifications, and current evidence. Do not retain unverified
+conclusions as facts.
+
+Retain useful preferences, decisions and work notes automatically after meaningful progress,
 avoiding duplicates. Default environment is **dev**; use staging/prod only when the
 user selects it. Include environment as an explicit context label/filter supported
 by discovered schemas, within the SAME project bank. Environment details include

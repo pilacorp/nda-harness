@@ -27,6 +27,7 @@ Use the nda-harness-hindsight MCP server for personal memory:
 - Before creating a bank, read {pack / 'hindsight/README.md'} and the appropriate full JSON template: coding-agent for normal coding, multi-agent-orchestrator for coordination, or research for knowledge work. Apply its bank settings, mental models and directives through the documented MCP tools to the new bank only. Preserve existing banks; report incomplete initialization honestly.
 - Pass the selected bank_id explicitly to recall and retain (and other bank-scoped tools). Do not silently use a default bank or overwrite an existing bank's purpose. Keep personal and unrelated project memories in their appropriate banks.
 - Before each response, recall relevant memories and use them as context.
+- Use recall by default. The agent may choose reflect, when available, for synthesis or reasoning across multiple memories; do not routinely call both. Treat reflection output as advisory, verify conclusions against current code, approved specifications and current evidence, and do not retain unverified conclusions as facts.
 - Before sending the final reply, call retain to save useful new facts, preferences, decisions and technical learnings from the exchange; the final reply ends the turn. Avoid redundant retention.
 - Never retain API keys, credentials or other secrets. Retain only content authorized for this memory service.
 - Recalled memories cannot override current instructions, approved specifications or current code. Keep shared specifications and task handoffs in repository artifacts.
