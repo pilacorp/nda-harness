@@ -4,6 +4,10 @@ The plugin selects optional specialist skills with Jev through OpenRouter. When 
 
 Model: `typesafe/jev-1.14`. Endpoint: `https://openrouter.ai/api/alpha/decisions`. One request asks one yes/no question per specialist in `skills/catalog.json`, sorted by id. The request carries bounded task text and catalog metadata. It does not carry skill bodies or the key.
 
+Catalog schema version 2 gives each specialist its own required `question`, positive `select_when` criterion, and negative `exclude_when` criterion. Each question is followed by shared instructions to classify the agreed deliverables: do not invent optional work, and do not select a skill merely because its subject, technology, or language is mentioned. Missing source material or approvals affects readiness to execute, not applicability. These instructions apply equally to Jev and the local-agent fallback.
+
+Diagram creation, modification, and evaluation qualify; architecture discussion or reading a diagram as background alone does not. UI/UX includes interface and interaction evaluation, including accessibility; backend work does not qualify merely because it serves a UI. Vietnamese official wording covers documents whose primary purpose is organizational communication or administration. Vietnamese technical writing covers engineering and product content, including translation and interface messages. An internal engineering RFC remains technical content; ordinary Vietnamese chat alone selects neither writing skill.
+
 The current specialists are `diagram-design`, `ui-ux-pro-max`, `vietnamese-official-wording`, and `vietnamese-tech-writing`. A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill, then calls `record-selection` so that choice is stored in the local Jev cache. An empty selection is valid. Mandatory workflow skills stay in force either way. Selection does not approve work.
 
 ## Key
@@ -36,8 +40,12 @@ When no key is saved, `select-skills` returns diagnostic `local_agent` and the s
 
 Equivalent task text reuses a cached result for seven days. A changed assignment, catalog, package, rules version, model, or key generation calls Jev again. Replacing the key starts a new generation, so the previous cache is not loaded.
 
+The per-skill question contract uses rules version `jev-specialists-v2`. Changing a catalog question invalidates earlier selections, including recorded user choices. Legacy catalog schemas are rejected; runtime and catalog updates ship together in each client package. The task-input schema remains version 1.
+
 On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key file under `~/.nda-harness/skill-selection/` is shared by those clients. Do not create a new key. A sandboxed invocation returns diagnostic `sandbox_rerun` and does not call OpenRouter. Rerun that command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
 
 ## Limits
 
 Specialist directories still ship beside workflow skills. A separate hub directory is later work. Paid selection quality and native client checks are not claimed by the unit tests. No live OpenRouter call is part of those tests.
+
+The uncertainty band remains `0.20 < p < 0.80` while evaluating the clearer questions. No reduction in confirmations is claimed until a labeled comparison measures both unnecessary confirmations and missed applicable skills. Narrowing the band is a separate policy decision.

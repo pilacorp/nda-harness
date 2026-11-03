@@ -3,6 +3,11 @@
 Feature issue: [nda-harness#16](https://github.com/pilacorp/nda-harness/issues/16)
 Spec branch: `spec/jev-skill-selection`
 
+The catalog and fixed-question contract below is superseded by
+[Jev specialist classification boundaries](jev-classification-boundaries.md):
+catalog schema 2, one question per specialist, and rules `jev-specialists-v2`.
+The existing .20/.80 thresholds and confirmation policy remain in effect.
+
 ## Summary
 
 NDA Harness will add a clear selection step before loading specialist skills.

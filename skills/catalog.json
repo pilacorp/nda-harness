@@ -1,51 +1,55 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skills": [
     {
       "entrypoint": "diagram-design/SKILL.md",
-      "exclude_when": "Only read or discuss an existing diagram without producing, changing, or reviewing one.",
+      "exclude_when": "The assignment includes no diagram creation, modification, or evaluation. Discussing architecture or workflows, or reading a diagram as background, does not qualify by itself.",
       "id": "diagram-design",
       "output": "An explanatory diagram artifact",
+      "question": "Does completing the current assignment include creating, modifying, or evaluating an explanatory diagram?",
       "required_context": [
         "verified relationships",
         "audience"
       ],
-      "select_when": "Creating or updating architecture, workflow, sequence, or other explanatory diagrams"
+      "select_when": "The assignment requests a diagram artifact, changes to an existing diagram, or evaluation of a diagram's correctness, clarity, or layout. This includes architecture, workflow, sequence, and other explanatory diagrams."
     },
     {
       "entrypoint": "ui-ux-pro-max/SKILL.md",
-      "exclude_when": "Pure backend logic, API or database work, or non-visual scripts, unless the assignment changes how something looks, feels, moves, or is interacted with.",
+      "exclude_when": "The assignment includes no interface design, interaction design, or interface evaluation. Backend logic, data processing, infrastructure, and API work do not qualify solely because they support an application with a user interface.",
       "id": "ui-ux-pro-max",
       "output": "UI/UX recommendations or scoped interface changes",
+      "question": "Does completing the current assignment include designing, changing, or evaluating a user interface or user interaction?",
       "required_context": [
         "approved UI scope",
         "existing design system",
         "detected stack"
       ],
-      "select_when": "Designing, implementing, or reviewing interfaces"
+      "select_when": "The assignment includes interface layout, visual styling, typography, responsive behavior, accessibility, navigation, interaction behavior, or evaluation of those aspects. Interface design recommendations qualify even when no code changes are requested."
     },
     {
       "entrypoint": "vietnamese-official-wording/SKILL.md",
-      "exclude_when": "Ordinary Vietnamese chat, Vietnamese technical or product documents, or technical project documentation that stays in English.",
+      "exclude_when": "The assignment includes no Vietnamese formal organizational document wording. Ordinary conversation, technical documentation, product documentation, and interface text do not qualify merely because they are in Vietnamese or used inside an organization.",
       "id": "vietnamese-official-wording",
       "output": "A Vietnamese draft or revision and any unresolved factual fields",
+      "question": "Does completing the current assignment include drafting, revising, translating into Vietnamese, or reviewing the wording of a formal organizational document?",
       "required_context": [
         "document purpose and audience",
         "approved template or glossary",
         "source facts"
       ],
-      "select_when": "Drafting or revising formal Vietnamese organizational documents"
+      "select_when": "The assignment produces or evaluates Vietnamese wording for a document whose primary purpose is official organizational communication or administration, such as a decision, directive, official letter, administrative notice, minutes, or formal organizational report."
     },
     {
       "entrypoint": "vietnamese-tech-writing/SKILL.md",
-      "exclude_when": "Formal organizational documents, ordinary Vietnamese chat, or documentation that stays in English.",
+      "exclude_when": "The assignment includes no Vietnamese engineering or product wording deliverable. Ordinary Vietnamese conversation, English-only documentation, and formal organizational documents do not qualify. Asking a coding question in Vietnamese alone is insufficient.",
       "id": "vietnamese-tech-writing",
       "output": "A Vietnamese technical or product draft and any unresolved factual fields",
+      "question": "Does completing the current assignment include drafting, revising, translating into Vietnamese, or reviewing Vietnamese engineering or product content?",
       "required_context": [
         "document type and audience",
         "source facts"
       ],
-      "select_when": "Drafting or reviewing Vietnamese technical or product documents"
+      "select_when": "The assignment produces or evaluates Vietnamese technical or product wording, including documentation, specifications, READMEs, engineering reports, release notes, review comments, help content, or interface messages."
     }
   ]
 }
