@@ -171,6 +171,7 @@ def _observe_context(home, client, project, session, stage, task, operation, out
         'stage': stage if stage in ('specification', 'implementation') else 'specification',
         'task': task or '',
         'spec_missing': spec_missing,
+        'task_type': output.get('task_type', 'feature') if isinstance(output, dict) else 'feature',
     })
 
 
@@ -271,7 +272,7 @@ def hook(package, client, event, home, payload):
         'Check the actual project root .nda-harness/profile.json for memory and .nda-harness/config.json for the test command. In a workspace of nested repositories, merge those files from ancestor .nda-harness folders and let the folder inside the repo override. If .nda-harness/config.json is absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. If the config is present and the profile is absent, run nda-setup without a new test command so the stored command is kept and the personal profile is rebuilt. A folder that is not a Git checkout, like a repository with no remote, needs --project-name. Git commit hooks apply only to a repository. '
         'No answer means pending; only explicit Skip stores true. Do not claim ready or start dependent implementation until setup and local Git protection are ready. '
         'Client startup can still be running, including Cursor sessionStart: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
-        'Repository instructions, issue linkage, approved merged spec checks, TDD Red/Green/Refactor and human review remain mandatory. Hooks cannot grant approvals. '
+        'Repository instructions, issue linkage, TDD Red/Green/Refactor and human review remain mandatory. Features require approved merged spec checks. When creating a bug issue, put Type: bugfix in its body and apply the repository bug label if available. Verify the live issue classification at start/resume and mirror it in the local task; the local field alone is insufficient. A task with verified bug-fix classification may restore established behavior without a new upfront spec or separate spec PR: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion; add a concise behavior/regression spec if none exists. New requirements or unresolved intent conflicts use the feature path. Hooks cannot grant approvals. '
         'Use the five context operation skills; after resume or compaction reconstruct from durable sanitized task records and current revisions. '
         'Commit .nda-harness/config.json. Keep .nda-harness/profile.json and sanitized task records in .nda-harness/tasks/ local; add both to .gitignore and never stage, commit or force-add task files, including task.md. No shared rules copies, credentials, memory text or machine paths belong in committed project configuration. '
         'Record local usage with the packaged usage-record command for memory outcomes, sub-agent summary lengths, and spec checks. Open the private report with the usage command. Never put prompts, secrets, transcripts, or memory text in a usage record. '

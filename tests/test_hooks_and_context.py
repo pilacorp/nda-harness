@@ -149,6 +149,43 @@ class InstalledTests(unittest.TestCase):
         self.assertEqual(prepared.returncode, 2)
         self.assertIn("Explicit --task", prepared.stdout)
 
+    def test_only_explicit_bugfix_can_implement_without_a_spec(self):
+        self.install()
+        task = self.project / '.nda-harness/tasks/fix/task.md'
+        task.parent.mkdir(parents=True)
+        for task_type in (None, 'feature', 'bugfix', 'typo', ''):
+            with self.subTest(task_type=task_type):
+                task.write_text('Issue: https://github.com/example/project/issues/1\n'
+                                + (f'Type: {task_type}\n' if task_type is not None else ''))
+                prepared = self.context('task-prepare', '--role', 'developer', '--task', str(task), '--stage', 'implementation')
+                output = json.loads(prepared.stdout)
+                self.assertEqual(prepared.returncode, 0 if task_type == 'bugfix' else 2, output)
+                self.assertFalse(output['implementation_authorized'])
+                if task_type == 'bugfix':
+                    self.assertEqual(output['task_type'], 'bugfix')
+                    self.assertIsNone(output['spec'])
+                    self.assertTrue(output['spec_sync_required'])
+
+    def test_bugfix_still_requires_an_issue_and_valid_recorded_spec(self):
+        self.install()
+        task = self.project / '.nda-harness/tasks/fix/task.md'
+        task.parent.mkdir(parents=True)
+        secret = self.home / 'private-spec'
+        secret.write_text('SECRET-SPEC-BODY')
+        (self.project / 'linked-spec.md').symlink_to(secret)
+        for record in (
+            'Type: bugfix\n',
+            'Type: bugfix\nIssue: <published issue URL>\n',
+            'Type: bugfix\nIssue: https://github.com/example/project/issues/1\nSpec: absent.md\n',
+            'Type: bugfix\nIssue: https://github.com/example/project/issues/1\nSpec: linked-spec.md\n',
+            f'Type: bugfix\nIssue: https://github.com/example/project/issues/1\nSpec: {secret}\n',
+        ):
+            with self.subTest(record=record):
+                task.write_text(record)
+                prepared = self.context('task-prepare', '--role', 'developer', '--task', str(task), '--stage', 'implementation')
+                self.assertEqual(prepared.returncode, 2, prepared.stdout)
+                self.assertNotIn('SECRET-SPEC-BODY', prepared.stdout)
+
     def test_symlink_spec_is_not_read(self):
         self.install()
         secret = self.home / "private"

@@ -2,13 +2,28 @@
 
 Read this policy and workflow completely before task work. The GitHub issue owns
 feature intent; the developer spec defines implementation. Developer behavior
-changes require a published issue and a reviewed-and-merged developer spec whose
+changes use the feature path by default: a published issue and a reviewed-and-merged developer spec whose
 local content matches the merged reviewed revision. Verify remote evidence through
 existing authenticated GitHub tools at task start, resume and dependent transitions.
 Material changes require reconciliation and renewed human review. Missing or
 unverifiable prerequisites pause implementation. Specification drafting/review
 may proceed before spec merge. Documentation/mechanical work uses a recorded
-lighter path; behavior-change exceptions require explicit human authorization.
+lighter path; other behavior-change exceptions require explicit human authorization.
+
+Bug fixes that restore established intended behavior use the bug-fix path in
+workflow.md. When creating the issue, put `Type: bugfix` in its body and apply
+the repository's `bug` label when available. Verify that live issue classification
+at start/resume and mirror it in the local task record; the local field alone
+cannot establish the exception. No new spec or
+separate spec approval/merge is required before diagnosis, regression tests or
+the fix. Read any related spec and verify the intended behavior against the live
+issue and existing acceptance criteria. Reproduce the defect and establish its
+root cause before changing code. Update the related spec and regression case in
+the same change before completion; if none exists, add a concise behavior and
+regression spec. Code and spec receive human review together. A label or local
+task field does not prove eligibility. New requirements, mixed feature/fix scope,
+or unresolved conflicts with approved intent return to the feature path before
+dependent implementation.
 
 Use unit Red → Green → Refactor. Keep task scope focused; update documentation
 and prepare review evidence. Human review remains required. Repository owners

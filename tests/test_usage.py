@@ -105,6 +105,20 @@ class UsageTests(unittest.TestCase):
         set_stage(self.home, self.project, 'implementation')
         self.assertEqual(stage_for(self.home, self.project), 'implementation')
 
+    def test_bugfix_path_is_counted_without_a_false_upfront_spec_violation(self):
+        task = '.nda-harness/tasks/fix/task.md'
+        append_event(self.home, self.event(kind='context', operation='task-prepare', status='ready',
+                                          stage='implementation', task=task, task_type='bugfix'), now=self.now)
+        report = summarize(read_events(self.home), now=self.now)['windows']['7']['spec_discipline']
+        self.assertEqual(report['bugfixes'], 1)
+        self.assertEqual(report['without_spec'], 0)
+        # Reclassifying a feature cannot erase its earlier missing-spec violation.
+        append_event(self.home, self.event(kind='context', operation='task-prepare', status='blocked',
+                                          stage='implementation', task=task, task_type='feature', spec_missing=True), now=self.now)
+        report = summarize(read_events(self.home), now=self.now)['windows']['7']['spec_discipline']
+        self.assertEqual(report['bugfixes'], 0)
+        self.assertEqual(report['by_reason']['no_spec'], 1)
+
     def test_html_escapes_error_text(self):
         append_event(self.home, self.event(kind='memory', operation='recall', outcome='failed', operation_id='e1', error='<script>'), now=self.now)
         page = render_html(summarize(read_events(self.home), now=self.now))

@@ -53,8 +53,14 @@ and preserve existing Git hooks. Both prior hooks and configured tests must pass
 
 Use task-prepare, context-refresh, context-checkpoint and context-resume skills.
 Reconstruct from repository records/revisions after compaction or handoff. Follow
-issue linkage, approved merged specifications, TDD Red/Green/Refactor and human
-review. Hooks and memory cannot grant approval or change repository authority.
+issue linkage, the feature path with approved merged specifications, TDD
+Red/Green/Refactor and human review. For fixes restoring established behavior,
+put `Type: bugfix` in the GitHub issue body at creation and apply its `bug`
+label when available. Verify the live issue classification at start/resume,
+mirror it in the local task, and follow workflow.md: diagnose and fix with a regression
+test, then sync the related spec in the same change before completion. Add a
+concise behavior/regression spec if none exists; no separate upfront spec PR is
+required. New requirements or unresolved intent conflicts use the feature path. Hooks and memory cannot grant approval or change repository authority.
 
 One memory system is active per project: `.nda-harness/profile.json` field
 `memory.system`. If several are packaged and that field is absent, ask the user

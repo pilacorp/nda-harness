@@ -45,7 +45,7 @@ checkout/virtual environment and from a different working directory.
 
 ## Recovery and privacy
 
-Read full task/source artifacts and independently recheck live issue/spec review/merge before dependent work.
+Read full task/source artifacts and independently recheck the live issue and selected workflow prerequisites before dependent work. Feature tasks require spec review/merge; bugfix tasks require established-intent evidence and spec sync before completion, as defined in workflow.md.
 
 Repair client Python/PATH locally and retry if the launcher reports a prerequisite
 error. Restore only recorded files/Git settings still matching written hashes;
