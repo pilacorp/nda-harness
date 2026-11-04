@@ -105,3 +105,11 @@ approval or authority over current repository sources. If unavailable, use clien
 default memory when available, report degradation and never claim saves or auto-sync
 fallback content later. Keep local handoffs in sanitized ignored task records;
 share reviewed handoff facts explicitly when another clone needs them.
+
+Daily specialist selection uses the local `nda-harness-jev` MCP server:
+`select_skills`, human uncertainty confirmation through `record_selection`, then
+`load_selected_skills`. Only `selection_verify` with explicit `live: true` is a
+paid synthetic check. Credential administration stays in a normal local terminal.
+If MCP is unavailable or denied, report `jev_mcp_unavailable` and pause dependent
+specialist work; do not infer credential absence or escape to shell. Selection
+precedes delegation and never grants implementation or workflow approval.

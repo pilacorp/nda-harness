@@ -129,6 +129,14 @@ def verify_message(report):
 
 
 def selection_verify(package, keychain, *, live=False, transport=None, client=None, home=None):
+    from nda_harness.skill_selection import sandbox_refusal
+    skipped = sandbox_refusal(client, home=home, kind='verify')
+    if skipped:
+        return skipped
+    return _selection_verify_engine(package, keychain, live=live, transport=transport, client=client, home=home)
+
+
+def _selection_verify_engine(package, keychain, *, live=False, transport=None, client=None, home=None):
     """Offline package and credential check, or one explicit synthetic decision call."""
     package = Path(package)
     try:
@@ -138,10 +146,6 @@ def selection_verify(package, keychain, *, live=False, transport=None, client=No
         load_catalog(package / 'skills')
     except (OSError, UnicodeError, json.JSONDecodeError, SelectionError):
         return {'diagnostic': 'invalid_catalog', 'implementation_authorized': False, 'status': 'blocked'}, 2
-    from nda_harness.skill_selection import sandbox_refusal
-    skipped = sandbox_refusal(client, home=home, kind='verify')
-    if skipped:
-        return skipped
     try:
         presence = keychain.status()
     except OSError:

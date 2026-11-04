@@ -22,18 +22,18 @@ First setup and re-setup use the same command in a normal local terminal:
 
 Replace the saved OpenRouter key by running that command again. The terminal asks before replacing it. Answering no keeps the saved key and finishes setup. The terminal prints `The saved OpenRouter key was kept.`
 
-Check without a paid call:
+For daily selection use the local `nda-harness-jev` MCP server. Keep the client's ordinary shell restrictions. Enable/trust the server through the client's normal controls and reload if discovery requires it.
 
-`rtk proxy ${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin selection-verify --client claude`
+Call `selection_verify` without arguments for an offline package/key check. Only an explicit request for a paid synthetic check permits `selection_verify` with `{"live": true}`. Terminal `selection-verify` remains a legacy diagnostic.
 
-A paid synthetic check is only:
+On `authorization_failed`, direct the user to the same terminal re-setup command. Do not ask for the key in chat.
 
-`rtk proxy ${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin selection-verify --client claude --live`
+For a new assignment call MCP `select_skills` with `project` (an absolute existing directory), `session`, and `task` (the unchanged schema-1 assignment JSON). A cache miss or explicit `refresh: true` can incur a paid Jev request. Never preload specialist bodies. Call `load_selected_skills` with the same project, session, and task to receive only selected bodies.
 
-On `authorization_failed`, direct the user to the same re-setup command. Do not ask for the key in chat.
+On `uncertain_decision`, ask the user whether to include every uncertain skill. Do not choose for them. Call `record_selection` with the same assignment plus `decisions`, mapping exactly those ids to booleans, then `load_selected_skills`.
 
-For a new assignment, call `select-skills` with `--project`, `--session`, and `--request-file`, then `load-selected-skills` with the same task JSON. Do not read specialist bodies before that. On `uncertain_decision`, ask the user whether to load each skill in `uncertain`. Do not choose for them. Then call `record-selection` with the same task JSON plus a `decisions` object mapping each uncertain skill id to true or false. That stores the choice in the local Jev cache. Then call `load-selected-skills`. On `blocked`, report `diagnostic` and `next`. Do not load every specialist.
+On `local_agent` (only a missing key), answer every question with type `noul` and probability 0 to 1. Call `select_skills` again with the same assignment and `answers` object. The model name is `local-agent`. An unreadable key blocks with `credential_unavailable`.
 
-On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key file under `~/.nda-harness/skill-selection/` is shared by Codex, Cursor, and Claude. Do not create a new key. If the result is diagnostic `sandbox_rerun`, rerun that same command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
+If MCP is absent, disabled or denied, report `jev_mcp_unavailable` and pause dependent specialist work. Do not infer a missing key, change permissions, start setup or silently escape to shell. The key file is shared by Codex, Cursor, and Claude. Legacy CLI selection operations retain `sandbox_rerun` for their shell path. After a disconnect reuse the same task/session without refresh; delivery may be unknown.
 
 Mandatory workflow skills stay in force. Jev does not grant approval.

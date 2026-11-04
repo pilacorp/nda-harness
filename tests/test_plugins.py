@@ -374,10 +374,11 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(set(codex_files) - set(claude_files), {'.codex-plugin/plugin.json', '.agents/plugins/marketplace.json'})
         bound = {f'skills/{name}/SKILL.md' for name in (
             'nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume', 'skill-selection')}
-        differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json'}
+        differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json', '.mcp.json'}
         for name in set(claude_files) & set(codex_files) - differ:
             self.assertEqual(claude_files[name], codex_files[name], name)
-        self.assertEqual(claude_files['.mcp.json'], codex_files['.mcp.json'])
+        self.assertEqual(json.loads(claude_files['.mcp.json'])['mcpServers']['nda-harness-jev']['args'],
+                         ['selection-mcp', '--client', 'claude'])
         self.assertFalse((claude / 'rules/nda-harness.mdc').exists())
         self.assertFalse((claude / 'CLAUDE.md').exists())
 

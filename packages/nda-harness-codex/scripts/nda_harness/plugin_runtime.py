@@ -330,7 +330,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', 'selection-mcp', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -353,6 +353,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[2]
     home = Path.home().resolve()
+    if args.command == 'selection-mcp':
+        from nda_harness.jev_mcp import Engine, serve
+        try:
+            return serve(Engine(args.client))
+        except Exception:
+            print('selection_mcp_unavailable', file=sys.stderr)
+            return 2
     try:
         config = package_config(package, args.client)
         if args.command in QUIET_COMMANDS and project_disabled(args.project or os.getcwd()):

@@ -27,7 +27,7 @@ SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
            'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
            'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py',
-           'bank_select.py')
+           'bank_select.py', 'jev_mcp.py')
 REPOSITORY_URL = 'https://github.com/pilacorp/nda-harness'
 USAGE_HOME_URL = REPOSITORY_URL + '/blob/dev/docs/usage-report.md'
 
@@ -222,19 +222,21 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
                              'skills': './skills/', 'hooks': './hooks/hooks.json', 'mcpServers': './mcp.json',
                              'homepage': USAGE_HOME_URL, 'repository': REPOSITORY_URL})
         write(root, f'.{client}-plugin/plugin.json', json_bytes(manifest))
+        http_transport = {'type': 'http'} if client in ('codex', 'claude') else {}
         servers = {
-            'nda-harness-context7': {'url': 'https://mcp.context7.com/mcp'},
-            NDA_RAG_SERVER: {'url': rag_url},
+            'nda-harness-context7': {**http_transport, 'url': 'https://mcp.context7.com/mcp'},
+            NDA_RAG_SERVER: {**http_transport, 'url': rag_url},
         }
         for system_id, url in endpoints.items():
-            servers[SYSTEMS[system_id]['server']] = {'url': url}
+            servers[SYSTEMS[system_id]['server']] = {**http_transport, 'url': url}
         if any(not isinstance(name, str) or re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None for name in servers):
             raise ValueError('MCP server identifiers must not contain spaces or unsupported characters; use a separate display label.')
-        if client in ('codex', 'claude'):
-            for server in servers.values():
-                server['type'] = 'http'
-        write(root, 'mcp.json' if client == 'cursor' else '.mcp.json', json_bytes({'mcpServers': servers}))
         variable = {'codex': '${PLUGIN_ROOT}', 'cursor': '${CURSOR_PLUGIN_ROOT}', 'claude': '${CLAUDE_PLUGIN_ROOT}'}[client]
+        servers['nda-harness-jev'] = {'command': variable + '/bin/nda-plugin',
+                                      'args': ['selection-mcp', '--client', client]}
+        if client in ('codex', 'claude'):
+            servers['nda-harness-jev']['type'] = 'stdio'
+        write(root, 'mcp.json' if client == 'cursor' else '.mcp.json', json_bytes({'mcpServers': servers}))
         def command(operation):
             return f'"{variable}/bin/nda-plugin" hook --client {client} --event {operation}'
         if client == 'cursor':

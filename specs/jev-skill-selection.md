@@ -3,6 +3,12 @@
 Feature issue: [nda-harness#16](https://github.com/pilacorp/nda-harness/issues/16)
 Spec branch: `spec/jev-skill-selection`
 
+Proposed transport amendment: [Jev through a local MCP server](jev-mcp.md)
+defines a dedicated stdio server for daily agent use without a Full Access
+switch. When implemented, it replaces this document's exclusion of a new MCP
+server and shell-only daily invocation; selection semantics remain unchanged.
+The amendment is a draft and does not describe the current released runtime.
+
 The catalog and fixed-question contract below is superseded by
 [Jev specialist classification boundaries](jev-classification-boundaries.md):
 catalog schema 2, one question per specialist, and rules `jev-specialists-v2`.

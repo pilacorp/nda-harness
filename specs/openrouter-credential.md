@@ -6,6 +6,12 @@ Issue body SHA-256: 59cefbbb70a80423df61809542eb5d16c80f749f6e9819534c95eb42ba75
 Consulted source revisions: repository `f912fc2b2435ec90089eaa6680ea94f0e55f9775`; `specs/jev-skill-selection.md` section "Credentials, cache, and task records"; `scripts/nda_harness/credentials.py`; `scripts/nda_harness/openrouter.py`; `scripts/nda_harness/plugin_runtime.py`; `scripts/nda_harness/files.py`; `docs/skill-selection.md`
 Spec branch: `spec/openrouter-credential`
 
+Proposed transport amendment: [Jev through a local MCP server](jev-mcp.md)
+reuses this file store in a trusted local server. When implemented, its MCP
+entry boundary replaces the blanket outside-sandbox requirement for daily
+agent operations. Terminal setup, migration, file protections, and direct CLI
+sandbox refusal remain intact. The amendment is a draft, not released behavior.
+
 ## Summary
 
 Skill selection keeps one personal OpenRouter key for Codex, Cursor, and Claude.
