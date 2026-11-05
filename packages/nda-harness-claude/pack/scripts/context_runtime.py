@@ -34,7 +34,7 @@ def local_path(root, value):
 
 def fields(task):
     # Values are untrusted text. Never execute, print, or infer permissions from them.
-    allowed = {"Issue", "Spec", "Revision", "Input fingerprint", "Stage", "Evidence", "Next action"}
+    allowed = {"Issue", "Type", "Spec", "Revision", "Input fingerprint", "Stage", "Evidence", "Next action"}
     parsed = {}
     for line in task.read_text().splitlines():
         if ":" in line:
@@ -90,6 +90,10 @@ def fingerprints(root, pack, task, spec):
         inputs.append((name, value))
     if spec:
         inputs.append((str(spec.relative_to(root)), sha(spec.read_bytes())))
+    if task:
+        # Task text stays out of the fingerprint so checkpoint saves stay fresh,
+        # but changing the workflow must invalidate prior context.
+        inputs.append(("task_type", fields(task).get("Type", "feature")))
     content = json.dumps(inputs, sort_keys=True).encode()
     return sha(content)
 
@@ -243,6 +247,9 @@ def prepare(args):
             explicit = previous.get("task")
         task = local_path(root, explicit) if explicit else None
         record = fields(task) if task else {}
+        task_type = record.get("Type", "feature")
+        if task_type not in ("feature", "bugfix"):
+            blockers.append("Task Type must be feature or bugfix")
         spec = None
         if record.get("Spec") and not record["Spec"].startswith("<"):
             try:
@@ -256,7 +263,7 @@ def prepare(args):
                 blockers.append("Explicit --task pointing to an issue-linked task record is required")
             if task and (not record.get("Issue") or record["Issue"].startswith("<")):
                 blockers.append("Task record must reference the published feature issue")
-            if args.stage == "implementation" and not spec:
+            if args.stage == "implementation" and not spec and task_type != "bugfix":
                 blockers.append("Local issue-linked developer spec required before implementation")
         fingerprint = fingerprints(root, required_pack, task, spec)
         stale = bool(previous and (previous.get("fingerprint") != fingerprint or previous.get("task") != (str(task.relative_to(root)) if task else None) or previous.get("branch") != branch or previous.get("head") != head))
@@ -270,9 +277,19 @@ def prepare(args):
                 for key in ("Stage", "Evidence", "Next action"):
                     if not record.get(key) or record[key].startswith("<"):
                         blockers.append("Save task-record field: " + key)
-        pending = ["Read full policy/profile/workflow and relevant sources; briefs are navigation only",
-                   "At task start/resume/dependent transitions, verify live issue content and spec PR review/merge; reconcile material changes",
-                   "Match local spec to reviewed merged content before implementation; local metadata never authorizes a stage transition"]
+        pending = ["Read full policy/profile/workflow and relevant sources; briefs are navigation only"]
+        if task_type == "bugfix":
+            pending.extend([
+                "Verify the live issue's bug label or Type: bugfix body field and evidence that this restores established behavior; a local field alone is insufficient; new behavior or unresolved spec conflicts require the feature workflow",
+                "Reproduce the bug, establish root cause and run unit Red/Green/Refactor with a regression test",
+                "Before completion, update the related spec's behavior/acceptance and regression case in the same change; if none exists, add a concise behavior/regression spec",
+                "Human code/spec review remains required; local metadata never authorizes a stage transition",
+            ])
+        else:
+            pending.extend([
+                "At task start/resume/dependent transitions, verify live issue content and spec PR review/merge; reconcile material changes",
+                "Match local spec to reviewed merged content before implementation; local metadata never authorizes a stage transition",
+            ])
         if stale:
             pending.insert(0, "Local input changed: reread affected sources and reassess test/spec evidence")
         output = {"schema_version": 1, "operation": args.operation,
@@ -280,6 +297,8 @@ def prepare(args):
                   "worktree": str(root), "branch": branch, "head": head or None,
                   "dirty": bool(git(root, "status", "--porcelain")), "input_fingerprint": fingerprint,
                   "task": str(task.relative_to(root)) if task else None,
+                  "task_type": task_type,
+                  "spec_sync_required": task_type == "bugfix",
                   "spec": str(spec.relative_to(root)) if spec else None,
                   "source_references": [str(required_pack / 'policy.md'), str(profile), str(required_pack / 'workflow.md'), str(release_root / 'release.json')],
                   "blockers": blockers, "next_required_checks": pending,

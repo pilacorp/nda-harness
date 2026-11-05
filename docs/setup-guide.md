@@ -122,15 +122,15 @@ setup.
    Running `/skill-selection` again asks before replacing a saved key. Answering
    no keeps the saved key, prints `The saved OpenRouter key was kept.`, and
    finishes setup.
-3. Return to the chat and ask the agent to run `selection-verify`. A successful
-   offline check reports `OpenRouter key is present.` This checks local setup,
-   not API authorization or account credit. For one synthetic paid API check,
-   ask for `selection-verify --live`. Success starts with `Live check passed.`
-   and includes the model name.
-4. Give the agent a concrete assignment with a clear deliverable. The agent runs
-   `select-skills` with the project, session, and request file, then
-   `load-selected-skills` with the same task JSON. It loads only the returned
-   specialist bodies. You do not need to run these agent commands yourself.
+3. Enable/trust the installed plugin's local `nda-harness-jev` MCP server through
+   the client's native controls, then reload if discovery requires it. Return to
+   chat and call `selection_verify` for an offline package/key check. This does
+   not verify API authorization or account credit. For an explicitly requested
+   paid synthetic check, use `selection_verify` with `live: true`.
+4. Give the agent a concrete assignment. It calls MCP `select_skills` with the
+   absolute project directory, session, and task JSON, then
+   `load_selected_skills` with the same values. Only the loader returns bodies.
+   Ordinary shell restrictions remain in place.
 
 Selection sends bounded task text and catalog metadata to OpenRouter. The current
 specialists are Diagram Design, UI/UX Pro Max, Vietnamese official wording, and Vietnamese tech writing.
@@ -143,10 +143,11 @@ If Terminal prints `A local terminal is required.`, run `/skill-selection` again
 and use the Terminal window it opens. For `authorization_failed`, run
 `/skill-selection` again and confirm replacement of the saved key. For
 `needs_context` or `blocked`, follow the reported diagnostic and next action
-before loading specialist skills. On Codex, Cursor, and Claude, run skill
-selection outside the sandbox so it can use the shared OpenRouter key file. Diagnostic
-`sandbox_rerun` means that command ran in the sandbox: rerun it outside the sandbox
-and continue the assignment. Do not create a new OpenRouter key.
+before loading specialist skills. If MCP is absent or denied, report
+`jev_mcp_unavailable` and pause dependent specialist work. Do not infer a missing
+key, change permissions or escape to shell. Legacy CLI selection still returns
+`sandbox_rerun` in a restricted shell; daily use routes through MCP instead.
+
 
 ## Setup checklist
 

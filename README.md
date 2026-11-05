@@ -6,6 +6,17 @@ The GitHub issue is the feature spec. The proposed harness helps the tech lead w
 
 Developer work starts with that issue created by an authorized tech lead. The developer drafts a separate implementation-ready spec and submits it for review. A feature uses one issue-numbered branch for two sequential PRs: the developer-spec PR references the issue; human approval and spec merge unlock implementation; the implementation PR closes the issue after review and acceptance. Material issue edits require reconciliation with the approved developer spec.
 
+Bug fixes that restore established intended behavior use a shorter path. Record
+`Type: bugfix` in the GitHub issue body when creating it and apply the `bug` label
+when available. Verify the live issue classification and mirror it in the local
+task, then reproduce and diagnose the defect,
+add a failing regression test, and fix the code. No new spec or separate spec PR
+is required before the fix. Update the related spec's behavior, acceptance criteria
+and regression case in the same change before completion; if none exists, add a
+concise behavior/regression spec. Code and spec receive human review together.
+New requirements or unresolved conflicts with approved intent use the feature
+workflow. See [the packaged workflow](pack/workflow.md#bug-fix-path).
+
 Harness TDD uses focused unit tests in the code repository. QA owns integration and end-to-end verification; the harness does not require agents to build those test suites.
 
 The proposed local hook set includes a Git `pre-commit` hook that runs configured unit tests and blocks failing commits, alongside CI merge checks.

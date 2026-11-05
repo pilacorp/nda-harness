@@ -196,7 +196,8 @@ class CredentialTests(unittest.TestCase):
         skills = package / 'skills'
         skills.mkdir()
         (skills / 'catalog.json').write_text(
-            '{"schema_version":1,"skills":[{"id":"diagram-design","entrypoint":"diagram-design/SKILL.md",'
+            '{"schema_version":2,"skills":[{"id":"diagram-design","entrypoint":"diagram-design/SKILL.md",'
+            '"question":"Does the assignment include a diagram?",'
             '"select_when":"diagram","exclude_when":"none","required_context":["audience"],"output":"A diagram"}]}',
             encoding='utf-8',
         )
@@ -479,7 +480,8 @@ class CredentialTests(unittest.TestCase):
         skill.mkdir()
         (skill / 'SKILL.md').write_text('body', encoding='utf-8')
         (package / 'catalog.json').write_text(
-            '{"schema_version":1,"skills":[{"id":"diagram-design","entrypoint":"diagram-design/SKILL.md",'
+            '{"schema_version":2,"skills":[{"id":"diagram-design","entrypoint":"diagram-design/SKILL.md",'
+            '"question":"Does the assignment include a diagram?",'
             '"select_when":"diagram","exclude_when":"none","required_context":["audience"],"output":"A diagram"}]}',
             encoding='utf-8',
         )

@@ -392,3 +392,26 @@ context; fingerprints cannot authenticate approvals or detect remote issue edits
 
 The [old CLI walkthrough](compatibility/cli-installation-historical.md) is
 historical evidence, not a plugin installation or migration path.
+
+## Local Jev MCP operation
+
+The builder registers `nda-harness-jev` with `selection-mcp --client <fixed-client>`
+using the installed package's executable. Codex and Claude declare `type: stdio`;
+Cursor uses native command/args. Existing HTTP entries are preserved. Hosted
+Claude ZIPs relocate `bin/nda-plugin` to `scripts/nda-plugin`, including MCP config.
+The launcher resolves code/catalog/release metadata from its installed location,
+never its working directory. Python 3.9+ and the existing OS-user credential file
+are reused, without an SDK installation or background service.
+
+Enable/trust the server using each client's normal controls and reload when
+needed. Daily agents call the four tools documented in [skill selection](skill-selection.md).
+Credential setup/replacement/removal/migration remains terminal-only. No hook,
+startup check or pre-commit gate makes a paid Jev call. Missing or denied MCP is
+`jev_mcp_unavailable`, requiring a pause of dependent specialist work; do not
+change global permissions or silently fall back to shell. After disconnect reuse
+the same task/session without refresh; paid request delivery may be unknown.
+
+Rollback disables the new MCP entry or restores the preceding package. Preserve
+credential generation, keys and cache files. Native Codex, Cursor, Claude and
+Claude hosted-archive acceptance must be recorded before release; subprocess
+fixtures alone do not establish client support. See [implementation evidence](compatibility/jev-mcp.md).

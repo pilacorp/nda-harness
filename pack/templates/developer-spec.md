@@ -61,5 +61,8 @@ Merge reference/revision: <unset until merged>
 Local spec matches merged reviewed version: <evidence>
 Next action: <permitted workflow action>
 
-The issue owns intent. This document does not grant approval; behavior-change
+The issue owns intent. This document does not grant approval; feature
 implementation requires verified review/merge and matching local content.
+Bug fixes restoring established intent follow workflow.md: sync the related
+spec and regression case with the fix before completion and human review,
+without a separate upfront spec PR.

@@ -23,8 +23,19 @@ collector. Plugin context skills add clone-local protection checks around it.
 
 Use `--role tech-lead` without a record for issue drafting. Task records must be
 explicitly created/saved by the agent, never inferred from a branch name. They
-use templates/task-record.md. Implementation requires a real local spec and
-independent remote prerequisite checks; the helper never performs them.
+use templates/task-record.md. Feature implementation requires a real local spec
+and independent remote prerequisite checks; the helper never performs them.
+`Type: bugfix` mirrors the live issue's `bug` label or `Type: bugfix` body field
+for the workflow.md bug-fix path; absent local Type means feature. At issue
+creation, use templates/bug-issue.md and follow workflow.md's publishing instructions.
+The agent must verify the live classification; a local field alone is insufficient.
+Only `feature` and `bugfix` are valid values. A bug fix can start without a local
+spec, but any recorded spec path must resolve safely. The agent must verify this
+restores established intent and sync the related spec before completion. When no
+related spec exists, add a concise behavior/regression spec with the fix. The
+helper reports `task_type` and `spec_sync_required`; these are reminders, not
+verified eligibility, completed spec sync or approval. Read Type again on resume;
+changing it invalidates the context fingerprint.
 
 JSON schema version 1 reports operation, status, checkout/branch/HEAD, dirty state,
 input fingerprint, source/task/spec pointers, blockers and next checks. `ready`

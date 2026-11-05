@@ -93,6 +93,7 @@ def normalize_event(event, *, now=None):
             'stage': stage,
             'task': _clean_task(event.get('task')) or '',
             'spec_missing': event.get('spec_missing') is True,
+            'task_type': 'bugfix' if event.get('task_type') == 'bugfix' else 'feature',
         })
     elif kind == 'selection':
         action = event.get('action')
@@ -249,7 +250,7 @@ def _in_window(events, now, days):
 
 
 def _row():
-    return {'checks': [], 'implementation': False, 'spec_missing': False}
+    return {'checks': [], 'implementation': False, 'spec_missing': False, 'bugfix': True}
 
 
 def _spec_rows(events):
@@ -262,18 +263,26 @@ def _spec_rows(events):
             row = by_task.setdefault(task, _row())
             row['implementation'] = True
             row['spec_missing'] = row['spec_missing'] or event.get('spec_missing') is True
+            row['bugfix'] = row['bugfix'] and event.get('task_type') == 'bugfix'
     if any(event['kind'] == 'prompt' and event.get('stage') == 'implementation' for event in events):
         if not any(row['implementation'] for row in by_task.values()):
-            by_task.setdefault('', _row())['implementation'] = True
+            row = by_task.setdefault('', _row())
+            row['implementation'] = True
+            row['bugfix'] = False
     misses = {reason: 0 for reason in MISS_REASONS}
     corrected = 0
     exceptions = 0
     lightweight = 0
+    bugfixes = 0
     implementation_tasks = 0
     for row in by_task.values():
         if not row['implementation']:
             continue
         implementation_tasks += 1
+        if row['bugfix']:
+            # This counts workflow selection, not completed spec sync or review.
+            bugfixes += 1
+            continue
         checks = sorted(row['checks'], key=lambda item: item['at'])
         results = [event['result'] for event in checks]
         if 'docs' in results or 'mechanical' in results:
@@ -303,6 +312,7 @@ def _spec_rows(events):
         'corrected': corrected,
         'exceptions': exceptions,
         'lightweight': lightweight,
+        'bugfixes': bugfixes,
     }
 
 
@@ -475,7 +485,7 @@ def render_text(report):
         lines.append(
             '  Spec misses: '
             + ', '.join(f"{reason} {discipline['by_reason'][reason]}" for reason in MISS_REASONS)
-            + f", corrected {discipline['corrected']}, exceptions {discipline['exceptions']}, docs/mechanical {discipline['lightweight']}"
+            + f", corrected {discipline['corrected']}, exceptions {discipline['exceptions']}, docs/mechanical {discipline['lightweight']}, bug-fix path {discipline['bugfixes']}"
         )
         if memory['errors']:
             lines.append('  Memory errors:')

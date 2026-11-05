@@ -102,9 +102,34 @@ install-time script callback. Explicit plugin setup remains a recovery fallback.
 ### Harness capabilities
 
 Preserve the shared workflow and its prerequisite checks: issue linkage, reviewed
-and merged developer specs before behavior-change implementation, unit Red →
+and merged developer specs before feature implementation, unit Red →
 Green → Refactor, human review, RTK, and current library documentation via Context7.
 Instructions and hooks do not authenticate approvals or grant publication authority.
+
+Owner workflow clarification (2026-11-04): fixes restoring established intended
+behavior do not require a new spec or separate spec PR before implementation.
+At issue creation, use `pack/templates/bug-issue.md`, include `Type: bugfix` in
+the shared issue body and apply the repository's `bug` label when available.
+Do not create labels if unavailable. Verify the live issue classification at
+start/resume and record its source in the local task; a local field alone cannot
+establish the exception. Reconcile missing, changed or conflicting classification
+before dependent work. The issue-linked task mirrors `Type: bugfix`; missing local
+Type defaults to `feature`,
+and unknown types block preparation. Reproduce and diagnose before changing code,
+then use a failing unit regression test to drive the fix. Update the related
+spec's behavior/acceptance and regression case in the same change before
+completion. If no spec exists, add a concise behavior/regression spec with the
+fix. Code and spec receive human review together. New requirements, mixed scope
+or unresolved conflicts with approved intent require the feature path.
+
+The context helper reports `task_type` and `spec_sync_required`. It allows bugfix
+implementation without a local spec, preserves issue/task/setup checks and safe
+spec-path validation, and never claims eligibility, spec-sync completion or
+approval. Checkpoint/resume preserves the selected workflow from the task record;
+changing Type invalidates the input fingerprint. Regression coverage must verify
+feature tasks still block without a spec, bugfix tasks can start without one,
+invalid/missing task or issue and unsafe spec paths still block, and bugfix
+checks survive refresh/checkpoint/resume.
 
 Each adapter exposes the following shared operations through plugin skills or
 commands, with native hooks only where supported and validated:

@@ -374,10 +374,11 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(set(codex_files) - set(claude_files), {'.codex-plugin/plugin.json', '.agents/plugins/marketplace.json'})
         bound = {f'skills/{name}/SKILL.md' for name in (
             'nda-setup', 'nda-verify', 'session-bootstrap', 'hindsight-memory', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume', 'skill-selection')}
-        differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json'}
+        differ = bound | {'hooks/hooks.json', 'nda-plugin.json', 'release.json', '.mcp.json'}
         for name in set(claude_files) & set(codex_files) - differ:
             self.assertEqual(claude_files[name], codex_files[name], name)
-        self.assertEqual(claude_files['.mcp.json'], codex_files['.mcp.json'])
+        self.assertEqual(json.loads(claude_files['.mcp.json'])['mcpServers']['nda-harness-jev']['args'],
+                         ['selection-mcp', '--client', 'claude'])
         self.assertFalse((claude / 'rules/nda-harness.mdc').exists())
         self.assertFalse((claude / 'CLAUDE.md').exists())
 
@@ -948,6 +949,49 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(code, 0, resumed)
         self.assertEqual(resumed['task'], '.nda-harness/tasks/plugin/task.md')
         self.assertFalse(resumed['implementation_authorized'])
+
+    def test_bugfix_workflow_survives_checkpoint_and_resume_in_all_clients(self):
+        self.setup(skip=True)
+        task = self.project / '.nda-harness/tasks/fix/task.md'
+        task.parent.mkdir(parents=True)
+        record = 'Issue: https://github.com/example/project/issues/10\nType: bugfix\n'
+        for client in ('codex', 'cursor', 'claude'):
+            with self.subTest(client=client):
+                package = self.package if client == 'codex' else self.base / client
+                if client != 'codex':
+                    build(ROOT, package, client)
+                task.write_text(record)
+
+                def operation(op, *args):
+                    run = subprocess.run([str(package / 'bin/nda-plugin'), op, '--client', client,
+                                          '--project', str(self.project), '--session', client, *args],
+                                         env=self.env, capture_output=True, text=True)
+                    self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                    output = json.loads(run.stdout)
+                    self.assertEqual(output['task_type'], 'bugfix')
+                    self.assertTrue(output['spec_sync_required'])
+                    self.assertFalse(output['implementation_authorized'])
+                    return output
+
+                prepared = operation('task-prepare', '--role', 'developer', '--task', str(task), '--stage', 'implementation')
+                self.assertIsNone(prepared['spec'])
+                task.write_text(record + f"Revision: {prepared['head']}\nInput fingerprint: {prepared['input_fingerprint']}\n"
+                                'Stage: implementation\nEvidence: no executed task tests yet\nNext action: reproduce bug\n')
+                operation('context-checkpoint', '--task', str(task))
+                resumed = operation('context-resume', '--task', str(task), '--session', client + '-resumed')
+                self.assertEqual(resumed['task'], '.nda-harness/tasks/fix/task.md')
+
+                # Workflow changes matter even though task evidence edits are excluded.
+                task.write_text(record.replace('bugfix', 'feature'))
+                run = subprocess.run([str(package / 'bin/nda-plugin'), 'context-refresh', '--client', client,
+                                      '--project', str(self.project), '--session', client],
+                                     env=self.env, capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                refreshed = json.loads(run.stdout)
+                self.assertEqual(refreshed['status'], 'needs_context')
+                self.assertEqual(refreshed['task_type'], 'feature')
+                self.assertFalse(refreshed['spec_sync_required'])
+                self.assertNotEqual(refreshed['input_fingerprint'], prepared['input_fingerprint'])
 
     def test_interrupted_project_transaction_is_recovered_before_retry(self):
         # Simulate abrupt death after a durable write-ahead receipt is saved.

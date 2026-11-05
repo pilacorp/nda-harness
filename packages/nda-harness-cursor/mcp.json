@@ -6,6 +6,14 @@
     "nda-harness-hindsight": {
       "url": "https://hindsight-api.pila.vn/mcp/"
     },
+    "nda-harness-jev": {
+      "args": [
+        "selection-mcp",
+        "--client",
+        "cursor"
+      ],
+      "command": "${CURSOR_PLUGIN_ROOT}/bin/nda-plugin"
+    },
     "nda-harness-nda-rag": {
       "url": "https://docs-dev.chainhub.vn/api/mcp"
     }

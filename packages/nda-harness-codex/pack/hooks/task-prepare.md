@@ -9,7 +9,7 @@ registration is not claimed or installed in this phase.
 
 ## Implementation and registration
 
-Requires explicit role and developer task selection. Specification drafting is allowed before spec merge. Implementation requires a local spec and independent live issue/review/merge checks by the agent.
+Requires explicit role and developer task selection. Specification drafting is allowed before spec merge. Feature implementation requires a local spec and independent live issue/review/merge checks by the agent. An issue-linked task with `Type: bugfix` follows workflow.md: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion and human review. No separate upfront spec PR is required; add a concise behavior/regression spec if none exists. New requirements or unresolved intent conflicts use the feature path.
 
 Source: `hooks/pre-commit` plus `scripts/unit_check.py` for H-01;
 `scripts/prepare-context` plus `scripts/context_runtime.py` for H-02–H-06.

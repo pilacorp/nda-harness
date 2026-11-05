@@ -4,7 +4,11 @@ The plugin selects optional specialist skills with Jev through OpenRouter. When 
 
 Model: `typesafe/jev-1.14`. Endpoint: `https://openrouter.ai/api/alpha/decisions`. One request asks one yes/no question per specialist in `skills/catalog.json`, sorted by id. The request carries bounded task text and catalog metadata. It does not carry skill bodies or the key.
 
-The current specialists are `diagram-design`, `ui-ux-pro-max`, `vietnamese-official-wording`, and `vietnamese-tech-writing`. A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill, then calls `record-selection` so that choice is stored in the local Jev cache. An empty selection is valid. Mandatory workflow skills stay in force either way. Selection does not approve work.
+Catalog schema version 2 gives each specialist its own required `question`, positive `select_when` criterion, and negative `exclude_when` criterion. Each question is followed by shared instructions to classify the agreed deliverables: do not invent optional work, and do not select a skill merely because its subject, technology, or language is mentioned. Missing source material or approvals affects readiness to execute, not applicability. These instructions apply equally to Jev and the local-agent fallback.
+
+Diagram creation, modification, and evaluation qualify; architecture discussion or reading a diagram as background alone does not. UI/UX includes interface and interaction evaluation, including accessibility; backend work does not qualify merely because it serves a UI. Vietnamese official wording covers documents whose primary purpose is organizational communication or administration. Vietnamese technical writing covers engineering and product content, including translation and interface messages. An internal engineering RFC remains technical content; ordinary Vietnamese chat alone selects neither writing skill.
+
+The current specialists are `diagram-design`, `ui-ux-pro-max`, `vietnamese-official-wording`, and `vietnamese-tech-writing`. A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill, then calls `record_selection` so that choice is stored in the local Jev cache. An empty selection is valid. Mandatory workflow skills stay in force either way. Selection does not approve work.
 
 ## Key
 
@@ -28,16 +32,32 @@ The Cursor plugin opens that terminal with `skill-selection`. The prompt is hidd
 
 ## Agent use
 
-For a new assignment the agent calls `select-skills` with `--project`, `--session`, and `--request-file`, then `load-selected-skills` with the same task JSON. Those agent commands return JSON. `select-skills` does not include skill bodies. `load-selected-skills` returns only the selected bodies.
+Enable/trust the local `nda-harness-jev` MCP server in the installed client and reload for discovery if needed. Codex, Cursor, and Claude registrations use the same bundled Python 3.9+ standard-library server, launched as a stdio child process. There is no daemon, port or runtime dependency download. Claude hosted archives relocate the launcher to `scripts/nda-plugin`.
 
-When Jev returns `uncertain_decision`, `select-skills` lists each uncertain skill and its probability and does not return a loadable selection. The agent asks the user, in chat, whether to load each of those skills. It does not choose for them. It then calls `record-selection` with the same task JSON plus `decisions`, an object mapping each uncertain skill id to `true` or `false`. That writes the resolved choice into the local cache. A later `select-skills` for the same task reuses that cache. `load-selected-skills` then returns only the skills the user included.
+For a new assignment call MCP `select_skills` with an absolute existing `project` directory, `session`, and `task` containing the unchanged schema-1 assignment JSON. Call `load_selected_skills` with the same values. Each response contains one text block with JSON. Only the loader returns bodies. A cache miss or explicit `refresh: true` can make one paid request; no automatic retries occur.
 
-When no key is saved, `select-skills` returns diagnostic `local_agent` and the same questions Jev would have received. It does not call OpenRouter and it does not ask for setup. The running coding agent answers every question with `type` `noul` and a probability from 0 to 1, then calls `select-skills` again with `--answers-file` containing that answer object. The helper stores the model name `local-agent` and applies the same 0.80 / 0.20 cutoffs. A saved key this session cannot read still stops with `credential_unavailable`. A `local-agent` result is cached for seven days. Saving a key starts a new generation, so the next selection calls Jev.
+```json
+{"project":"/absolute/project","session":"assignment-1","task":{"schema_version":1,"request":"Implement the agreed feature","stage":"implementation","project_facts":{"stack":[],"deliverables":[],"constraints":[]}}}
+```
+
+Call `selection_verify` without arguments for an offline check. Only an explicit request for a paid synthetic check permits `{"live":true}`. Tools cannot set keys, endpoints, models, home paths or package roots. Terminal `selection-verify` remains available for legacy diagnostics.
+
+When Jev returns `uncertain_decision`, `select_skills` lists each uncertain skill and its probability and does not return a loadable selection. The agent asks the user, in chat, whether to load each of those skills. It does not choose for them. It then calls `record_selection` with the same task JSON plus `decisions`, an object mapping each uncertain skill id to `true` or `false`. That writes the resolved choice into the local cache. A later `select_skills` for the same task reuses that cache. `load_selected_skills` then returns only the skills the user included.
+
+When no key is saved, `select_skills` returns diagnostic `local_agent` and the same questions Jev would have received. It does not call OpenRouter and it does not ask for setup. The running coding agent answers every question with `type` `noul` and a probability from 0 to 1, then calls `select_skills` again with an `answers` object containing those answers. The helper stores the model name `local-agent` and applies the same 0.80 / 0.20 cutoffs. A saved key this session cannot read still stops with `credential_unavailable`. A `local-agent` result is cached for seven days. Saving a key starts a new generation, so the next selection calls Jev.
 
 Equivalent task text reuses a cached result for seven days. A changed assignment, catalog, package, rules version, model, or key generation calls Jev again. Replacing the key starts a new generation, so the previous cache is not loaded.
 
-On Codex, Cursor, and Claude, run `select-skills`, `record-selection`, `load-selected-skills`, and `selection-verify` outside the sandbox. The OpenRouter key file under `~/.nda-harness/skill-selection/` is shared by those clients. Do not create a new key. A sandboxed invocation returns diagnostic `sandbox_rerun` and does not call OpenRouter. Rerun that command outside the sandbox and continue the assignment. Do not treat `sandbox_rerun` as a missing key.
+The per-skill question contract uses rules version `jev-specialists-v2`. Changing a catalog question invalidates earlier selections, including recorded user choices. Legacy catalog schemas are rejected; runtime and catalog updates ship together in each client package. The task-input schema remains version 1.
+
+The server owns private key/cache access and HTTPS while ordinary shell restrictions remain in place. The key and seven-day cache are shared with legacy CLI operations; changing transport does not rotate credentials or change cache identity. Direct sandboxed CLI operations retain `sandbox_rerun`.
+
+If the MCP server is absent, disabled, denied or cannot start, report `jev_mcp_unavailable` and pause dependent specialist work. Do not infer a missing key, change permissions, start setup, or silently escape to shell. Actual key, state or OS network denials remain sanitized errors. Managed client policy can deny the server.
+
+After timeout or disconnect, delivery may be unknown. Reconnect with the same task/session and reuse completed cache records without refresh. A crash before caching can cause another paid call; exactly-once billing is not promised. To roll back, disable the Jev MCP entry or restore the preceding plugin version, preserving keys and cache files.
 
 ## Limits
 
 Specialist directories still ship beside workflow skills. A separate hub directory is later work. Paid selection quality and native client checks are not claimed by the unit tests. No live OpenRouter call is part of those tests.
+
+The uncertainty band remains `0.20 < p < 0.80` while evaluating the clearer questions. No reduction in confirmations is claimed until a labeled comparison measures both unnecessary confirmations and missed applicable skills. Narrowing the band is a separate policy decision.

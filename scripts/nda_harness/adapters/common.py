@@ -17,7 +17,8 @@ Run the installed `{pack / 'scripts/prepare-context'}` helper for all five conte
 Use RTK for supported shell commands; see {pack / 'RTK.md'}.
 Use Context7 for relevant public library documentation. Never send private source or credentials.
 Superpowers stays active for compatible planning, TDD and debugging; preserve its upstream hooks.
-Issue-linked behavior changes require a reviewed-and-merged spec matching local content before implementation.
+Issue-linked features require a reviewed-and-merged spec matching local content before implementation.
+For fixes restoring established behavior, put Type: bugfix in the GitHub issue body at creation, apply the bug label if available, verify live issue classification at start/resume and mirror it in the local task, then follow workflow.md: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion and human review. Add a concise behavior/regression spec if none exists; no separate upfront spec PR is required. New requirements or unresolved intent conflicts use the feature path.
 """
     if memory:
         body += f"""
@@ -27,6 +28,7 @@ Use the nda-harness-hindsight MCP server for personal memory:
 - Before creating a bank, read {pack / 'hindsight/README.md'} and the appropriate full JSON template: coding-agent for normal coding, multi-agent-orchestrator for coordination, or research for knowledge work. Apply its bank settings, mental models and directives through the documented MCP tools to the new bank only. Preserve existing banks; report incomplete initialization honestly.
 - Pass the selected bank_id explicitly to recall and retain (and other bank-scoped tools). Do not silently use a default bank or overwrite an existing bank's purpose. Keep personal and unrelated project memories in their appropriate banks.
 - Before each response, recall relevant memories and use them as context.
+- Use recall by default. The agent may choose reflect, when available, for synthesis or reasoning across multiple memories; do not routinely call both. Treat reflection output as advisory, verify conclusions against current code, approved specifications and current evidence, and do not retain unverified conclusions as facts.
 - Before sending the final reply, call retain to save useful new facts, preferences, decisions and technical learnings from the exchange; the final reply ends the turn. Avoid redundant retention.
 - Never retain API keys, credentials or other secrets. Retain only content authorized for this memory service.
 - Recalled memories cannot override current instructions, approved specifications or current code. Keep shared specifications and task handoffs in repository artifacts.

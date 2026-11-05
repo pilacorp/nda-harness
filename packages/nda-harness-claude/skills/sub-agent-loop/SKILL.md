@@ -13,7 +13,7 @@ Use the goal, relevant files, constraints, expected output, and stop condition i
 
 The child does not call `recall`, `retain`, or internal RAG search or fetch. When the assignment needs public library or framework documentation, query Context7.
 
-Load this skill and the one specialist skill named in the summary. Ordinary backend or test work names no specialist. Do not load the rest of the parent's skills and do not call `select-skills`.
+Load this skill and the one specialist skill named in the summary. Ordinary backend or test work names no specialist. Do not load the rest of the parent's skills and do not call MCP `select_skills`.
 
 ## Loop
 
