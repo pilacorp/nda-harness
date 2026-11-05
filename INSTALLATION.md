@@ -59,32 +59,42 @@ Removal can remove marketplace files; follow the
 [recovery guidance](docs/plugin-operations.md#verification-and-recovery) for project
 hooks bound to the previous installation.
 
-## Claude Code and the Desktop Code tab
+## Claude Code (CLI, terminal)
 
-1. **Add the marketplace** in a terminal:
+1. **Add the marketplace:**
 
    ```sh
    claude plugin marketplace add 'https://github.com/pilacorp/nda-harness.git#main'
    ```
 
-2. **Install the plugin**:
+   The quoted `#main` selects the distribution branch.
+
+2. **Install the plugin:**
 
    ```sh
    claude plugin install nda-harness@nda-harness-internal
    ```
 
-3. **Check installation**, then restart the Claude Code session or Desktop Code
-   tab and trust the reviewed plugin hooks if prompted:
+3. **Check installation,** then restart the session and trust the reviewed plugin
+   hooks if prompted:
 
    ```sh
    claude plugin list --json
    ```
 
-The quoted `#main` selects the distribution branch. Inside Claude Code,
-equivalent commands begin with
-`/plugin` instead of `claude plugin`. Desktop's Code tab shares that plugin store.
+**Authenticate the MCP servers.** Installing only *registers* the servers; it
+does not sign in. OAuth runs only when a client connects, so you sign in after
+install. From the terminal, no session needed:
 
-For later updates:
+```sh
+claude mcp login nda-harness-hindsight
+claude mcp login nda-harness-nda-rag
+```
+
+Credentials are stored once and reused by later sessions. `nda-harness-context7`
+is open and needs no login.
+
+**For later updates:**
 
 ```sh
 claude plugin marketplace update nda-harness-internal
@@ -92,6 +102,49 @@ claude plugin update nda-harness@nda-harness-internal
 ```
 
 Restart the session to apply the update, or use `/reload-plugins` when supported.
+
+## Claude Desktop (Code tab, in-app UI)
+
+Do everything from the Desktop app's **Code** tab — no terminal. Type the
+slash commands into the prompt box.
+
+1. **Add the marketplace.** Type `/plugin marketplace add` with no source and
+   press Enter; the **Add marketplace** input opens. Enter:
+
+   ```text
+   https://github.com/pilacorp/nda-harness.git#main
+   ```
+
+   (Or type it in one line: `/plugin marketplace add https://github.com/pilacorp/nda-harness.git#main`.)
+
+2. **Install the plugin.** Click the **+** button next to the prompt box and
+   select **Add plugins** (if the menu shows **Plugins**, pick **Plugins →
+   Browse plugins**). The plugin browser opens with plugins from your
+   marketplaces — find **nda-harness** and select it.
+
+3. **Choose a scope** (your user account, this project, or local-only) to finish
+   installing. Manage it later from the **Installed** tab (enable, disable,
+   update, uninstall). Restart the Code tab and trust the plugin hooks if
+   prompted.
+
+**Authenticate the MCP servers (in the UI).** The Customize Plugins / install
+panel does **not** have an authenticate button — OAuth only runs once a session
+connects to the server. This is Claude Code's designed behavior, not a bug. To
+sign in from the UI:
+
+1. In a Code session, type `/mcp` in the prompt box and press Enter. The MCP
+   panel lists the plugin's servers.
+2. Select **nda-harness-hindsight** (and **nda-harness-nda-rag** if it needs
+   auth), choose **Authenticate**, and complete sign-in in the browser window
+   that opens.
+3. Return to Desktop; the server status flips to connected. The credential is
+   stored and reused by later sessions. `nda-harness-context7` is open and needs
+   no login.
+
+**Reference (official Claude Code docs):**
+[Install a plugin — Desktop app](https://code.claude.com/docs/en/plugins/install),
+[Authenticate with remote MCP servers](https://code.claude.com/docs/en/mcp#authenticate-with-remote-mcp-servers),
+and [`claude mcp login`](https://code.claude.com/docs/en/cli-reference).
 
 ## Cursor IDE
 
