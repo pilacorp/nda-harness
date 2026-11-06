@@ -415,3 +415,38 @@ Rollback disables the new MCP entry or restores the preceding package. Preserve
 credential generation, keys and cache files. Native Codex, Cursor, Claude and
 Claude hosted-archive acceptance must be recorded before release; subprocess
 fixtures alone do not establish client support. See [implementation evidence](compatibility/jev-mcp.md).
+
+## Local MCP error log
+
+The running package appends sanitized failures to
+`~/.nda-harness/logs/mcp-errors.jsonl`. Each line contains a UTC timestamp,
+client, package version, server, operation, and error code. The log is created on
+the first recorded failure. Remove the file manually when you no longer need
+its history. The next recorded failure recreates it.
+
+- **Jev** records terminal tool failures at its local server boundary. Use the
+  fallback only for failures the server could not observe, such as an unreachable server.
+- **Codex** can supply Hindsight startup notifications and discovery snapshots
+  to `memory-status`. A matching startup failure with
+  `reauthenticationRequired` is recorded as an authentication failure.
+- **Cursor** can supply a Hindsight server status snapshot to `memory-status`.
+  The classifier recognizes `needsAuth` and `error`.
+- **Claude Code** can supply Hindsight server status to `memory-status`.
+  The classifier recognizes `needs-auth` and `failed`.
+
+Hooks do not subscribe to MCP lifecycle events. When the client exposes a failure
+to the agent, use the packaged recorder for Hindsight calls, NDA RAG calls, and
+startup failures outside the automatic boundaries above. For example, after an
+observed NDA RAG search timeout, use the installed package's executable.
+
+```sh
+rtk proxy "${PLUGIN_ROOT}/bin/nda-plugin" mcp-error-record --client codex \
+  --server nda-harness-nda-rag --operation search_docs --error-code timeout
+```
+
+Allowed codes are `timeout`, `transport_error`, `authentication_required`,
+`invalid_response`, `unknown_error`, `unavailable`, `rate_limited`,
+`invalid_request`, and `local_state_error`. A missing tool alone supports
+`unavailable`. Empty successful results and ordinary Jev classification
+outcomes create no entry. Continue the original recovery if the recorder reports
+`local_write_failed`.
