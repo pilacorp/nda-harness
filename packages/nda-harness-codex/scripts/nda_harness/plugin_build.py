@@ -27,7 +27,7 @@ SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
            'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
            'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py',
-           'bank_select.py', 'jev_mcp.py')
+           'bank_select.py', 'jev_mcp.py', 'mcp_error_log.py')
 REPOSITORY_URL = 'https://github.com/pilacorp/nda-harness'
 USAGE_HOME_URL = REPOSITORY_URL + '/blob/dev/docs/usage-report.md'
 
@@ -195,7 +195,7 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         apply_standards_dispatch(source, root)
         services = {system_id: hindsight_services(url) if system_id == 'hindsight' else {'mcp': url}
                     for system_id, url in endpoints.items()}
-        config = {'schema_version': 1, 'client': client,
+        config = {'schema_version': 1, 'client': client, 'version': version,
                   'memory_systems': {'endpoints': endpoints, 'services': services},
                   'local_test': bool(local_test), 'superpowers_revision': SUPERPOWERS_REVISION}
         write(root, 'nda-plugin.json', json_bytes(config))

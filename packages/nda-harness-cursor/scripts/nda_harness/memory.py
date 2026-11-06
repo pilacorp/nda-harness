@@ -41,7 +41,7 @@ RECOVERY = {
 
 def auth_guidance(client):
     """Reviewed, client-specific instructions; never include diagnostic payloads."""
-    common = ('Missing tools mean Hindsight is unavailable in this session; authentication is unverified without native evidence. '
+    common = ('Tools not listed at all mean Hindsight is unavailable in this session; tools listed by name only (deferred) are not missing and must be loaded first. Authentication is unverified without native evidence. '
               'Saved OAuth credentials and a hidden Authenticate button do not prove a working connection. '
               'Use the packaged memory-status helper with already available native diagnostic JSON, or leave the diagnostic pending. '
               'Existing hooks do not subscribe to MCP lifecycle events. Never initiate login automatically or read/edit credentials. ')
@@ -137,10 +137,13 @@ SYSTEMS = {
         'server': 'nda-harness-hindsight',
         'tools': ('list_banks', 'create_bank', 'recall', 'retain'),
         'session': (
-            'NDA Hindsight is optional. Do not initiate login. Its MCP URL is https://hindsight-api.pila.vn/mcp/. '
+            'NDA Hindsight is optional to enable; once its tools are listed, recall and retain are expected, not optional. Do not initiate login. Its MCP URL is https://hindsight-api.pila.vn/mcp/. '
             'OAuth and REST use https://hindsight-api.pila.vn. OAuth discovery is /.well-known/oauth-authorization-server and /ext/oauth/ on that host. '
-            'When this session lists list_banks, create_bank, recall, and retain, use those available tools: '
-            'load hindsight-memory and call those tools before substantive work. Read profile memory.bank_id and pass that id to recall and retain. '
+            'When this session lists list_banks, create_bank, recall, and retain, use them, including tools listed by name only whose schemas are deferred and not yet callable: '
+            'load hindsight-memory; if a tool is deferred, first load its schema with the client tool-loading step (Claude Code: ToolSearch with select:<tool names>); '
+            'then call recall once before substantive work and retain after meaningful progress. A deferred tool is not a missing tool. '
+            'If loading fails, tell the user that Hindsight is unavailable in this session; do not skip silently. '
+            'Read profile memory.bank_id and pass that id to recall and retain. '
             'Do not call create_bank to invent a bank from the Git remote. If the profile has no bank id, run select-bank during nda-setup and then setup with --bank-id. '
             'Do not wait for the user to mention NDA Hindsight. The client owns OAuth and credentials. '
             'Default environment dev; staging/prod are explicit labels in that same bank. Never store secrets. '

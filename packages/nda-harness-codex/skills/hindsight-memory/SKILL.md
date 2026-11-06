@@ -12,10 +12,15 @@ NDA Hindsight is the memory provider. Use only this host:
 - REST: `https://hindsight-api.pila.vn`
 
 When this session lists NDA Hindsight tools, use them before substantive work.
+If a listed tool is deferred (its name is listed but its schema is not loaded, so it is
+not callable yet), load its schema first with the client's tool-loading step (Claude
+Code: `ToolSearch` with `select:<tool names>`), then call it. A deferred tool is not a
+missing tool. If loading fails, tell the user that Hindsight is unavailable in this
+session; do not skip silently.
 Availability permits use; it does not prove which login UI was used or that future
 refresh will succeed. Do not initiate an OAuth flow, accept credentials, add auth headers, configure
 an identity provider, or proxy requests. The host handles discovery, PKCE, callback,
-credential storage, refresh and logout. If tools are missing, report Hindsight
+credential storage, refresh and logout. If the tools are not listed at all, report Hindsight
 unavailable in this session, with authentication unverified. An unauthorized call
 does not by itself prove failed refresh. Continue without NDA Hindsight.
 
@@ -24,7 +29,7 @@ For already available native diagnostic JSON, explicitly run the packaged
 This read-only classifier does not collect diagnostics or start login. Missing
 diagnostics stay pending. Do not send credentials or raw private diagnostics to memory.
 
-Missing tools mean Hindsight is unavailable in this session; authentication is unverified without native evidence. Saved OAuth credentials and a hidden Authenticate button do not prove a working connection. Use the packaged memory-status helper with already available native diagnostic JSON, or leave the diagnostic pending. Existing hooks do not subscribe to MCP lifecycle events. Never initiate login automatically or read/edit credentials. Only for Codex, a matching mcpServer/startupStatus/updated notification with status failed and failureReason reauthenticationRequired confirms reauthentication is required. Native discovery with authStatus oAuth and tools proves connection/tool discovery only. Inspect the Hindsight native MCP startup or tool-discovery diagnostic in Codex. Manual, user-triggered recovery: Use the native MCP sign-in action. If hidden, the user can run rtk proxy codex -c 'mcp_servers.nda-harness-hindsight.url="https://hindsight-api.pila.vn/mcp/"' mcp login nda-harness-hindsight using the installed executable, then reconnect/restart Codex. The override is invocation-local and uses the same server identity.
+Tools not listed at all mean Hindsight is unavailable in this session; tools listed by name only (deferred) are not missing and must be loaded first. Authentication is unverified without native evidence. Saved OAuth credentials and a hidden Authenticate button do not prove a working connection. Use the packaged memory-status helper with already available native diagnostic JSON, or leave the diagnostic pending. Existing hooks do not subscribe to MCP lifecycle events. Never initiate login automatically or read/edit credentials. Only for Codex, a matching mcpServer/startupStatus/updated notification with status failed and failureReason reauthenticationRequired confirms reauthentication is required. Native discovery with authStatus oAuth and tools proves connection/tool discovery only. Inspect the Hindsight native MCP startup or tool-discovery diagnostic in Codex. Manual, user-triggered recovery: Use the native MCP sign-in action. If hidden, the user can run rtk proxy codex -c 'mcp_servers.nda-harness-hindsight.url="https://hindsight-api.pila.vn/mcp/"' mcp login nda-harness-hindsight using the installed executable, then reconnect/restart Codex. The override is invocation-local and uses the same server identity.
 
 Read `.nda-harness/profile.json` and use **exactly** `memory.bank_id` for every
 bank-scoped operation. If the profile has no bank id, run `select-bank` during
@@ -49,7 +54,8 @@ reflection output as advisory: verify its conclusions against current code,
 approved specifications, and current evidence. Do not retain unverified
 conclusions as facts.
 
-Retain useful preferences, decisions and work notes automatically after meaningful progress,
+Retain useful preferences, decisions and work notes automatically after meaningful progress
+(a decision, a preference, a finished task, or a change other sessions should know),
 avoiding duplicates. Default environment is **dev**; use staging/prod only when the
 user selects it. Include environment as an explicit context label/filter supported
 by discovered schemas, within the SAME project bank. Environment details include

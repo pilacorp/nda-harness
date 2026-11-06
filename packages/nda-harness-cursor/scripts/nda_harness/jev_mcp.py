@@ -9,6 +9,7 @@ import sys
 
 from nda_harness.credentials import FileCredentialStore
 from nda_harness.files import Conflict
+from nda_harness.mcp_error_log import JEV, JEV_CODES, record_failure
 from nda_harness.openrouter import _selection_verify_engine
 from nda_harness.skill_selection import (
     MAX_INPUT, _session_id, validate_task_input,
@@ -89,6 +90,11 @@ class Engine:
         self.package = Path(__file__).resolve().parents[2]
         self.home = Path.home().resolve() / '.nda-harness'
 
+    def observe_failure(self, operation, diagnostic):
+        if diagnostic not in ('local_agent', 'uncertain_decision'):
+            record_failure(self.home, self.package, self.client, JEV, operation,
+                           JEV_CODES.get(diagnostic, 'unknown_error'))
+
     def __call__(self, name, args):
         # Validate before any credential/cache access, including direct adapter use.
         args = validate_arguments(name, args)
@@ -151,6 +157,7 @@ def serve(handler, incoming=None, outgoing=None, errors=None):
     errors = errors if errors is not None else sys.stderr
     initialized = ready = False
     while True:
+        operation = diagnostic = None
         line = incoming.readline(MAX_LINE + 1)
         if not line:
             return 0
@@ -207,12 +214,18 @@ def serve(handler, incoming=None, outgoing=None, errors=None):
                         if set(params) - {'name', 'arguments', '_meta'} or not isinstance(params.get('name'), str):
                             raise InvalidParams()
                         args = validate_arguments(params['name'], params.get('arguments', {}))
+                        operation = params['name']
                         try:
-                            result = _tool_result(handler(params['name'], args))
+                            report = handler(operation, args)
+                            result = _tool_result(report)
                         except (OSError, Conflict):
-                            result = _tool_result(blocked('private_state_unavailable'))
+                            report = blocked('private_state_unavailable')
+                            result = _tool_result(report)
                         except Exception:
-                            result = _tool_result(blocked('internal_error'))
+                            report = blocked('internal_error')
+                            result = _tool_result(report)
+                        if result['isError']:
+                            diagnostic = report.get('diagnostic', 'internal_error')
                     if result is not None:
                         response = {'jsonrpc': '2.0', 'id': ident, 'result': result}
                 except (InvalidParams, ValueError, TypeError, RecursionError):
@@ -227,5 +240,9 @@ def serve(handler, incoming=None, outgoing=None, errors=None):
         if len(encoded) > MAX_RESPONSE:
             response = {'jsonrpc': '2.0', 'id': response['id'], 'result': _tool_result(blocked('response_too_large'))}
             encoded = _encoded(response)
+            diagnostic = 'response_too_large'
+        observe_failure = getattr(handler, 'observe_failure', None)
+        if operation and isinstance(diagnostic, str) and observe_failure:
+            observe_failure(operation, diagnostic)
         outgoing.write(encoded)
         outgoing.flush()
