@@ -186,6 +186,7 @@ OAuth-header change, memory-bank change, or Hindsight deployment is required.
 | AC-04 | 4 | Each generated package supplies its own manual recovery path without executing it. |
 | AC-05 | 5 | Memory failures leave core workflow, credential ownership, and bank identity intact. |
 | AC-06 | 6 | Classifier, CLI boundary, sanitization, and generated package coverage pass before implementation ships. |
+| AC-07 | Follow-up | A Hindsight tool listed by name only (deferred schema) is not a missing tool: the instructions tell the agent to load its schema with the client tool-loading step, then call `recall`/`retain`, and to tell the user (not skip silently) if loading fails. Only tools not listed at all mean unavailable. |
 
 ## Concrete test cases
 
@@ -203,6 +204,7 @@ These are planned tests, not executed implementation evidence.
 | TC-07 | No Hindsight endpoint, unknown diagnostics, failing connection | Run helper in disposable home without network | Correct disabled/pending/unavailable report; no login, credential access, memory call, subprocess, or profile writes | integration; AC-03, AC-05 |
 | TC-08 | Build Codex, Cursor, Claude packages and invoke startup/prompt consumers | Exercise emitted instructions and diagnostic CLI | Only client-appropriate recovery; no unsupported hook event; package hashes validate | package integration; AC-04, AC-06 |
 | TC-09 | Explicit auth-required condition and a separate network outage in each installed client | Inspect native state, use offered recovery, discover tools | Clear distinction, successful recovery or honest pending check; no raw credentials retained | manual; AC-01–AC-05 |
+| TC-11 | Source texts (`memory.SYSTEMS` session text, both Hindsight skills, Cursor rule, workflow pack) | Read via `tests/test_hindsight_deferred_tools.py` | Each says deferred tools are loaded first (`ToolSearch` for Claude Code) and are not missing; none keeps "Missing tools mean Hindsight" or "use those available tools" | unit; AC-07 |
 
 Implement unit Red → Green → Refactor. Run the repository test suite and package
 validation after focused tests. Record unavailable live-client tests separately;

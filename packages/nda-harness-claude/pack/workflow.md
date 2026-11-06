@@ -78,12 +78,15 @@ stores `true` and does not mean tests ran. Task records under
 One memory system is active per project, recorded as `memory.system`. When the
 package offers one system, setup selects it. When it offers several, ask the user
 and pass `--memory-system`. Do not use a second system in the same project.
-NDA Hindsight is the packaged system today and is optional. MCP is
+NDA Hindsight is the packaged system today and is optional to enable; once its tools are
+listed, `recall` and `retain` are expected, not optional. MCP is
 `https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
 The user opts in through the native plugin NDA Hindsight MCP row's Authenticate/Authorize action. The host owns OAuth;
 no provider configuration or credential storage belongs to this harness. When the
-selected system is NDA Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain`, load
-hindsight-memory and call them before substantive work. Do not wait for the user
+selected system is NDA Hindsight and the session already lists `list_banks`, `create_bank`, `recall`, and `retain` (including tools listed by name only whose schemas are deferred), load
+hindsight-memory; load deferred schemas first with the client's tool-loading step (Claude
+Code: `ToolSearch` with `select:<tool names>`), then call them before substantive work. A
+deferred tool is not a missing tool; if loading fails, tell the user instead of skipping silently. Do not wait for the user
 to mention NDA Hindsight. Use exactly `memory.bank_id` from `.nda-harness/profile.json`:
 `list_banks` for that id, then `recall` and later `retain`. The id is chosen on
 the Hindsight bank page during setup, not derived from the Git remote. One bank
