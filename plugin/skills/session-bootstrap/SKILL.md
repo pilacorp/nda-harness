@@ -49,12 +49,15 @@ Use one memory system, the id in `.nda-harness/profile.json` `memory.system`.
 If that field is absent and several systems are packaged, ask the user and pass
 `--memory-system` to nda-setup. Do not call a second system. When the selected
 system is NDA Hindsight and this session lists its tools (`list_banks`, `create_bank`,
-`recall`, `retain`), load `hindsight-memory` before dependent work. MCP is
+`recall`, `retain`), load `hindsight-memory` before dependent work. If those tools are
+deferred (name listed, schema not loaded), load their schemas first with the client's
+tool-loading step (Claude Code: `ToolSearch` with `select:<tool names>`); a deferred tool
+is not a missing tool. MCP is
 `https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
 Use exactly `memory.bank_id`. Call `list_banks` for that id, then `recall` the user
 request in that bank. If the profile has no bank id, run `select-bank` during
 nda-setup instead of calling `create_bank`. Do not wait for the user
-to name NDA Hindsight, and do not start login from this skill. Missing tools mean
+to name NDA Hindsight, and do not start login from this skill. Tools not listed at all mean
 unavailable in this session, with authentication unverified; an unauthorized call
 alone does not establish failed refresh. Continue with client default memory when
 it exists. Interpret already available native diagnostic JSON with the explicit
