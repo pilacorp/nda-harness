@@ -65,13 +65,17 @@ required. New requirements or unresolved intent conflicts use the feature path. 
 One memory system is active per project: `.nda-harness/profile.json` field
 `memory.system`. If several are packaged and that field is absent, ask the user
 and pass `--memory-system` to nda-setup. Do not use a second system.
-NDA Hindsight is the current system and is optional. MCP is
+NDA Hindsight is the current system and is optional to enable; once its tools are listed,
+`recall` and `retain` are expected, not optional. MCP is
 `https://hindsight-api.pila.vn/mcp/`. OAuth and REST use `https://hindsight-api.pila.vn`.
 Do not start login, ask for tokens, or add auth headers.
 The user opts in from the plugin detail NDA Hindsight MCP row. When NDA Hindsight is
 selected and this session already lists its tools such as `list_banks`, `create_bank`, `recall`, and
-`retain`, load `hindsight-memory` and call those available tools
-before substantive work. Do not wait for the user to mention NDA Hindsight.
+`retain` (including tools listed by name only whose schemas are deferred), load
+`hindsight-memory`; if a tool is deferred, load its schema first with the client's
+tool-loading step (Claude Code: `ToolSearch` with `select:<tool names>`), then call it
+before substantive work. A deferred tool is not a missing tool; if loading fails, tell
+the user that Hindsight is unavailable in this session instead of skipping silently. Do not wait for the user to mention NDA Hindsight.
 
 Read `.nda-harness/profile.json` and use exactly `memory.bank_id`. Call
 `list_banks` for that id. If the profile has no bank id, run select-bank during
@@ -82,7 +86,7 @@ Use `recall` by default. The agent may choose `reflect`, when available, for
 synthesis or reasoning across multiple memories; do not routinely call both.
 Verify reflection conclusions against current code, approved specifications, and
 current evidence. Do not retain unverified conclusions as facts.
-Default environment is dev. Never store secrets. Missing tools mean Hindsight is
+Default environment is dev. Never store secrets. Tools not listed at all mean Hindsight is
 unavailable in this session, with authentication unverified. An unauthorized call
 alone does not establish failed refresh. Continue with client default memory when
 it exists; do not fabricate saves or later synchronization.

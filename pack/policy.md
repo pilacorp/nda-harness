@@ -42,6 +42,14 @@ override an approved spec. Report conflicts with an approved spec to the human
 owner. A required cited source that cannot be fetched pauses that decision. A
 RAG outage does not block work the local repository already authorizes. The Git
 pre-commit test gate must not call RAG or memory.
+For failed Hindsight calls and failed NDA RAG `search_docs` or `get_page` calls,
+use the packaged `nda-plugin mcp-error-record` with the client, server, operation,
+and allowlisted error code. Use the same fallback for observed startup failures
+that no native diagnostic handler recorded. The Jev server and the Hindsight
+`memory-status` command record their own failures. Keep raw payloads out of
+recorder inputs. Empty successful results do not count as failures. Use
+`unavailable` for missing tools, without inferring an OAuth failure. Continue
+existing recovery if the local write fails.
 Keep Superpowers active for compatible planning, TDD and debugging. NDA issue/spec
 requirements take precedence over conflicting workflow advice; do not disable,
 replace, wrap or duplicate upstream plugin handlers.

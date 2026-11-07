@@ -22,6 +22,7 @@ from nda_harness.credentials import FileCredentialStore, MacKeychain, migrate_me
 from nda_harness.openrouter import selection_verify, verify_message
 from nda_harness.skill_selection import SelectionError, load_selected_skills, read_local_answers, read_resolution_request, read_selection_request, record_selection, select_skills
 from nda_harness.memory import declared_endpoints, packaged, session_instruction, memory_status, SYSTEMS
+from nda_harness.mcp_error_log import HINDSIGHT, record_failure
 from nda_harness.usage import (
     append_event, event_from_record, project_key, read_events, record_quietly, render_text,
     set_stage, stage_for, summarize, write_report,
@@ -330,7 +331,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', 'selection-mcp', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'mcp-error-record', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', 'selection-mcp', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -350,9 +351,17 @@ def main(argv=None):
     parser.add_argument('--request-file')
     parser.add_argument('--answers-file')
     parser.add_argument('--refresh', action='store_true')
+    parser.add_argument('--server')
+    parser.add_argument('--operation')
+    parser.add_argument('--error-code')
     args = parser.parse_args(argv)
     package = Path(__file__).resolve().parents[2]
     home = Path.home().resolve()
+    if args.command == 'mcp-error-record':
+        outcome = record_failure(home / '.nda-harness', package, args.client, args.server,
+                                 args.operation, args.error_code)
+        print(json.dumps({'status': outcome}))
+        return 0 if outcome == 'recorded' else 2
     if args.command == 'selection-mcp':
         from nda_harness.jev_mcp import Engine, serve
         try:
@@ -376,7 +385,12 @@ def main(argv=None):
             return 0 if output['status'] == 'ready' else 2
         if args.command == 'memory-status':
             native, invalid = read_memory_diagnostic(sys.stdin)
-            print(json.dumps(memory_status(config, args.client, native, invalid=invalid), indent=2))
+            report = memory_status(config, args.client, native, invalid=invalid)
+            diagnostic = report['diagnostic']
+            if diagnostic in ('authentication_required', 'reauthentication_required', 'native_connection_failed'):
+                code = 'transport_error' if diagnostic == 'native_connection_failed' else 'authentication_required'
+                record_failure(home / '.nda-harness', package, args.client, HINDSIGHT, 'startup', code)
+            print(json.dumps(report, indent=2))
             return 2 if invalid else 0
         if args.command == 'selection-verify':
             report, code = selection_verify(package, FileCredentialStore(home / '.nda-harness'), live=args.live, client=args.client, home=home / '.nda-harness')
