@@ -10,11 +10,13 @@
     },
     "nda-harness-jev": {
       "args": [
+        "bin/nda-plugin",
         "selection-mcp",
         "--client",
         "codex"
       ],
-      "command": "${PLUGIN_ROOT}/bin/nda-plugin",
+      "command": "/bin/sh",
+      "cwd": ".",
       "type": "stdio"
     },
     "nda-harness-nda-rag": {

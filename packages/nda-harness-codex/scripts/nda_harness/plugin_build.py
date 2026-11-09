@@ -232,8 +232,13 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         if any(not isinstance(name, str) or re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None for name in servers):
             raise ValueError('MCP server identifiers must not contain spaces or unsupported characters; use a separate display label.')
         variable = {'codex': '${PLUGIN_ROOT}', 'cursor': '${CURSOR_PLUGIN_ROOT}', 'claude': '${CLAUDE_PLUGIN_ROOT}'}[client]
-        servers['nda-harness-jev'] = {'command': variable + '/bin/nda-plugin',
-                                      'args': ['selection-mcp', '--client', client]}
+        jev_args = ['selection-mcp', '--client', client]
+        if client == 'codex':
+            # The legacy Codex loader resolves relative cwd but does not expand command placeholders.
+            servers['nda-harness-jev'] = {'command': '/bin/sh', 'cwd': '.',
+                                          'args': ['bin/nda-plugin', *jev_args]}
+        else:
+            servers['nda-harness-jev'] = {'command': variable + '/bin/nda-plugin', 'args': jev_args}
         if client in ('codex', 'claude'):
             servers['nda-harness-jev']['type'] = 'stdio'
         write(root, 'mcp.json' if client == 'cursor' else '.mcp.json', json_bytes({'mcpServers': servers}))

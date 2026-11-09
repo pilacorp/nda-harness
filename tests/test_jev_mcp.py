@@ -120,21 +120,30 @@ class InstalledTests(unittest.TestCase):
             with self.subTest(client=client, package=package):
                 config = json.loads((package / ('mcp.json' if client == 'cursor' else '.mcp.json')).read_text())['mcpServers']
                 entry = config['nda-harness-jev']
-                self.assertEqual(entry['args'], ['selection-mcp', '--client', client])
                 self.assertEqual(entry.get('type'), None if client == 'cursor' else 'stdio')
                 self.assertIn('url', config['nda-harness-context7'])
-                relative = entry['command'].split('}', 1)[1].lstrip('/')
+                if client == 'codex':
+                    # Codex resolves relative cwd from the plugin root and passes command literally.
+                    cwd = package / entry['cwd'] if 'cwd' in entry else '/'
+                    launcher = package / 'bin/nda-plugin'
+                    command = [entry['command'], *entry['args']]
+                else:
+                    self.assertEqual(entry['args'], ['selection-mcp', '--client', client])
+                    cwd = '/'
+                    relative = entry['command'].split('}', 1)[1].lstrip('/')
+                    launcher = package / relative
+                    command = [str(launcher), *entry['args']]
                 ids = [v['id'] for v in json.loads((package / 'skills/catalog.json').read_text())['skills']]
                 base = {'project': str(self.root), 'session': 'fixture', 'task': TASK}
                 messages = [INIT, READY, request('tools/list', ident=2),
-                    request('tools/call', {'name': 'selection_verify'}, ident=3),
+                    request('tools/call', {'name': 'selection_verify', 'arguments': {'live': False}}, ident=3),
                     request('tools/call', {'name': 'select_skills', 'arguments': base}, ident=4),
                     request('tools/call', {'name': 'select_skills', 'arguments': {**base, 'answers': {i: {'type': 'noul', 'noul': 1} for i in ids}}}, ident=5),
                     request('tools/call', {'name': 'load_selected_skills', 'arguments': base}, ident=6)]
                 with tempfile.TemporaryDirectory() as home:
                     env = {**os.environ, 'HOME': home, 'CODEX_SANDBOX': 'seatbelt'}
-                    result = subprocess.run([str(package / relative), *entry['args']], input=''.join(json.dumps(m) + '\n' for m in messages),
-                        text=True, capture_output=True, env=env, cwd='/', timeout=30)
+                    result = subprocess.run(command, input=''.join(json.dumps(m) + '\n' for m in messages),
+                        text=True, capture_output=True, env=env, cwd=cwd, timeout=30)
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stderr, '')
                     output = [json.loads(v) for v in result.stdout.splitlines()]
@@ -146,13 +155,13 @@ class InstalledTests(unittest.TestCase):
                     self.assertEqual(len(reports[3]['skills']), len(ids))
                     self.assertLess(max(len(v.encode()) + 1 for v in result.stdout.splitlines()), jev_mcp.MAX_RESPONSE)
                     # Same installed CLI still refuses; server did not alter environment policy.
-                    cli = subprocess.run([str(package / relative), 'selection-verify', '--client', client],
+                    cli = subprocess.run([str(launcher), 'selection-verify', '--client', client],
                         text=True, capture_output=True, env=env, timeout=30)
                     self.assertEqual(json.loads(cli.stdout)['diagnostic'], 'sandbox_rerun')
                     reconnect = [INIT, READY, request('tools/call', {'name': 'select_skills', 'arguments': base})]
-                    again = subprocess.run([str(package / relative), *entry['args']],
+                    again = subprocess.run(command,
                         input=''.join(json.dumps(m) + '\n' for m in reconnect), text=True,
-                        capture_output=True, env=env, cwd='/', timeout=30)
+                        capture_output=True, env=env, cwd=cwd, timeout=30)
                     self.assertEqual(again.returncode, 0, again.stderr)
                     cached = json.loads(json.loads(again.stdout.splitlines()[-1])['result']['content'][0]['text'])
                     self.assertEqual(cached['source'], 'cache')

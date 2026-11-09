@@ -16,8 +16,10 @@ mock provider responses. It makes no live OpenRouter calls. Fixtures cover:
   errors, and bounded responses without partial bodies.
 - Relocated executable packages for Codex, Cursor, Claude and the hosted Claude
   archive, including paths with spaces and an inherited `CODEX_SANDBOX` marker.
-  Each launches from `/`, performs offline verification, local-agent selection,
-  loads all four shipped specialists, and reconnects using the existing cache.
+  The Codex fixture uses the generated command and plugin-relative working
+  directory. The other fixtures launch from `/`. Each performs offline
+  verification, local-agent selection, loading of all four shipped specialists,
+  and reconnection using the existing cache.
   The same direct CLI launcher still refuses sandboxed verification.
 - Mocked paid selection, empty/confident/uncertain output parity with CLI,
   exact human decisions, shared cache reuse, wrong-task load refusal, symlinked
@@ -50,9 +52,16 @@ unsets it or exposes a trusted flag.
 
 ## Native acceptance still required
 
+For [#55](https://github.com/pilacorp/nda-harness/issues/55), the Codex Desktop
+bundled runtime `0.167.0-alpha.3.2` loaded the rebuilt package in an isolated
+Codex home. Two fresh workspace threads discovered Jev and received the
+expected `credential_missing` response from native offline `selection_verify`
+with an empty temporary home. This verifies the launch path and offline
+transport. The full Desktop workflow in TC-12 still requires an existing key.
+
 | Client / installation | Version observed | Server/tool enablement and actual shell restrictions | Status |
 | --- | --- | --- | --- |
-| Codex installed plugin | Not established | Not verified in a fresh session | Pending TC-12 |
+| Codex installed plugin | Desktop build `25894`, bundled runtime `0.167.0-alpha.3.2` | Native discovery and offline call verified in an isolated runtime | Full Desktop TC-12 pending |
 | Cursor installed plugin | 3.28.7 app metadata | Not verified in a fresh session | Pending TC-13 |
 | Claude installed plugin | Not established | Not verified in a fresh session | Pending TC-14 |
 | Claude hosted archive | Not established | Launcher relocation verified only in subprocess | Pending TC-14 |
