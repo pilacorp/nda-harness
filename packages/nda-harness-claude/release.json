@@ -2,7 +2,7 @@
   "asset_hashes": {
     ".claude-plugin/marketplace.json": "b298f976085a82aa2007dba0e1c70b6814e96304705426793f651514108223c4",
     ".claude-plugin/plugin.json": "59efa0992163ab61b866ee9ece5a6040f268be9513429b71d22da32ec605dbc7",
-    ".mcp.json": "eae821092fc789c48291bfad407c103eba823c17c8a68d9a1a1ec9fea745bcdc",
+    ".mcp.json": "4fa4a8bec3e1460b63b1137423f2997de6f7577bb7bfec5521c91a025cb46ea0",
     "assets/logo.jpg": "6e7436cdfd743807a6763e8f0ec20895636f24c920f6f4c90db4def7552a116d",
     "bin/nda-plugin": "b7717fea9f2bcdeeb6a074901245664e49983f032c4227e0645a8a29c94cd66e",
     "hooks/hooks.json": "364de672e11987d14366b9d82c53282d0302bb0b4d6cc9d489e6f0ea00e8a557",
@@ -42,7 +42,7 @@
     "scripts/nda_harness/mcp_error_log.py": "89e555932c55545ceef4b4e1fc297c365efbd47d3e57fbb7302b311b23856ea1",
     "scripts/nda_harness/memory.py": "3b1c1c1664e7fc0d250b672e25d4cfef4336144bf9dc9dc290656e6c20638df5",
     "scripts/nda_harness/openrouter.py": "49044cb6b127e6613fbcb61b24f81d543b613ed8c2326b43cd20026e082871a6",
-    "scripts/nda_harness/plugin_build.py": "044137bb91ff3532e2922e8b4dcd5c28d44f08d49692010152e164c145e72d79",
+    "scripts/nda_harness/plugin_build.py": "918cb42e36c223df0f96a5fd33091587b77811e92ef6d3617ea0144b81acdc31",
     "scripts/nda_harness/plugin_runtime.py": "07940abdf127d1dd41abdc1e63208c549ff2922279acd5bfbb18c56a164cedb8",
     "scripts/nda_harness/project.py": "d7aa6f931e9bef0ba69866823a2d2e1f22ac6dc360f36f6b6dad46f2b2386cb8",
     "scripts/nda_harness/skill_selection.py": "2146cf70802e15cb58bd1416f9eaace07fc5c88555b0b560d7cc1c3ac9635bc1",
