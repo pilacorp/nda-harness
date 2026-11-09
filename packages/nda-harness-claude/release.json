@@ -42,7 +42,7 @@
     "scripts/nda_harness/mcp_error_log.py": "89e555932c55545ceef4b4e1fc297c365efbd47d3e57fbb7302b311b23856ea1",
     "scripts/nda_harness/memory.py": "3b1c1c1664e7fc0d250b672e25d4cfef4336144bf9dc9dc290656e6c20638df5",
     "scripts/nda_harness/openrouter.py": "49044cb6b127e6613fbcb61b24f81d543b613ed8c2326b43cd20026e082871a6",
-    "scripts/nda_harness/plugin_build.py": "23e8e1a23dad3222468c21b2b23e8b3d223cabb470158cdd05efebf1e0fedfe0",
+    "scripts/nda_harness/plugin_build.py": "044137bb91ff3532e2922e8b4dcd5c28d44f08d49692010152e164c145e72d79",
     "scripts/nda_harness/plugin_runtime.py": "07940abdf127d1dd41abdc1e63208c549ff2922279acd5bfbb18c56a164cedb8",
     "scripts/nda_harness/project.py": "d7aa6f931e9bef0ba69866823a2d2e1f22ac6dc360f36f6b6dad46f2b2386cb8",
     "scripts/nda_harness/skill_selection.py": "2146cf70802e15cb58bd1416f9eaace07fc5c88555b0b560d7cc1c3ac9635bc1",
