@@ -15,6 +15,7 @@ from .files import Plan, Conflict, atomic, digest, guard_path, json_bytes, read
 from .hooks import hook_plan, activate, restore, value
 from .dependencies import prepare as prepare_rtk, locate as locate_rtk, identity as rtk_identity
 from . import hindsight
+from .skill_selection import render_outage_guide
 
 
 def check_host():
@@ -103,6 +104,9 @@ def assets(source, options):
                 content = path.read_bytes()
                 if relative == Path("skills/catalog.md"):
                     content = content.replace(b"../docs/architecture.md", b"https://github.com/pilacorp/nda-harness/blob/main/docs/architecture.md")
+                    content = content.replace(b"../pack/jev-outage.md", b"../jev-outage.md")
+                if relative == Path("jev-outage.md"):
+                    content = render_outage_guide(content.decode(), source / "skills").encode()
                 mode = 0o755 if path.stat().st_mode & 0o111 or relative.as_posix() in ("scripts/prepare-context", "hooks/pre-commit") else 0o644
                 result[relative] = (content, mode)
     if options["scope"] == "project":

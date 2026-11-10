@@ -172,22 +172,22 @@ def stored_profile(project):
 _MEMORY_KEYS = {'identity_sha256', 'bank_id', 'remote', 'name', 'system'}
 
 
+def validate_config(config):
+    required = {'schema_version', 'test_command'}
+    if (not isinstance(config, dict) or not required <= config.keys()
+            or config.keys() - required - {'enabled', 'workflow_mode'}
+            or type(config['schema_version']) is not int or config['schema_version'] != 1
+            or not _valid_command(config['test_command'])
+            or type(config.get('enabled', True)) is not bool
+            or config.get('workflow_mode', 'strict') not in ('strict', 'fast')):
+        raise Conflict('Project configuration is invalid; reconcile configuration before dependent work.')
+    return config
+
+
 def directory_config(project):
     """Read config.json in this directory only."""
     config = load_json(project / '.nda-harness/config.json')
-    if config is None:
-        return None
-    try:
-        keys = set(config)
-        if not {'schema_version', 'test_command'} <= keys or keys - {'schema_version', 'test_command', 'enabled'}:
-            raise ValueError()
-        if config['schema_version'] != 1 or not _valid_command(config['test_command']):
-            raise ValueError()
-        if 'enabled' in config and type(config['enabled']) is not bool:
-            raise ValueError()
-    except (KeyError, TypeError, ValueError):
-        raise Conflict('Project configuration is invalid; reconcile configuration before dependent work.') from None
-    return config
+    return validate_config(config) if config is not None else None
 
 
 def harness_layers(project):
@@ -364,6 +364,8 @@ def configure(project, package, home, test_command=None, *, skip=False, name=Non
             memory['system'] = chosen
         profile = {'schema_version': 3, 'memory': memory}
         project_config = {'schema_version': 1, 'test_command': command}
+        if existing and 'workflow_mode' in existing:
+            project_config['workflow_mode'] = existing['workflow_mode']
         if enable:
             project_config['enabled'] = True
         elif existing and 'enabled' in existing:

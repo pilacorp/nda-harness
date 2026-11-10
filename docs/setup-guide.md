@@ -143,10 +143,11 @@ If Terminal prints `A local terminal is required.`, run `/skill-selection` again
 and use the Terminal window it opens. For `authorization_failed`, run
 `/skill-selection` again and confirm replacement of the saved key. For
 `needs_context` or `blocked`, follow the reported diagnostic and next action
-before loading specialist skills. If MCP is absent or denied, report
-`jev_mcp_unavailable` and pause dependent specialist work. Do not infer a missing
-key, change permissions or escape to shell. Legacy CLI selection still returns
-`sandbox_rerun` in a restricted shell; daily use routes through MCP instead.
+before loading specialist skills. On confirmed Jev MCP outage, report
+`jev_mcp_unavailable` and follow the installed [outage guide](../pack/jev-outage.md)
+for local-agent selection from the verified bundle. This needs no credentials,
+provider call, or shell rerun. Legacy CLI selection still returns
+`sandbox_rerun` in a restricted shell.
 
 
 ## Setup checklist

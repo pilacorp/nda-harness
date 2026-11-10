@@ -55,14 +55,16 @@ Distinguish planned tests from executed evidence. Describe failure cases.
 
 ## Review and implementation handoff
 
-Spec PR: <URL>
+Spec PR or fast review draft: <URL when applicable>
 Review reference: <unset until reviewed>
 Merge reference/revision: <unset until merged>
-Local spec matches merged reviewed version: <evidence>
+Local spec matches approved revision: <strict reviewed merge or fast owner-approved commit>
 Next action: <permitted workflow action>
 
 The issue owns intent. This document does not grant approval; feature
-implementation requires verified review/merge and matching local content.
+implementation requires matching local content and verified strict review/merge
+or authenticated target-branch fast opt-in with exact owner sign-off. In fast
+mode record the target, issue fingerprint, approval comment and approved commit.
 Bug fixes restoring established intent follow workflow.md: sync the related
 spec and regression case with the fix before completion and human review,
 without a separate upfront spec PR.

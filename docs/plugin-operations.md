@@ -411,10 +411,10 @@ are reused, without an SDK installation or background service.
 Enable/trust the server using each client's normal controls and reload when
 needed. Daily agents call the four tools documented in [skill selection](skill-selection.md).
 Credential setup/replacement/removal/migration remains terminal-only. No hook,
-startup check or pre-commit gate makes a paid Jev call. Missing or denied MCP is
-`jev_mcp_unavailable`, requiring a pause of dependent specialist work; do not
-change global permissions or silently fall back to shell. After disconnect reuse
-the same task/session without refresh; paid request delivery may be unknown.
+startup check or pre-commit gate makes a paid Jev call. On confirmed MCP outage,
+report `jev_mcp_unavailable` and use the installed [outage guide](../pack/jev-outage.md)
+for local-agent selection from the verified bundle. After an interrupted call
+with unknown delivery, reconnect with the same task/session without refresh.
 
 Rollback disables the new MCP entry or restores the preceding package. Preserve
 credential generation, keys and cache files. Native Codex, Cursor, Claude and

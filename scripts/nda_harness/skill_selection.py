@@ -21,6 +21,8 @@ MAX_INPUT = 32 * 1024
 RULES_VERSION = 'jev-specialists-v2'
 MODEL = 'typesafe/jev-1.14'
 LOCAL_AGENT = 'local-agent'
+EXCLUDE_AT = 0.20
+INCLUDE_AT = 0.80
 LOCAL_NEXT = ('Answer every question with type noul and a probability from 0 to 1. '
               'Call select-skills again with the same task and --answers-file. '
               'Do not read specialist skill bodies before answering.')
@@ -149,6 +151,12 @@ def catalog_revision(catalog):
     return 'sha256:' + digest(json_bytes({'schema_version': catalog['schema_version'], 'skills': catalog['skills']}))
 
 
+def render_outage_guide(template, catalog_root):
+    return (template.replace('@CATALOG_REVISION@', catalog_revision(load_catalog(catalog_root)))
+            .replace('@QUESTION@', QUESTION).replace('@EXCLUDE_AT@', f'{EXCLUDE_AT:.2f}')
+            .replace('@INCLUDE_AT@', f'{INCLUDE_AT:.2f}'))
+
+
 def build_decision_request(task, catalog):
     """Build one Jev request from task text and catalog metadata. Never read skill bodies."""
     normalized = canonical_task(task)
@@ -205,14 +213,14 @@ def classify_answers(task, catalog, answers, model_returned, *, model_requested=
         report['status'] = 'blocked'
         return report
     report['probabilities'] = probabilities
-    uncertain = [{'id': skill_id, 'probability': probabilities[skill_id]} for skill_id in expected if 0.20 < probabilities[skill_id] < 0.80]
+    uncertain = [{'id': skill_id, 'probability': probabilities[skill_id]} for skill_id in expected if EXCLUDE_AT < probabilities[skill_id] < INCLUDE_AT]
     if uncertain:
         report['diagnostic'] = 'uncertain_decision'
         report['next'] = 'Ask the user whether to load each skill in uncertain, then call record-selection with those decisions so the choice is stored in the local cache.'
         report['status'] = 'needs_context'
         report['uncertain'] = uncertain
         return report
-    selected_ids = [skill_id for skill_id in expected if probabilities[skill_id] >= 0.80]
+    selected_ids = [skill_id for skill_id in expected if probabilities[skill_id] >= INCLUDE_AT]
     report['selected'] = [{'entrypoint': entrypoints[skill_id], 'id': skill_id} for skill_id in selected_ids]
     report['selection_id'] = 'sha256:' + digest(json_bytes({
         'catalog_revision': report['catalog_revision'],
@@ -232,7 +240,8 @@ _MCP_GUIDANCE = (
     ' Use the local nda-harness-jev MCP server on Codex, Cursor, and Claude; ordinary shell restrictions stay in place. '
     'Tools are select_skills, record_selection, load_selected_skills, and selection_verify. '
     'Pass project (an absolute existing directory), session, and task as JSON values, not filenames. '
-    'If the server is absent, disabled or denied, report jev_mcp_unavailable and pause dependent specialist work. '
+    'If native discovery or invocation confirms the server is absent, disabled, failed to start or denied, '
+    'report jev_mcp_unavailable and follow the installed pack/jev-outage.md. '
     'Do not infer a missing key, change permissions, launch setup, or escape to shell. '
     'The OpenRouter key file is shared by Codex, Cursor, and Claude. '
     'Legacy shell diagnostics retain sandbox_rerun; that refusal does not describe the MCP path. '
@@ -436,10 +445,10 @@ def _thresholds_match(record, catalog):
         value = probabilities[skill_id]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
             return False
-        if 0.20 < value < 0.80:
+        if EXCLUDE_AT < value < INCLUDE_AT:
             return False
         parsed.append(value)
-    selected_ids = [skill_id for skill_id in expected if probabilities[skill_id] >= 0.80]
+    selected_ids = [skill_id for skill_id in expected if probabilities[skill_id] >= INCLUDE_AT]
     recorded = [item.get('id') for item in record.get('selected', [])] if isinstance(record.get('selected'), list) else None
     return recorded == selected_ids
 
@@ -474,7 +483,7 @@ def _remember(path, payload):
 
 
 def _resolved_probabilities(jev_probabilities, decisions):
-    uncertain = [skill_id for skill_id, probability in jev_probabilities.items() if 0.20 < probability < 0.80]
+    uncertain = [skill_id for skill_id, probability in jev_probabilities.items() if EXCLUDE_AT < probability < INCLUDE_AT]
     if not isinstance(decisions, dict) or set(decisions) != set(uncertain) or any(type(value) is not bool for value in decisions.values()):
         raise SelectionError('invalid_decision')
     resolved = dict(jev_probabilities)
@@ -498,7 +507,7 @@ def _pending_usable(record, catalog, release_manifest, generation, model=None):
     if not isinstance(probabilities, dict) or set(probabilities) != set(expected):
         return False
     try:
-        return any(0.20 < _probability(value) < 0.80 for value in probabilities.values())
+        return any(EXCLUDE_AT < _probability(value) < INCLUDE_AT for value in probabilities.values())
     except SelectionError:
         return False
 

@@ -31,7 +31,7 @@ from nda_harness.usage import (
 
 OPERATIONS = ('session-bootstrap', 'task-prepare', 'context-refresh', 'context-checkpoint', 'context-resume')
 QUIET_COMMANDS = frozenset({
-    'verify', 'usage', 'usage-record', 'memory-status',
+    'verify', 'usage', 'usage-record', 'memory-status', 'workflow-check',
     'selection-setup', 'selection-migrate', 'selection-verify',
     'select-skills', 'record-selection', 'load-selected-skills',
     *OPERATIONS,
@@ -206,10 +206,15 @@ def unit_check(project):
         return 1
 
 
-def context(package, operation, project, task=None, role=None, stage='specification', session='manual'):
+def context_runtime(package):
     module = importlib.util.spec_from_file_location('nda_context', package / 'pack/scripts/context_runtime.py')
     runtime = importlib.util.module_from_spec(module)
     module.loader.exec_module(runtime)
+    return runtime
+
+
+def context(package, operation, project, task=None, role=None, stage='specification', session='manual'):
+    runtime = context_runtime(package)
     output = runtime.prepare(argparse.Namespace(operation=operation, project=str(root_for(project)), task=task,
                                                role=role, stage=stage, session=session))
     if inspect_project(project, package, Path.home().resolve())['status'] != 'ready':
@@ -273,7 +278,8 @@ def hook(package, client, event, home, payload):
         'Check the actual project root .nda-harness/profile.json for memory and .nda-harness/config.json for the test command. In a workspace of nested repositories, merge those files from ancestor .nda-harness folders and let the folder inside the repo override. If .nda-harness/config.json is absent, ask for a non-watch test command or explicit Skip in chat, then use nda-setup. If the config is present and the profile is absent, run nda-setup without a new test command so the stored command is kept and the personal profile is rebuilt. A folder that is not a Git checkout, like a repository with no remote, needs --project-name. Git commit hooks apply only to a repository. '
         'No answer means pending; only explicit Skip stores true. Do not claim ready or start dependent implementation until setup and local Git protection are ready. '
         'Client startup can still be running, including Cursor sessionStart: use nda-verify before dependent work; use nda-setup to recover a failed or incomplete bootstrap. '
-        'Repository instructions, issue linkage, TDD Red/Green/Refactor and human review remain mandatory. Features require approved merged spec checks. When creating a bug issue, put Type: bugfix in its body and apply the repository bug label if available. Verify the live issue classification at start/resume and mirror it in the local task; the local field alone is insufficient. A task with verified bug-fix classification may restore established behavior without a new upfront spec or separate spec PR: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion; add a concise behavior/regression spec if none exists. New requirements or unresolved intent conflicts use the feature path. Hooks cannot grant approvals. '
+        'Repository instructions, issue linkage, TDD Red/Green/Refactor and human review remain mandatory. Features default to reviewed and merged specs. Only authenticated target-branch fast opt-in and verified owner evidence unlock the fast path in pack/workflow.md. When creating a bug issue, put Type: bugfix in its body and apply the repository bug label if available. Verify the live issue classification at start/resume and mirror it in the local task; the local field alone is insufficient. A task with verified bug-fix classification may restore established behavior without a new upfront spec or separate spec PR: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion; add a concise behavior/regression spec if none exists. New requirements or unresolved intent conflicts use the feature path. Hooks cannot grant approvals. '
+        'Use native Jev when available. On confirmed Jev MCP outage, report jev_mcp_unavailable and follow the installed pack/jev-outage.md for local-agent selection. '
         'Use the five context operation skills; after resume or compaction reconstruct from durable sanitized task records and current revisions. '
         'Commit .nda-harness/config.json. Keep .nda-harness/profile.json and sanitized task records in .nda-harness/tasks/ local; add both to .gitignore and never stage, commit or force-add task files, including task.md. No shared rules copies, credentials, memory text or machine paths belong in committed project configuration. '
         'Record local usage with the packaged usage-record command for memory outcomes, sub-agent summary lengths, and spec checks. Open the private report with the usage command. Never put prompts, secrets, transcripts, or memory text in a usage record. '
@@ -331,7 +337,7 @@ def diagnose(error):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'mcp-error-record', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', 'selection-mcp', *OPERATIONS))
+    parser.add_argument('command', choices=('setup', 'verify', 'hook', 'unit-check', 'usage', 'usage-record', 'memory-status', 'mcp-error-record', 'selection-setup', 'selection-migrate', 'selection-verify', 'select-skills', 'record-selection', 'load-selected-skills', 'select-bank', 'selection-mcp', 'workflow-check', *OPERATIONS))
     parser.add_argument('--client', required=True, choices=CLIENTS)
     parser.add_argument('--project')
     parser.add_argument('--test-command')
@@ -343,6 +349,8 @@ def main(argv=None):
     parser.add_argument('--environment', choices=('dev', 'staging', 'prod'), default='dev')
     parser.add_argument('--event')
     parser.add_argument('--task')
+    parser.add_argument('--pr', type=int)
+    parser.add_argument('--before-merge', action='store_true')
     parser.add_argument('--role', choices=('developer', 'tech-lead'))
     parser.add_argument('--stage', choices=('specification', 'implementation'), default='specification')
     parser.add_argument('--session', default='manual')
@@ -411,6 +419,19 @@ def main(argv=None):
             print(migrate_message(report))
             return code
         project = args.project or str(Path.cwd())
+        if args.command == 'workflow-check':
+            from nda_harness import workflow
+            root = root_for(project)
+            runtime = context_runtime(package)
+            if not args.task or (args.pr is not None and args.pr < 1):
+                parser.error('workflow-check requires --task and a positive --pr when supplied')
+            task = runtime.fields(runtime.local_path(root, args.task))
+            if task.get('Type', 'feature') != 'feature':
+                parser.error('workflow-check applies to the feature workflow only')
+            report = workflow.verify(workflow.github, root, task.get('Issue', ''), task.get('Spec', ''),
+                                     pr_number=args.pr, before_merge=args.before_merge)
+            print(json.dumps(report))
+            return 2 if report['status'] == 'blocked' else 0
         if args.command == 'usage':
             report = summarize(read_events(home), project=project if args.project else None)
             sys.stdout.write(render_text(report))

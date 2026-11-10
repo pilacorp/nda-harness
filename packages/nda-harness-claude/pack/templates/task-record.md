@@ -12,7 +12,9 @@ Next action: <next permitted action>
 ## Context and prerequisites
 
 <Role, checkout identity, policy/profile/release references, live issue fingerprint,
-spec PR review/merge references, merged revision and independently verified checks>
+authenticated target workflow mode and revision, and either strict spec
+review/merge references or fast owner issue sign-off and approved spec revision.
+For fast completion also record final head, owner review comment and CI evidence.>
 
 ## Completed work and tests
 
@@ -20,7 +22,9 @@ spec PR review/merge references, merged revision and independently verified chec
 
 ## Documentation and unresolved decisions
 
-<Doc impact, selected skills and reasons, blockers, risks and remaining work>
+<Doc impact, selected skills and reasons, blockers, risks and remaining work.
+For Jev outage record local-agent, catalog revision, selected IDs and human
+decisions. Only record a Jev cache entry when the server actually made one.>
 
 For a bug fix, set `Type: bugfix` only when restoring established intended behavior.
 Verify and record the live issue's `bug` label or `Type: bugfix` body field at

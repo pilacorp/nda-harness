@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from nda_harness import plugin_build
 from nda_harness.files import digest
+from nda_harness.skill_selection import catalog_revision, load_catalog
 
 
 CATALOGS = {
@@ -71,6 +72,12 @@ class MarketplaceTests(unittest.TestCase):
                                          for p in package.rglob('*') if p.is_file()} - {'release.json'})
             for name, expected in hashes.items():
                 self.assertEqual(digest((package / name).read_bytes()), expected, name)
+            outage = (package / 'pack/jev-outage.md').read_text()
+            self.assertIn(catalog_revision(load_catalog(package / 'skills')), outage)
+            self.assertIn('**0.20**', outage)
+            self.assertIn('**0.80**', outage)
+            self.assertIn('pack/jev-outage.md', (package / 'skills/skill-selection/SKILL.md').read_text())
+            self.assertIn('scripts/nda_harness/workflow.py', hashes)
             hooks = (package / 'hooks/hooks.json').read_text()
             self.assertIn(f'--client {client} ', hooks)
             for other in set(CATALOGS) - {client}:
