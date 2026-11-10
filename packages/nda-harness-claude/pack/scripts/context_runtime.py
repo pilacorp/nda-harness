@@ -287,8 +287,8 @@ def prepare(args):
             ])
         else:
             pending.extend([
-                "At task start/resume/dependent transitions, verify live issue content and spec PR review/merge; reconcile material changes",
-                "Match local spec to reviewed merged content before implementation; local metadata never authorizes a stage transition",
+                "At task start/resume/dependent transitions, verify live issue content and workflow mode from the authenticated target branch; reconcile material changes",
+                "Strict requires reviewed merged spec content; fast requires workflow-check and matching owner-approved spec content. Local metadata never authorizes a stage transition",
             ])
         if stale:
             pending.insert(0, "Local input changed: reread affected sources and reassess test/spec evidence")

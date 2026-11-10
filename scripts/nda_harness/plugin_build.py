@@ -15,7 +15,7 @@ import zipfile
 from .files import digest, guard_path, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
 from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
-from .skill_selection import selection_guidance
+from .skill_selection import render_outage_guide, selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
 RELEASE_VERSION = '0.0.14'
@@ -27,7 +27,7 @@ SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
            'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
            'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py',
-           'bank_select.py', 'jev_mcp.py', 'mcp_error_log.py')
+           'bank_select.py', 'jev_mcp.py', 'mcp_error_log.py', 'workflow.py')
 REPOSITORY_URL = 'https://github.com/pilacorp/nda-harness'
 USAGE_HOME_URL = REPOSITORY_URL + '/blob/dev/docs/usage-report.md'
 
@@ -181,6 +181,8 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         root.mkdir()
         for directory in ('pack', 'skills'):
             copy_assets(source, root, directory)
+        outage = root / 'pack/jev-outage.md'
+        outage.write_text(render_outage_guide(outage.read_text(), root / 'skills'))
         for module in RUNTIME:
             write(root, 'scripts/nda_harness/' + module, (source / 'scripts/nda_harness' / module).read_bytes())
         if digest((source / 'vendor' / TOMLKIT_WHEEL).read_bytes()) != TOMLKIT_SHA256:

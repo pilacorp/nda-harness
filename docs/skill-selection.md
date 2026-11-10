@@ -52,7 +52,7 @@ The per-skill question contract uses rules version `jev-specialists-v2`. Changin
 
 The server owns private key/cache access and HTTPS while ordinary shell restrictions remain in place. The key and seven-day cache are shared with legacy CLI operations; changing transport does not rotate credentials or change cache identity. Direct sandboxed CLI operations retain `sandbox_rerun`.
 
-If the MCP server is absent, disabled, denied or cannot start, report `jev_mcp_unavailable` and pause dependent specialist work. Do not infer a missing key, change permissions, start setup, or silently escape to shell. Actual key, state or OS network denials remain sanitized errors. Managed client policy can deny the server.
+If native discovery or invocation establishes that the server is absent, disabled, denied or cannot start, report `jev_mcp_unavailable` and follow the installed [outage guide](../pack/jev-outage.md). The running agent answers the verified catalog questions directly, applies the same thresholds and asks about every uncertain skill. Verify and load only the selected entrypoints. Record local-agent, the catalog revision, IDs and decisions without claiming a cache entry. No credentials, provider call, setup or selector rerun is needed. Pause dependent specialist work if the relevant bundle files cannot be verified. A responding server's failures still follow its diagnostics.
 
 After timeout or disconnect, delivery may be unknown. Reconnect with the same task/session and reuse completed cache records without refresh. A crash before caching can cause another paid call; exactly-once billing is not promised. To roll back, disable the Jev MCP entry or restore the preceding plugin version, preserving keys and cache files.
 

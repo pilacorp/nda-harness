@@ -34,6 +34,11 @@ On `uncertain_decision`, ask the user whether to include every uncertain skill. 
 
 On `local_agent` (only a missing key), answer every question with type `noul` and probability 0 to 1. Call `select_skills` again with the same assignment and `answers` object. The model name is `local-agent`. An unreadable key blocks with `credential_unavailable`.
 
-If MCP is absent, disabled or denied, report `jev_mcp_unavailable` and pause dependent specialist work. Do not infer a missing key, change permissions, start setup or silently escape to shell. The key file is shared by Codex, Cursor, and Claude. Legacy CLI selection operations retain `sandbox_rerun` for their shell path. After a disconnect reuse the same task/session without refresh; delivery may be unknown.
+When native discovery or invocation confirms MCP is absent, disabled, failed to
+start, or denied, report `jev_mcp_unavailable` and follow the installed
+`pack/jev-outage.md` for local-agent selection. Legacy CLI selection operations
+retain `sandbox_rerun`. The key file is shared by Codex, Cursor, and Claude.
+After an interrupted call with unknown delivery, reconnect with the same
+task/session without refresh. A responding server's failure keeps its own diagnostic.
 
 Mandatory workflow skills stay in force. Jev does not grant approval.

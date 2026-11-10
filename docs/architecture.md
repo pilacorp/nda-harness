@@ -35,7 +35,7 @@ The pinned-policy component includes the mandatory Superpowers, RTK, and Context
 
 The agent reads repository code directly on the developer's device. The feature/architecture RAG must not ingest repository code. Personal memory stores preferences and individual working notes, not code dumps or raw agent transcripts. It does not establish organizational requirements or decisions. This does not imply local model inference: the team's coding-agent provider and existing data policies still apply.
 
-The data flow is: tech-lead feature-issue drafting → review/revision → authorized issue publication → developer task and local code/scoped knowledge inspection → developer-spec drafting/review → human spec-PR approval/merge → test evidence and implementation → PR checks and separate human code review → merge. CI uses repository evidence rather than making live RAG or memory calls to decide compliance; issue and approval validation reads authenticated GitHub metadata.
+The data flow is: tech-lead feature-issue drafting → review/revision → authorized issue publication → developer task and local code/scoped knowledge inspection → developer-spec drafting/review → human spec approval → test evidence and implementation → PR checks and human code review → merge. Strict mode also requires the spec to merge before implementation; fast mode uses owner sign-off on the issue instead. CI uses repository evidence rather than making live RAG or memory calls to decide compliance; issue and approval validation reads authenticated GitHub metadata.
 
 ## Mandatory coding dependencies: Superpowers, RTK, and Context7
 
@@ -60,7 +60,7 @@ Local dependency setup is part of the future adoption tooling. Keep `.nda-harnes
 
 Use [Superpowers](https://github.com/obra/superpowers) as a required workflow dependency. Its installation differs by agent; verify the selected pinned release on every supported Codex, Claude Code, and Cursor surface rather than assuming installation in one agent enables another. Load its bootstrap at coding-session start, then load only the workflow skills relevant to the current stage/assignment. Requiring Superpowers does not mean inlining its entire skill collection into every agent.
 
-Maintainers define a reviewed mapping from the pinned Superpowers skills to NDA stages: requirements/design work supports Understand and Specify; planning/execution supports approved implementation; TDD supports Red → Green → Refactor; review and verification support Review. Bug investigation must reproduce the defect and inspect callers before a fix. Existing NDA rules remain explicit: a tech-lead issue precedes task work, GitHub spec approval and merge precede implementation, one branch serves sequential spec/code PRs, unit tests cover relevant logic, and QA owns integration/end-to-end scenarios.
+Maintainers define a reviewed mapping from the pinned Superpowers skills to NDA stages: requirements/design work supports Understand and Specify; planning/execution supports approved implementation; TDD supports Red → Green → Refactor; review and verification support Review. Bug investigation must reproduce the defect and inspect callers before a fix. A tech-lead issue precedes task work, and spec approval precedes feature implementation. Strict mode uses sequential spec and code PRs; fast mode uses one PR and revision-bound owner sign-off. Unit tests cover relevant logic, and QA owns integration and end-to-end scenarios.
 
 Resolve conflicting upstream instructions in the reviewed adapter/mapping before declaring the setup ready. A Superpowers conversational sign-off is not GitHub spec approval; its workflow cannot automatically change spec locations, create another branch, close the issue early, bypass hooks, or introduce mandatory multi-agent orchestration. Agents report unresolved conflicts instead of silently choosing a process. Relevant skill use does not confer approval or permission for external actions.
 
@@ -131,6 +131,12 @@ Each developer stores a personal OpenRouter key in `~/.nda-harness/skill-selecti
 A probability of at least 0.80 selects a skill. A probability of at most 0.20 excludes it. A value strictly between those thresholds is `uncertain_decision`. The agent asks the user whether to load each uncertain skill and stores that choice with `record-selection` in the local Jev cache. Confident exclusion of every skill is a successful empty selection. Results are cached under `~/.nda-harness/skill-selection/` and are not approval. `implementation_authorized` stays false. Mandatory workflow skills stay in force whether or not Jev selects a specialist.
 
 The specialist directories still ship next to workflow skills. Moving them to a separate hub path is later work. See [skill selection](skill-selection.md).
+
+If native discovery or invocation confirms a Jev MCP outage, the agent follows
+the installed [outage guide](../pack/jev-outage.md). It verifies the installed
+catalog and selected entrypoints against the release manifest, applies the same
+thresholds, asks about uncertain skills, and records the result locally without
+creating a Jev cache entry.
 
 Record selection inline in the repository task record: assignment ID, task stage, catalog/harness revision, selected IDs and resolved paths, short reason, allowed file scope/side effects, requested tools, observed exposure limitations, and next action. These are concise handoff records, not test logs or proof of unseen context. A missing/invalid selection blocks that delegation, not unrelated work. The receiver rechecks the assignment revision and workflow permissions before editing.
 
@@ -220,6 +226,13 @@ The implementation PR body contains `Closes #123` and links the merged spec PR. 
 [Open the editable approval sequence](diagrams/spec-implementation-sequence.html). This is the happy path; rejected or materially changed specs return to approval, and the CI gates shown still need implementation.
 
 The default feature path is one feature branch and two sequential PRs per behavior-change task: a **spec-only PR**, then an **implementation PR**, both from `feat/<issue-number>-<feature>` into main. The tech lead reviews from their own device in GitHub; no access to the developer's device or agent session is required. GitHub distinguishes an Approve review from a comment or request for changes; use an authorized human's explicit approval. See [GitHub PR reviews](https://docs.github.com/en/pull-requests/reference/pull-request-reviews).
+
+The [fast feature path](../pack/workflow.md#fast-feature-path) is an explicit
+target-branch opt-in. A read-only GitHub check verifies an owner's issue
+sign-off against the remote spec commit and local bytes. One PR carries the spec,
+code and tests; the final head needs owner review and passing CI. The check is
+separate from local context collection and pre-commit, and GitHub protections
+still govern merge. The two-PR steps below describe strict mode.
 
 Create `feat/<issue-number>-<feature>` and submit `specs/<feature>.md` in the first PR, without implementation changes. Keep the branch after the spec merges, fetch main, and merge updated main into that same branch before starting local TDD. Then push implementation changes and open a second PR from the same branch. This synchronization also handles squash/rebase merges without requiring a force push. Prevent automatic deletion of the feature branch after the spec PR, or re-push the retained local branch under the same name if it was deleted remotely. Delete the branch only after the implementation PR merges. Reuse an existing spec location when present; use `specs/<feature>/` only when multiple documents are needed.
 

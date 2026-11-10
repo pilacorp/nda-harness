@@ -22,13 +22,15 @@ Trust/installing/failed/pending states never imply ready. Use nda-setup to recov
 Verification does not repair, run tests or access memory content.
 
 Read full packaged policy/workflow and applicable repo instructions. Developer work
-needs the authorized tech-lead issue and an approved merged developer spec matching
-local content before behavior-change implementation. The owner can explicitly
-authorize exceptions. Hooks never authenticate roles or grant approvals.
+needs the authorized tech-lead issue and a matching, approved developer spec before
+behavior-change implementation. Strict mode requires a spec merge. The authenticated
+target branch can [opt into fast mode](../pack/workflow.md#fast-feature-path) with
+revision-bound owner sign-off instead. The owner can explicitly authorize exceptions.
+Hooks never authenticate roles or grant approvals.
 
 Use task-prepare with an explicit task record, role and stage, then focused unit
 Red → Green → Refactor and human review. Use context-refresh after relevant changes
-and before dependent transitions. Verify live issue content and approval/merge
+and before dependent transitions. Verify live issue content and workflow approval
 evidence; fingerprints cannot detect remote edits. Material behavior changes require
 owner reconciliation and renewed specification review.
 
@@ -38,7 +40,7 @@ or switching clients use context-resume and reconcile the current checkout/task.
 Do not reconstruct authority from transcripts, branch names or memory. Explicit
 skills remain the fallback for missing, disabled or delayed native hooks.
 
-Specialist skills are selected by the local Jev helper. When no OpenRouter key is saved, that helper gives the same questions to the coding agent already running the session and stores the answer as `local-agent`. Run `selection-setup` in a local terminal on each client when a key is available. The OpenRouter key is one file at `~/.nda-harness/skill-selection/openrouter-key`, shared by Codex, Cursor, and Claude, and ignored by Git. Use `selection-migrate` once when an older Keychain item remains. A later client can answer no when asked to replace the saved key; that keeps the key and finishes setup. That terminal, and `selection-verify` in a terminal, answer with a sentence, not JSON. Daily agent use goes through the local `nda-harness-jev` MCP tools `select_skills`, `record_selection`, `load_selected_skills`, and `selection_verify`; ordinary shell restrictions remain active. Terminal setup remains separate. If MCP is unavailable, report `jev_mcp_unavailable` and pause dependent specialist work without shell escape. See [skill selection](skill-selection.md). This key is not the Hindsight server key, and selection does not grant approval.
+Specialist skills are selected by the local Jev helper. When no OpenRouter key is saved, that helper gives the same questions to the coding agent already running the session and stores the answer as `local-agent`. Run `selection-setup` in a local terminal on each client when a key is available. The OpenRouter key is one file at `~/.nda-harness/skill-selection/openrouter-key`, shared by Codex, Cursor, and Claude, and ignored by Git. Use `selection-migrate` once when an older Keychain item remains. A later client can answer no when asked to replace the saved key; that keeps the key and finishes setup. That terminal, and `selection-verify` in a terminal, answer with a sentence, not JSON. Daily agent use goes through the local `nda-harness-jev` MCP tools `select_skills`, `record_selection`, `load_selected_skills`, and `selection_verify`; ordinary shell restrictions remain active. Terminal setup remains separate. On confirmed MCP outage, report `jev_mcp_unavailable` and use the verified installed catalog for local-agent selection. See [skill selection](skill-selection.md). This key is not the Hindsight server key, and selection does not grant approval.
 
 Hindsight is optional. Authenticate from plugin details using native MCP controls;
 no provider settings or credentials belong in the harness. After authentication,

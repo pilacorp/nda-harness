@@ -7,6 +7,10 @@ Consulted source revision: `337109c6b06535e5bddff2f4ca8e2c8b425b4304` on `dev`
 Spec branch: draft in the current checkout
 Status: runtime implementation in progress, explicitly authorized in chat on 2026-11-04; native-client acceptance and release pending
 
+The outage routing in this contract is amended by [Jev outage fallback and
+fast SDD workflow](jev-outage-and-fast-workflow.md). Native protocol, cache,
+credential handling and reconnect behavior are unchanged.
+
 ## Summary
 
 Developers currently switch Codex to Full Access to use Jev. There are two
@@ -205,7 +209,7 @@ must share the same cache semantics and never corrupt a pending or ready record.
 
 | Condition | Required behavior |
 | --- | --- |
-| MCP disabled, absent, startup failure, denied tool call | Coordinator reports `jev_mcp_unavailable` as a routing diagnostic and pauses dependent specialist work. Do not infer credential absence, change permissions, start setup, or silently escape to shell. |
+| MCP disabled, absent, startup failure, denied tool call | Coordinator reports `jev_mcp_unavailable` and uses the installed outage guide for local-agent classification with the verified bundled catalog. Do not infer credential absence, change permissions, start setup, or rerun the selector in a shell. |
 | Key missing | Existing `local_agent` flow; no paid request or setup prompt. |
 | Key inaccessible, state unwritable, invalid package | Block with sanitized credential/state/integrity diagnostic; no broad permission request or automatic fallback. |
 | Auth, credit, rate, network, malformed provider failure | Preserve current sanitized engine diagnostics and recovery; no automatic retry. |

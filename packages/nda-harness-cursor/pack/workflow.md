@@ -10,8 +10,10 @@
    `Type: bugfix` in the task, mirroring the live GitHub issue classification
    described below. For features, developers use the developer-spec
    template for specification drafting/review; no merged spec is needed to draft.
-3. Before feature implementation, independently verify live issue content,
-   spec PR review/merge and matching local spec. Record references in the task file.
+3. Before feature implementation, independently verify live issue content and
+   the authenticated target branch's workflow mode. In strict mode verify spec
+   PR review/merge and matching local content; in fast mode verify the owner
+   sign-off described below. Record references in the task file.
    Run task-prepare with `--stage implementation`. Helper metadata does not approve.
 4. Execute focused unit TDD. Refresh after relevant code/spec/task/checkout changes
    and before dependent transitions. Update docs and keep concrete test evidence.
@@ -19,6 +21,64 @@
    work, evidence, unresolved decisions and next action. Run context-checkpoint
    before compaction/handoff where possible. Resume through context-resume and
    revalidate actual local and remote state; do not restart completed work blindly.
+
+## Fast feature path
+
+Strict is the default. A repository owner opts in by committing
+`"workflow_mode": "fast"` to `.nda-harness/config.json` on the target branch
+before the feature. Read it from the authenticated target branch itself. Local
+files, ancestor configs, and changes proposed by the feature PR cannot opt in.
+Missing mode means strict. Invalid or inaccessible remote evidence cannot
+activate fast mode or satisfy a prerequisite.
+
+1. Keep the published issue and developer spec with testable acceptance
+   criteria. Push the spec revision so GitHub can return the exact commit.
+   With no PR, the target is the repository's default branch. Use a draft PR
+   to establish any other target, or when useful for review.
+2. Use the installed helper with an already authenticated GitHub CLI:
+
+   ```sh
+   rtk proxy <installed-launcher> workflow-check --client <client> --project <root> --task <task-record>
+   ```
+
+   Add `--pr <number>` when a PR exists. The helper reads the issue and spec
+   pointers from the selected record, checks target config from GitHub, and
+   prints the current `issue_fingerprint` for fast mode. It uses only read
+   operations on GitHub.com. Organization repositories require access to
+   verify active organization owner membership. If access is missing, pause
+   the affected transition. The helper never signs, pushes, or merges.
+3. An authorized human repository owner must review the issue and exact
+   spec contents, then post this as the entire comment on the issue:
+
+   ```text
+   NDA fast spec: <target-branch> <repo-relative-spec-path> <full-commit-sha> <issue_fingerprint>
+   ```
+
+   Recheck at start, resume, and before dependent transitions. In fast mode
+   require `status: verified` before implementation, and record the target,
+   issue fingerprint, sign-off comment ID and approved commit. The local spec
+   must match the remote approved bytes. The fingerprint binds the current
+   issue title and body; edits to either require fresh sign-off. Changed spec
+   contents also require a new sign-off. `status: strict` means apply the
+   existing strict checks. `status: blocked` means pause the transition.
+4. Keep Red → Green → Refactor and the local test gate. Ship the spec, code,
+   and acceptance tests in one PR. Start its description with a standalone
+   `Closes #<issue>` line.
+   The owner must review the final head, including the acceptance evidence,
+   and post this as the entire PR conversation comment:
+
+   ```text
+   NDA fast review: <full-PR-head-sha>
+   ```
+
+   The owner may be the PR author. Automated agents and hooks cannot post
+   either sign-off. After CI passes, rerun the helper with `--pr <number>
+   --before-merge`. Require a verified result for the current head. A changed
+   head requires fresh review. GitHub's merge requirements still apply, including
+   independent approvals where required. Verify the head being merged still
+   matches the checked SHA. The harness does not edit GitHub protections.
+   Bug-fix and documentation paths are unchanged. Non-default targets may
+   require manual issue closure after an accepted merge.
 
 ## Creating a bug issue
 
@@ -113,6 +173,6 @@ Daily specialist selection uses the local `nda-harness-jev` MCP server:
 `select_skills`, human uncertainty confirmation through `record_selection`, then
 `load_selected_skills`. Only `selection_verify` with explicit `live: true` is a
 paid synthetic check. Credential administration stays in a normal local terminal.
-If MCP is unavailable or denied, report `jev_mcp_unavailable` and pause dependent
-specialist work; do not infer credential absence or escape to shell. Selection
-precedes delegation and never grants implementation or workflow approval.
+On confirmed MCP outage, report `jev_mcp_unavailable` and follow the installed
+`pack/jev-outage.md` for local-agent selection. Selection precedes delegation
+and never grants implementation or workflow approval.
