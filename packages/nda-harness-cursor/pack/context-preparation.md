@@ -24,7 +24,11 @@ collector. Plugin context skills add clone-local protection checks around it.
 Use `--role tech-lead` without a record for issue drafting. Task records must be
 explicitly created/saved by the agent, never inferred from a branch name. They
 use templates/task-record.md. Feature implementation requires a real local spec
-and independent remote prerequisite checks; the helper never performs them.
+and independent remote prerequisite checks. The five local context operations
+never perform them. Follow workflow.md to resolve strict or fast mode from
+the authenticated target branch at start, resume and dependent transitions.
+Use the separate `workflow-check` command for fast evidence; a task record or
+local config cannot authorize fast mode. The local test gate makes no such calls.
 `Type: bugfix` mirrors the live issue's `bug` label or `Type: bugfix` body field
 for the workflow.md bug-fix path; absent local Type means feature. At issue
 creation, use templates/bug-issue.md and follow workflow.md's publishing instructions.

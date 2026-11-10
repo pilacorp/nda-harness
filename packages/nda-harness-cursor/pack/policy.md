@@ -2,8 +2,11 @@
 
 Read this policy and workflow completely before task work. The GitHub issue owns
 feature intent; the developer spec defines implementation. Developer behavior
-changes use the feature path by default: a published issue and a reviewed-and-merged developer spec whose
-local content matches the merged reviewed revision. Verify remote evidence through
+changes use the feature path by default: a published issue and a matching
+reviewed and merged developer spec. Only authenticated target-branch configuration
+can opt into the fast feature path in workflow.md, which requires owner sign-off
+on the exact spec before implementation and owner review of the final PR head.
+Verify remote evidence through
 existing authenticated GitHub tools at task start, resume and dependent transitions.
 Material changes require reconciliation and renewed human review. Missing or
 unverifiable prerequisites pause implementation. Specification drafting/review
@@ -72,6 +75,6 @@ Daily specialist selection uses the local `nda-harness-jev` MCP server:
 `select_skills`, human uncertainty confirmation through `record_selection`, then
 `load_selected_skills`. Only `selection_verify` with explicit `live: true` is a
 paid synthetic check. Credential administration stays in a normal local terminal.
-If MCP is unavailable or denied, report `jev_mcp_unavailable` and pause dependent
-specialist work; do not infer credential absence or escape to shell. Selection
-precedes delegation and never grants implementation or workflow approval.
+On confirmed MCP outage, report `jev_mcp_unavailable` and follow the installed
+`pack/jev-outage.md` for local-agent selection. Selection precedes delegation
+and never grants implementation or workflow approval.

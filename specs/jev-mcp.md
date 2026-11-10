@@ -7,6 +7,10 @@ Consulted source revision: `337109c6b06535e5bddff2f4ca8e2c8b425b4304` on `dev`
 Spec branch: draft in the current checkout
 Status: runtime implementation in progress, explicitly authorized in chat on 2026-11-04; native-client acceptance and release pending
 
+The outage routing in this contract is amended by [Jev outage fallback and
+fast SDD workflow](jev-outage-and-fast-workflow.md). Native protocol, cache,
+credential handling and reconnect behavior are unchanged.
+
 ## Summary
 
 Developers currently switch Codex to Full Access to use Jev. There are two
@@ -103,11 +107,16 @@ assumption based on a successful unit function call.
 
 Generate the MCP entry from `scripts/nda_harness/plugin_build.py`:
 
-| Client | File | Command | Args |
-| --- | --- | --- | --- |
-| Codex | `.mcp.json` | `${PLUGIN_ROOT}/bin/nda-plugin` | `selection-mcp`, `--client`, `codex` |
-| Cursor | `mcp.json` | `${CURSOR_PLUGIN_ROOT}/bin/nda-plugin` | `selection-mcp`, `--client`, `cursor` |
-| Claude | `.mcp.json` | `${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin` | `selection-mcp`, `--client`, `claude` |
+| Client | File | Command | Working directory | Args |
+| --- | --- | --- | --- | --- |
+| Codex | `.mcp.json` | `/bin/sh` | `.` (installed plugin root) | `bin/nda-plugin`, `selection-mcp`, `--client`, `codex` |
+| Cursor | `mcp.json` | `${CURSOR_PLUGIN_ROOT}/bin/nda-plugin` | Client default | `selection-mcp`, `--client`, `cursor` |
+| Claude | `.mcp.json` | `${CLAUDE_PLUGIN_ROOT}/bin/nda-plugin` | Client default | `selection-mcp`, `--client`, `claude` |
+
+For [#55](https://github.com/pilacorp/nda-harness/issues/55), the legacy Codex
+loader resolves relative `cwd` from the plugin root and passes `command` as
+written. The shell opens `bin/nda-plugin` from that working directory, so the
+same package works from different workspaces and cache paths containing spaces.
 
 Use server id `nda-harness-jev`; a human label may say Jev skill selection.
 Codex/Claude entries declare `type: stdio`; Cursor uses its native command/args
@@ -200,7 +209,7 @@ must share the same cache semantics and never corrupt a pending or ready record.
 
 | Condition | Required behavior |
 | --- | --- |
-| MCP disabled, absent, startup failure, denied tool call | Coordinator reports `jev_mcp_unavailable` as a routing diagnostic and pauses dependent specialist work. Do not infer credential absence, change permissions, start setup, or silently escape to shell. |
+| MCP disabled, absent, startup failure, denied tool call | Coordinator reports `jev_mcp_unavailable` and uses the installed outage guide for local-agent classification with the verified bundled catalog. Do not infer credential absence, change permissions, start setup, or rerun the selector in a shell. |
 | Key missing | Existing `local_agent` flow; no paid request or setup prompt. |
 | Key inaccessible, state unwritable, invalid package | Block with sanitized credential/state/integrity diagnostic; no broad permission request or automatic fallback. |
 | Auth, credit, rate, network, malformed provider failure | Preserve current sanitized engine diagnostics and recovery; no automatic retry. |
@@ -234,6 +243,7 @@ Acceptance cases are defined below. Executed automated coverage and remaining na
 | TC-07 | Mock endpoint, redirects, auth/credit/rate/timeout/oversized/malformed responses, exception containing fake secret | Only fixed endpoint and one attempt; no secret or provider-body leakage to output/logs | transport / AC-04, AC-05 |
 | TC-08 | Startup, tools/list, offline verify, record/load, then explicit live verify | Zero provider calls for first operations; one synthetic call for live; no task data in live request | integration / AC-04 |
 | TC-09 | Build all clients plus Claude archive, relocate into path with spaces | Correct executable/args/root expansion and hashes; HTTP server entries preserved; no runtime dependency download | packaging / AC-06 |
+| TC-09a | Launch the relocated Codex package with the generated command and arguments and resolve `cwd` from the package root | Stdio initialization, tool discovery and offline `selection_verify` respond. A literal plugin-root placeholder in the command fails the fixture. | packaging / AC-01, AC-06 |
 | TC-10 | Disabled/denied MCP; killed process before/after cache write; reconnect with same task/session | Honest unavailable/unknown status; cached completed request reused, no automatic refresh or shell escape | integration + manual / AC-05 |
 | TC-11 | Largest valid shipped skill set | Complete response fits limit, over-limit fixture errors without partial body | integration / AC-02, AC-03 |
 | TC-12 | Fresh sandboxed Codex session using installed plugin and existing key | End-to-end selection/load without mode switch; shell restrictions still active; record client version and permissions | native manual / AC-01, AC-07 |

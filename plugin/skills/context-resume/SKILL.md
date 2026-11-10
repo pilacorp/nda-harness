@@ -22,7 +22,9 @@ For a fix restoring established intended behavior, follow workflow.md: no new sp
 reproduce, diagnose, add a regression test, fix, then sync the related spec in the
 same change before completion and human review. If none exists, add a concise
 behavior/regression spec with the fix. New requirements or unresolved intent
-conflicts use the default feature path and approved merged spec prerequisites.
+conflicts use the feature path in workflow.md. Before dependent transitions,
+verify strict or fast mode from the authenticated target branch. Strict requires
+review and spec merge; fast requires the live owner evidence from workflow-check.
 Do not infer task identity, approval or stage from branch names. Pass a stable local
 session ID with `--session` for cheap freshness checks; never use an auth token.
 

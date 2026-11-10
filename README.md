@@ -4,7 +4,7 @@ NDA Harness defines a shared development workflow for the internal team using Co
 
 The GitHub issue is the feature spec. The proposed harness helps the tech lead write, review, and revise its problem, users, outcome, scope, expected behavior, acceptance criteria, constraints, and open decisions. Supporting documents are linked when useful; no separate feature-spec document is required.
 
-Developer work starts with that issue created by an authorized tech lead. The developer drafts a separate implementation-ready spec and submits it for review. A feature uses one issue-numbered branch for two sequential PRs: the developer-spec PR references the issue; human approval and spec merge unlock implementation; the implementation PR closes the issue after review and acceptance. Material issue edits require reconciliation with the approved developer spec.
+Developer work starts with that issue created by an authorized tech lead. In the default strict workflow, the developer submits an implementation-ready spec for human approval and merge, then ships code and tests in a second PR from the same issue-numbered branch. Repositories can [opt into fast SDD](pack/workflow.md#fast-feature-path) to ship the spec, code, and tests in one PR. Fast mode requires an owner to sign off on the exact spec before implementation and review the final head before merge. Material issue edits require fresh approval.
 
 Bug fixes that restore established intended behavior use a shorter path. Record
 `Type: bugfix` in the GitHub issue body when creating it and apply the `bug` label
@@ -67,7 +67,7 @@ installation methods and commands.
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.15**, tracked from `main`. The
+version **0.0.16**, tracked from `main`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).

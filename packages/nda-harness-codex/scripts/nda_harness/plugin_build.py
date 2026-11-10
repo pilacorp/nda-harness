@@ -15,10 +15,10 @@ import zipfile
 from .files import digest, guard_path, json_bytes
 from .bundled import WHEEL as TOMLKIT_WHEEL, SHA256 as TOMLKIT_SHA256
 from .memory import NDA_HINDSIGHT, SYSTEMS, hindsight_services, auth_guidance
-from .skill_selection import selection_guidance
+from .skill_selection import render_outage_guide, selection_guidance
 
 CLIENTS = ('codex', 'cursor', 'claude')
-RELEASE_VERSION = '0.0.15'
+RELEASE_VERSION = '0.0.16'
 NDA_RAG_SERVER = 'nda-harness-nda-rag'
 NDA_RAG_MCP = 'https://docs-dev.chainhub.vn/api/mcp'
 SUPERPOWERS_REVISION = 'bb92a77741419a4ab5f06e711a283343f1ada0c3'
@@ -27,7 +27,7 @@ SUPERPOWERS_SHA256 = '496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33
 RUNTIME = ('__init__.py', 'plugin_build.py', 'plugin_runtime.py', 'project.py',
            'dependencies.py', 'files.py', 'hooks.py', 'bundled.py', 'memory.py',
            'credentials.py', 'openrouter.py', 'skill_selection.py', 'usage.py',
-           'bank_select.py', 'jev_mcp.py', 'mcp_error_log.py')
+           'bank_select.py', 'jev_mcp.py', 'mcp_error_log.py', 'workflow.py')
 REPOSITORY_URL = 'https://github.com/pilacorp/nda-harness'
 USAGE_HOME_URL = REPOSITORY_URL + '/blob/dev/docs/usage-report.md'
 
@@ -181,6 +181,8 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
         root.mkdir()
         for directory in ('pack', 'skills'):
             copy_assets(source, root, directory)
+        outage = root / 'pack/jev-outage.md'
+        outage.write_text(render_outage_guide(outage.read_text(), root / 'skills'))
         for module in RUNTIME:
             write(root, 'scripts/nda_harness/' + module, (source / 'scripts/nda_harness' / module).read_bytes())
         if digest((source / 'vendor' / TOMLKIT_WHEEL).read_bytes()) != TOMLKIT_SHA256:
@@ -228,12 +230,23 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
             NDA_RAG_SERVER: {**http_transport, 'url': rag_url},
         }
         for system_id, url in endpoints.items():
-            servers[SYSTEMS[system_id]['server']] = {**http_transport, 'url': url}
+            server = {**http_transport, 'url': url}
+            if system_id == 'hindsight':
+                agent = 'claude-code' if client == 'claude' else client
+                # Codex's legacy plugin manifest uses its native transport field.
+                header_field = 'http_headers' if client == 'codex' else 'headers'
+                server.setdefault(header_field, {})['X-Hindsight-Coding-Agent'] = agent
+            servers[SYSTEMS[system_id]['server']] = server
         if any(not isinstance(name, str) or re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None for name in servers):
             raise ValueError('MCP server identifiers must not contain spaces or unsupported characters; use a separate display label.')
         variable = {'codex': '${PLUGIN_ROOT}', 'cursor': '${CURSOR_PLUGIN_ROOT}', 'claude': '${CLAUDE_PLUGIN_ROOT}'}[client]
-        servers['nda-harness-jev'] = {'command': variable + '/bin/nda-plugin',
-                                      'args': ['selection-mcp', '--client', client]}
+        jev_args = ['selection-mcp', '--client', client]
+        if client == 'codex':
+            # The legacy Codex loader resolves relative cwd but does not expand command placeholders.
+            servers['nda-harness-jev'] = {'command': '/bin/sh', 'cwd': '.',
+                                          'args': ['bin/nda-plugin', *jev_args]}
+        else:
+            servers['nda-harness-jev'] = {'command': variable + '/bin/nda-plugin', 'args': jev_args}
         if client in ('codex', 'claude'):
             servers['nda-harness-jev']['type'] = 'stdio'
         write(root, 'mcp.json' if client == 'cursor' else '.mcp.json', json_bytes({'mcpServers': servers}))

@@ -9,7 +9,7 @@ registration is not claimed or installed in this phase.
 
 ## Implementation and registration
 
-Requires explicit role and developer task selection. Specification drafting is allowed before spec merge. Feature implementation requires a local spec and independent live issue/review/merge checks by the agent. An issue-linked task with `Type: bugfix` follows workflow.md: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion and human review. No separate upfront spec PR is required; add a concise behavior/regression spec if none exists. New requirements or unresolved intent conflicts use the feature path.
+Requires explicit role and developer task selection. Specification drafting is allowed before approval. Feature implementation requires a local spec and independent live issue and workflow checks by the agent: reviewed merge in strict mode or verified owner sign-off in authenticated fast mode. An issue-linked task with `Type: bugfix` follows workflow.md: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion and human review. No separate upfront spec PR is required; add a concise behavior/regression spec if none exists. New requirements or unresolved intent conflicts use the feature path.
 
 Source: `hooks/pre-commit` plus `scripts/unit_check.py` for H-01;
 `scripts/prepare-context` plus `scripts/context_runtime.py` for H-02–H-06.
@@ -45,7 +45,7 @@ checkout/virtual environment and from a different working directory.
 
 ## Recovery and privacy
 
-Reconcile issue/spec/task selection, finish spec review/merge or resume drafting. Never treat helper ready as approval.
+Reconcile issue/spec/task selection and obtain the approval evidence required by workflow.md, or resume drafting. Never treat helper ready as approval.
 
 Repair client Python/PATH locally and retry if the launcher reports a prerequisite
 error. Restore only recorded files/Git settings still matching written hashes;

@@ -115,12 +115,19 @@ class PluginTests(unittest.TestCase):
         self.assertTrue((self.package / 'skills/diagram-design/assets/example-loop.html').is_file())
         self.assertFalse((self.package / 'scripts/nda_harness/hindsight.py').exists())
         mcp = json.loads((self.package / '.mcp.json').read_text())['mcpServers']
-        self.assertEqual(mcp['nda-harness-hindsight'], {'type': 'http', 'url': 'https://hindsight-api.pila.vn/mcp/'})
+        self.assertEqual(mcp['nda-harness-hindsight'], {
+            'type': 'http', 'url': 'https://hindsight-api.pila.vn/mcp/',
+            'http_headers': {'X-Hindsight-Coding-Agent': 'codex'},
+        })
         services = json.loads((self.package / 'nda-plugin.json').read_text())['memory_systems']['services']['hindsight']
         self.assertEqual(services, {'mcp': 'https://hindsight-api.pila.vn/mcp/', 'oauth': 'https://hindsight-api.pila.vn', 'rest': 'https://hindsight-api.pila.vn'})
         cursor = self.base / 'cursor'
         build(ROOT, cursor, 'cursor', 'https://memory.example.test/mcp/')
-        self.assertEqual(json.loads((cursor / 'mcp.json').read_text())['mcpServers']['nda-harness-hindsight'], {'url': 'https://memory.example.test/mcp/'})
+        cursor_mcp = json.loads((cursor / 'mcp.json').read_text())['mcpServers']
+        self.assertEqual(cursor_mcp['nda-harness-hindsight'], {
+            'url': 'https://memory.example.test/mcp/',
+            'headers': {'X-Hindsight-Coding-Agent': 'cursor'},
+        })
         hooks = json.loads((cursor / 'hooks/hooks.json').read_text())['hooks']
         self.assertIn('sessionStart', hooks)
         self.assertNotIn('SessionStart', hooks)
@@ -354,10 +361,26 @@ class PluginTests(unittest.TestCase):
                                       ('claude', '.claude-plugin/plugin.json')):
             manifest = json.loads((packages / f'nda-harness-{client}' / manifest_path).read_text())
             self.assertEqual(manifest['version'], RELEASE_VERSION)
-        for client, manifest in (('codex', '.mcp.json'), ('cursor', 'mcp.json')):
-            servers = json.loads((packages / f'nda-harness-{client}' / manifest).read_text())['mcpServers']
-            self.assertEqual(servers['nda-harness-hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
-            self.assertNotIn('Authorization', json.dumps(servers))
+        for client, manifest, header_field, agent in (
+            ('codex', '.mcp.json', 'http_headers', 'codex'),
+            ('cursor', 'mcp.json', 'headers', 'cursor'),
+            ('claude', '.mcp.json', 'headers', 'claude-code'),
+        ):
+            with self.subTest(client=client):
+                servers = json.loads((packages / f'nda-harness-{client}' / manifest).read_text())['mcpServers']
+                self.assertEqual(servers['nda-harness-hindsight']['url'], 'https://hindsight-api.pila.vn/mcp/')
+                self.assertEqual(servers['nda-harness-hindsight'].get(header_field), {'X-Hindsight-Coding-Agent': agent})
+                for name, server in servers.items():
+                    if name != 'nda-harness-hindsight':
+                        self.assertNotIn('X-Hindsight-Coding-Agent', json.dumps(server))
+                self.assertNotIn('Authorization', json.dumps(servers))
+
+    def test_omitting_hindsight_omits_coding_agent_header(self):
+        package = self.base / 'no-memory'
+        build(ROOT, package, 'codex', memory_endpoints={})
+        servers = json.loads((package / '.mcp.json').read_text())['mcpServers']
+        self.assertNotIn('nda-harness-hindsight', servers)
+        self.assertNotIn('X-Hindsight-Coding-Agent', json.dumps(servers))
 
     def test_claude_package_matches_shared_engine_and_native_hooks(self):
         claude = self.base / 'claude'
@@ -395,10 +418,12 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(market['owner'], {'name': 'NDA Harness'})
         self.assertEqual(market['plugins'][0]['source'], '.')
         servers = json.loads(claude_files['.mcp.json'])['mcpServers']
-        self.assertEqual(servers['nda-harness-hindsight'], {'type': 'http', 'url': endpoint})
+        self.assertEqual(servers['nda-harness-hindsight'], {
+            'type': 'http', 'url': endpoint,
+            'headers': {'X-Hindsight-Coding-Agent': 'claude-code'},
+        })
         self.assertEqual(servers['nda-harness-context7']['type'], 'http')
         for server in servers.values():
-            self.assertNotIn('headers', server)
             self.assertNotIn('Authorization', json.dumps(server))
         hooks = json.loads(claude_files['hooks/hooks.json'])['hooks']
         self.assertEqual(set(hooks), {'SessionStart', 'UserPromptSubmit', 'PreCompact'})

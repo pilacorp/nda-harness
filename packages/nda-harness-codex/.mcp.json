@@ -5,16 +5,21 @@
       "url": "https://mcp.context7.com/mcp"
     },
     "nda-harness-hindsight": {
+      "http_headers": {
+        "X-Hindsight-Coding-Agent": "codex"
+      },
       "type": "http",
       "url": "https://hindsight-api.pila.vn/mcp/"
     },
     "nda-harness-jev": {
       "args": [
+        "bin/nda-plugin",
         "selection-mcp",
         "--client",
         "codex"
       ],
-      "command": "${PLUGIN_ROOT}/bin/nda-plugin",
+      "command": "/bin/sh",
+      "cwd": ".",
       "type": "stdio"
     },
     "nda-harness-nda-rag": {

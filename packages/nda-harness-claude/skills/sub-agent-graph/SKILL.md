@@ -33,6 +33,13 @@ Leave out the parent transcript, earlier unrelated attempts, files the child wil
 
 Call Hindsight `recall` and `retain` for the project bank in `.nda-harness/profile.json`. Search and fetch internal RAG before writing the summary. Do not put Hindsight credentials or a memory dump into the summary.
 
-Run Jev for the node before spawning. When MCP `select_skills` returns diagnostic `local_agent`, answer those questions in Jev's noul format and submit them with the same assignment and an `answers` object. The saved model name is `local-agent`. Load a specialist body only when doing that specialist work yourself. The child receives the selected id and path and does not call MCP `select_skills`.
+Use native Jev for the node before spawning. When MCP `select_skills` returns
+`local_agent`, answer the questions in Jev's noul format and submit the
+`answers` for the same assignment. On confirmed outage, report
+`jev_mcp_unavailable` and follow the installed `pack/jev-outage.md`. Both routes
+can use the `local-agent` model name; only native Jev creates a cache entry.
+Load a specialist body only when doing that work yourself. Pass the child only
+the selected ID, verified path and pinned revision, or `none`. The child does
+not call MCP `select_skills`.
 
 Give the child `sub-agent-loop`. Append the child's finding, artifact references, and stop-condition result to the node.

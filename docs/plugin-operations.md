@@ -96,7 +96,7 @@ Run from the repository root, choosing a new semantic version for each release:
 
 ```sh
 PYTHONPATH=scripts python3 -m nda_harness.plugin_build --client codex \
-  --archive --version 0.0.12 --output dist/nda-harness-codex-0.0.12.zip
+  --archive --version 0.0.16 --output dist/nda-harness-codex-0.0.16.zip
 ```
 
 Select the ZIP in **Upload plugin archive**. The command preserves existing
@@ -280,6 +280,11 @@ Setup never starts login. Each client signs in separately and connects directly 
 `/mcp/`; the client owns discovery, PKCE, callback, credentials, renewal and logout.
 Never provide tokens or provider settings to the harness. No auth proxy exists.
 
+The Hindsight MCP entry adds `X-Hindsight-Coding-Agent` with the fixed value
+`codex`, `cursor`, or `claude-code`. The packaged Codex manifest uses
+`http_headers`. Cursor and Claude Code use `headers`. Hindsight uses this
+client identifier for connection attribution.
+
 After authentication the agent uses hindsight-memory automatically. Codex, Cursor,
 and Claude Code on the same account use the project's configured bank ID. Equivalent SSH/HTTPS
 clones share it. Default environment is dev; staging/prod are explicitly selected
@@ -406,10 +411,10 @@ are reused, without an SDK installation or background service.
 Enable/trust the server using each client's normal controls and reload when
 needed. Daily agents call the four tools documented in [skill selection](skill-selection.md).
 Credential setup/replacement/removal/migration remains terminal-only. No hook,
-startup check or pre-commit gate makes a paid Jev call. Missing or denied MCP is
-`jev_mcp_unavailable`, requiring a pause of dependent specialist work; do not
-change global permissions or silently fall back to shell. After disconnect reuse
-the same task/session without refresh; paid request delivery may be unknown.
+startup check or pre-commit gate makes a paid Jev call. On confirmed MCP outage,
+report `jev_mcp_unavailable` and use the installed [outage guide](../pack/jev-outage.md)
+for local-agent selection from the verified bundle. After an interrupted call
+with unknown delivery, reconnect with the same task/session without refresh.
 
 Rollback disables the new MCP entry or restores the preceding package. Preserve
 credential generation, keys and cache files. Native Codex, Cursor, Claude and

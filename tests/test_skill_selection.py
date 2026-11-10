@@ -18,7 +18,8 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from nda_harness.credentials import selection_setup
 from nda_harness.openrouter import DECISIONS_URL, post_decision, selection_verify
 from nda_harness.skill_selection import (
-    SelectionError, build_decision_request, classify_answers, input_fingerprint, load_catalog,
+    LOCAL_AGENT, SelectionError, _answered_decision, _resolved_probabilities, build_decision_request,
+    classify_answers, input_fingerprint, load_catalog,
     load_selected_skills, read_resolution_request, read_selection_request, record_selection, select_skills, validate_task_input,
 )
 
@@ -108,6 +109,24 @@ def task(**overrides):
 
 
 class SelectionTests(unittest.TestCase):
+    def test_outage_answers_can_select_none_and_require_exact_uncertainty_decisions(self):
+        catalog = load_catalog(ROOT / 'skills')
+        assignment = task(request='Add a backend validation check.')
+        scores = {skill['id']: 0.20 for skill in catalog['skills']}
+        result = _answered_decision(assignment, catalog, scores, LOCAL_AGENT, model_requested=LOCAL_AGENT)
+        self.assertEqual(result['selected'], [])
+        self.assertFalse(result['implementation_authorized'])
+        self.assertNotIn('cache_key', result)
+
+        scores.update({'diagram-design': 0.50, 'ui-ux-pro-max': 0.80})
+        pending = _answered_decision(assignment, catalog, scores, LOCAL_AGENT, model_requested=LOCAL_AGENT)
+        self.assertEqual(pending['uncertain'], [{'id': 'diagram-design', 'probability': 0.50}])
+        with self.assertRaises(SelectionError):
+            _resolved_probabilities(scores, {})
+        resolved = _resolved_probabilities(scores, {'diagram-design': False})
+        ready = _answered_decision(assignment, catalog, resolved, LOCAL_AGENT, model_requested=LOCAL_AGENT)
+        self.assertEqual([item['id'] for item in ready['selected']], ['ui-ux-pro-max'])
+
     def test_shipped_catalog_matches_human_links(self):
         catalog = json.loads((ROOT / 'skills/catalog.json').read_text())
         text = (ROOT / 'skills/catalog.md').read_text()

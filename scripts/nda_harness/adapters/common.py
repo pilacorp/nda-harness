@@ -17,7 +17,10 @@ Run the installed `{pack / 'scripts/prepare-context'}` helper for all five conte
 Use RTK for supported shell commands; see {pack / 'RTK.md'}.
 Use Context7 for relevant public library documentation. Never send private source or credentials.
 Superpowers stays active for compatible planning, TDD and debugging; preserve its upstream hooks.
-Issue-linked features require a reviewed-and-merged spec matching local content before implementation.
+Issue-linked features require an approved spec matching local content before implementation.
+Follow workflow.md: strict mode requires a reviewed merge; authenticated target-branch fast mode
+requires the owner evidence checked by the native plugin's workflow-check.
+If native Jev MCP is confirmed unavailable, report jev_mcp_unavailable and follow {pack / 'jev-outage.md'}.
 For fixes restoring established behavior, put Type: bugfix in the GitHub issue body at creation, apply the bug label if available, verify live issue classification at start/resume and mirror it in the local task, then follow workflow.md: reproduce, diagnose, regression test, fix, then sync the related spec in the same change before completion and human review. Add a concise behavior/regression spec if none exists; no separate upfront spec PR is required. New requirements or unresolved intent conflicts use the feature path.
 """
     if memory:
