@@ -5,6 +5,9 @@
       "url": "https://mcp.context7.com/mcp"
     },
     "nda-harness-hindsight": {
+      "headers": {
+        "X-Hindsight-Coding-Agent": "claude-code"
+      },
       "type": "http",
       "url": "https://hindsight-api.pila.vn/mcp/"
     },

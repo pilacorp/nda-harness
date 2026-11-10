@@ -280,6 +280,11 @@ Setup never starts login. Each client signs in separately and connects directly 
 `/mcp/`; the client owns discovery, PKCE, callback, credentials, renewal and logout.
 Never provide tokens or provider settings to the harness. No auth proxy exists.
 
+The Hindsight MCP entry adds `X-Hindsight-Coding-Agent` with the fixed value
+`codex`, `cursor`, or `claude-code`. The packaged Codex manifest uses
+`http_headers`. Cursor and Claude Code use `headers`. Hindsight uses this
+client identifier for connection attribution.
+
 After authentication the agent uses hindsight-memory automatically. Codex, Cursor,
 and Claude Code on the same account use the project's configured bank ID. Equivalent SSH/HTTPS
 clones share it. Default environment is dev; staging/prod are explicitly selected

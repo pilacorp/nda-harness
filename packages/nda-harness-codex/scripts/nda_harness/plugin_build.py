@@ -230,7 +230,13 @@ def build(source, destination, client, endpoint=None, *, local_test=False, memor
             NDA_RAG_SERVER: {**http_transport, 'url': rag_url},
         }
         for system_id, url in endpoints.items():
-            servers[SYSTEMS[system_id]['server']] = {**http_transport, 'url': url}
+            server = {**http_transport, 'url': url}
+            if system_id == 'hindsight':
+                agent = 'claude-code' if client == 'claude' else client
+                # Codex's legacy plugin manifest uses its native transport field.
+                header_field = 'http_headers' if client == 'codex' else 'headers'
+                server.setdefault(header_field, {})['X-Hindsight-Coding-Agent'] = agent
+            servers[SYSTEMS[system_id]['server']] = server
         if any(not isinstance(name, str) or re.fullmatch(r'[a-zA-Z0-9_:@/.-]+', name) is None for name in servers):
             raise ValueError('MCP server identifiers must not contain spaces or unsupported characters; use a separate display label.')
         variable = {'codex': '${PLUGIN_ROOT}', 'cursor': '${CURSOR_PLUGIN_ROOT}', 'claude': '${CLAUDE_PLUGIN_ROOT}'}[client]
