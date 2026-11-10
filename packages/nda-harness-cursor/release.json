@@ -1,11 +1,11 @@
 {
   "asset_hashes": {
-    ".cursor-plugin/plugin.json": "5bd593121eb1f2bc60ee96ce290bd586b8458476e0adc8dc1bc56578411112d9",
+    ".cursor-plugin/plugin.json": "94d0c8b9d17849151fdb9a9f7898ef30536167c5750d167ba3e8b2d0b59ce504",
     "assets/logo.jpg": "6e7436cdfd743807a6763e8f0ec20895636f24c920f6f4c90db4def7552a116d",
     "bin/nda-plugin": "b7717fea9f2bcdeeb6a074901245664e49983f032c4227e0645a8a29c94cd66e",
     "hooks/hooks.json": "e9a00719665f12a41d7422528932f9402d2df512498cb2b4cc876bb7c06ee7d2",
     "mcp.json": "46e95e2d461fc5b63e2d63ddde3ecc7ece60d0a1160038d08cc7b3b9cca5ac60",
-    "nda-plugin.json": "952f3c6fc22b6085115f9b6f513da3fe260009ef9b27bba41db53dd146fcb788",
+    "nda-plugin.json": "607c3297b6bf251f04236b2fc4eee3eee0da266369b16663806df170daee6414",
     "pack/RTK.md": "49c368c302c6f63d089f4c1085b242fc50fe22ce5bc34dada6478083000e7c6f",
     "pack/context-preparation.md": "7a9ca9ae7da47be2ed771f28c458fb07b8f04d580cf201927cdef89dcac710fd",
     "pack/dependencies.json": "1099de1a796c3e051ffc30027dd7cf6b17aee21f98576f12c5b65cf8e7240f6f",
@@ -43,7 +43,7 @@
     "scripts/nda_harness/mcp_error_log.py": "89e555932c55545ceef4b4e1fc297c365efbd47d3e57fbb7302b311b23856ea1",
     "scripts/nda_harness/memory.py": "3b1c1c1664e7fc0d250b672e25d4cfef4336144bf9dc9dc290656e6c20638df5",
     "scripts/nda_harness/openrouter.py": "49044cb6b127e6613fbcb61b24f81d543b613ed8c2326b43cd20026e082871a6",
-    "scripts/nda_harness/plugin_build.py": "d553e4ab376fe136f1da99f70359cb8e400b7dc1c77003e7d5c2d4df774d6e6e",
+    "scripts/nda_harness/plugin_build.py": "3b90d7a6af4fccc8db0244393b93e65f515d95be9a8c364a910348633375973e",
     "scripts/nda_harness/plugin_runtime.py": "bfd992392779410c285e58df16b3518d283eed39103e9098c7ebed12695647e8",
     "scripts/nda_harness/project.py": "dc2fd93746fa2b2bb8ce0c031f196d4c3164ee3ab55e798694dec1acd3031447",
     "scripts/nda_harness/skill_selection.py": "e2de44c842d4a4246d259c934630e324858a07320ee4f9b2a3f278fbe75e6e22",

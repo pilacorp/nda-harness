@@ -43,12 +43,31 @@ Code stays in the developer's local repository for agent inspection. The existin
 
 Memory storage stays internal; processing sends relevant memory content through OpenRouter to the selected model provider. That OpenRouter credential stays on the Hindsight server. A developer's separate OpenRouter key, used only for Jev skill selection, stays in `~/.nda-harness/skill-selection/openrouter-key` and must stay out of Git.
 
+## Graphify quick start
+
+Graphify can index a checkout for code navigation. Use the standalone CLI today.
+Harness-managed setup and background refresh are described in the
+[Graphify integration spec](specs/graphify-integration.md).
+
+With Python 3.10 or newer and `uv`, run these commands from the repository root:
+
+```sh
+rtk proxy uv tool install graphifyy
+rtk proxy env GRAPHIFY_BACKEND=none graphify extract . --code-only
+rtk proxy graphify query "where is project setup implemented?"
+```
+
+Run the extract command again after source changes. Keep `graphify-out/` local
+and verify graph results against the source files before relying on them. See the
+[upstream Graphify guide](https://github.com/Graphify-Labs/graphify) for other
+installation methods and commands.
+
 ## Current phase
 
 Phase 0 targets **Codex Desktop, Cursor IDE, and Claude Code Desktop on Apple
 Silicon macOS**. This private repository supplies native marketplaces named
 `nda-harness-internal`, each exposing the matching NDA Harness package at
-version **0.0.12**, tracked from `main`. The
+version **0.0.15**, tracked from `main`. The
 [marketplace spec](specs/internal-client-marketplaces.md), merged in
 [PR #21](https://github.com/pilacorp/nda-harness/pull/21), extends the original
 [plugin specification](specs/harness-plugins.md).
